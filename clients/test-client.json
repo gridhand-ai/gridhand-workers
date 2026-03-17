@@ -1,0 +1,26 @@
+{
+  "id": "test-client",
+  "workers": ["faq"],
+  "twilioNumber": "+14144044418",
+  "business": {
+    "name": "Insurance Center of Milwaukee",
+    "industry": "Insurance",
+    "city": "Milwaukee",
+    "address": "123 Main St, Milwaukee, WI 53202",
+    "phone": "(414) 555-0100",
+    "website": "http://www.insurancecentermilwaukee.com",
+    "hours": "Mon-Thu 2pm-4pm",
+    "services": [
+      { "name": "Auto Insurance", "price": "Starting at $89/mo" },
+      { "name": "Home Insurance", "price": "Starting at $65/mo" },
+      { "name": "Life Insurance", "price": "Starting at $25/mo" },
+      { "name": "Business Insurance", "price": "Custom quote" }
+    ],
+    "faqs": [
+      { "q": "What are your hours?", "a": "We're open Mon-Thu 2pm-4pm. You can also reach us anytime via text!" },
+      { "q": "Do you offer free quotes?", "a": "Yes! All quotes are free and there's no obligation." },
+      { "q": "How do I file a claim?", "a": "Call our main line and we'll walk you through the process step by step." },
+      { "q": "Do you handle commercial insurance?", "a": "Yes, we offer custom business insurance packages. We'd love to discuss your needs." }
+    ]
+  }
+}
