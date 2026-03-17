@@ -1,3 +1,4 @@
 node_modules/
 .env
 memory/
+subagents/data/
