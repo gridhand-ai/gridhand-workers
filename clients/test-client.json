@@ -1,7 +1,8 @@
 {
+  "slug": "test-client",
   "id": "test-client",
-  "workers": ["faq"],
   "twilioNumber": "+14144044418",
+  "workers": ["receptionist", "faq", "booking", "after-hours", "intake", "waitlist"],
   "business": {
     "name": "Insurance Center of Milwaukee",
     "industry": "Insurance",
@@ -22,5 +23,61 @@
       { "q": "How do I file a claim?", "a": "Call our main line and we'll walk you through the process step by step." },
       { "q": "Do you handle commercial insurance?", "a": "Yes, we offer custom business insurance packages. We'd love to discuss your needs." }
     ]
+  },
+  "settings": {
+    "global": {
+      "tone": "friendly",
+      "faqHandoff": true,
+      "escalateOnUpset": true,
+      "escalationNumber": "+14145550100"
+    },
+    "review-requester": {
+      "delayHours": 2,
+      "reviewLink": ""
+    },
+    "reminder": {
+      "firstReminderHours": 24,
+      "secondReminderHours": 1,
+      "includeAddress": true,
+      "includeCancellationInfo": true
+    },
+    "after-hours": {
+      "captureLeadInfo": true
+    },
+    "reactivation": {
+      "dormantDays": 90,
+      "offerDiscount": false,
+      "discountText": ""
+    },
+    "lead-followup": {
+      "followUpCount": 2,
+      "daysBetweenFollowUps": 3
+    },
+    "intake": {
+      "collectFields": ["name", "service", "preferredTime", "contactInfo"]
+    },
+    "invoice-chaser": {
+      "firstChaseAfterDays": 3,
+      "followUpDays": 7,
+      "maxFollowUps": 3
+    },
+    "referral": {
+      "offerIncentive": false,
+      "incentiveText": ""
+    },
+    "upsell": {
+      "triggerAfterCompletion": true
+    },
+    "booking": {
+      "bookingMethod": "phone"
+    },
+    "onboarding": {
+      "steps": [
+        "Confirm their contact details",
+        "Explain what to expect from their insurance coverage",
+        "Share office hours and best ways to reach the team",
+        "Let them know they can text anytime with questions"
+      ]
+    }
   }
 }
