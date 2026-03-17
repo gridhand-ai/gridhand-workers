@@ -15,7 +15,8 @@ async function send({ client, customerNumber, customerName, completedServiceName
         from: client.twilioNumber,
         to: customerNumber,
         body,
-        clientSlug: client.slug
+        clientSlug: client.slug,
+        clientApiKeys: client.apiKeys || {}
     });
 }
 

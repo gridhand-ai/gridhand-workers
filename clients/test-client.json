@@ -2,6 +2,19 @@
   "slug": "test-client",
   "id": "test-client",
   "twilioNumber": "+14144044418",
+
+  "model": "anthropic/claude-haiku-4-5-20251001",
+
+  "apiKeys": {
+    "anthropic": null,
+    "twilio": {
+      "accountSid": null,
+      "authToken": null
+    },
+    "moonshot": null,
+    "ollamaBaseUrl": null
+  },
+
   "workers": ["receptionist", "faq", "booking", "after-hours", "intake", "waitlist"],
   "business": {
     "name": "Insurance Center of Milwaukee",

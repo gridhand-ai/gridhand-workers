@@ -1,5 +1,6 @@
 const express = require('express');
-const { loadClient } = require('./clients/loader');
+const { loadClient, NUMBER_MAP } = require('./clients/loader');
+const aiClientLib = require('./lib/ai-client');
 
 // Workers
 const afterHoursWorker      = require('./workers/after-hours');
@@ -303,6 +304,67 @@ app.post('/trigger/onboarding', async (req, res) => {
         campaignTracker.trackSent(client.slug, 'onboarding');
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Operator Validation ──────────────────────────────────────────────────────
+
+// GET /validate/:twilioNumber — check if a client config is ready to go live
+app.get('/validate/:twilioNumber', (req, res) => {
+    const twilioNumber = decodeURIComponent(req.params.twilioNumber);
+    const client = loadClient(twilioNumber);
+    if (!client) {
+        return res.status(404).json({
+            valid: false,
+            error: `No client found for ${twilioNumber}. Add it to clients/loader.js NUMBER_MAP.`,
+        });
+    }
+
+    const aiCheck = aiClientLib.validate(client);
+    const issues  = [...aiCheck.issues];
+
+    // Check required business fields
+    const biz = client.business || {};
+    if (!biz.name)     issues.push('business.name is required');
+    if (!biz.phone)    issues.push('business.phone is required');
+    if (!biz.hours)    issues.push('business.hours is required');
+    if (!biz.services?.length) issues.push('business.services must have at least one entry');
+    if (!biz.faqs?.length)     issues.push('business.faqs must have at least one entry');
+
+    // Check workers are valid
+    const validWorkers = ['receptionist','faq','booking','intake','after-hours','waitlist',
+        'review-requester','reminder','reactivation','lead-followup',
+        'invoice-chaser','quote','referral','upsell','onboarding'];
+    for (const w of (client.workers || [])) {
+        if (!validWorkers.includes(w)) issues.push(`Unknown worker: "${w}"`);
+    }
+
+    res.json({
+        valid:       issues.length === 0,
+        slug:        client.slug,
+        model:       aiCheck.model,
+        workers:     client.workers || [],
+        issues,
+        readyToGo:   issues.length === 0 ? '✅ This client is ready to go live.' : `❌ Fix ${issues.length} issue(s) before going live.`,
+    });
+});
+
+// GET /validate — list all registered clients and their status
+app.get('/validate', (req, res) => {
+    const results = [];
+    for (const [number, slug] of Object.entries(NUMBER_MAP)) {
+        const client = loadClient(number);
+        if (!client) { results.push({ number, slug, valid: false, error: 'Config file missing' }); continue; }
+        const aiCheck = aiClientLib.validate(client);
+        results.push({
+            number,
+            slug,
+            model:   aiCheck.model,
+            workers: client.workers || [],
+            valid:   aiCheck.valid && !!client.business?.name,
+            issues:  aiCheck.issues,
+        });
+    }
+    res.json({ total: results.length, clients: results });
 });
 
 // ─── Analytics & Reports ───────────────────────────────────────────────────────

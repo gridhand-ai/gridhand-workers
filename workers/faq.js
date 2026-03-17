@@ -1,12 +1,12 @@
-const Anthropic = require('@anthropic-ai/sdk');
+const aiClient     = require('../lib/ai-client');
 const memoryModule = require('./memory');
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
 async function run({ client, message, customerNumber }) {
-    const biz = client.business;
+    const biz  = client.business;
     const tone = client.settings?.global?.tone || 'friendly';
-    const toneInstruction = tone === 'professional' ? 'Be professional and formal.' : 'Be warm, friendly, and casual.';
+    const toneInstruction = tone === 'professional'
+        ? 'Be professional and formal.'
+        : 'Be warm, friendly, and casual.';
 
     const systemPrompt = `You are an AI assistant for ${biz.name}, a ${biz.industry} business in ${biz.city}.
 
@@ -31,28 +31,30 @@ INSTRUCTIONS:
 - If they want to book an appointment, tell them to call ${biz.phone} or visit ${biz.website || 'our website'}.
 - Sign off with "${biz.name}" when ending conversations.`;
 
-    // Load conversation history
-    const history = memoryModule.loadHistory(client.slug, customerNumber);
+    const history  = memoryModule.loadHistory(client.slug, customerNumber);
     const messages = [
         ...history.map(h => ({ role: h.role, content: h.content })),
-        { role: 'user', content: message }
+        { role: 'user', content: message },
     ];
 
+    const modelString   = client.model || 'anthropic/claude-haiku-4-5-20251001';
+    const clientApiKeys = client.apiKeys || {};
+
     try {
-        const response = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 150,
-            system: systemPrompt,
-            messages
+        const reply = await aiClient.call({
+            modelString,
+            clientApiKeys,
+            systemPrompt,
+            messages,
+            maxTokens: 150,
         });
 
-        const reply = response.content[0]?.text?.trim() || '';
         memoryModule.saveMessage(client.slug, customerNumber, 'user', message);
         memoryModule.saveMessage(client.slug, customerNumber, 'assistant', reply);
-        console.log(`[FAQ] Reply to ${customerNumber}: "${reply}"`);
+        console.log(`[FAQ] (${aiClient.getModelLabel(modelString)}) Reply to ${customerNumber}: "${reply.slice(0, 60)}..."`);
         return reply;
     } catch (e) {
-        console.log(`[FAQ] Claude error: ${e.message}`);
+        console.log(`[FAQ] AI error: ${e.message}`);
         return `Thanks for reaching out to ${biz.name}! We'll get back to you shortly.`;
     }
 }

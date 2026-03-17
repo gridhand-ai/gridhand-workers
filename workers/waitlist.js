@@ -14,7 +14,8 @@ async function sendSpotAvailable({ client, customerNumber, customerName, service
         from: client.twilioNumber,
         to: customerNumber,
         body,
-        clientSlug: client.slug
+        clientSlug: client.slug,
+        clientApiKeys: client.apiKeys || {}
     });
 }
 
