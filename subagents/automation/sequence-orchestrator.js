@@ -12,7 +12,7 @@ function saveAllSequences(sequences) {
 }
 
 // Create a new sequence for a customer
-function createSequence({ clientSlug, customerNumber, workerName, steps, twilioNumber }) {
+function createSequence({ clientSlug, customerNumber, workerName, steps, twilioNumber, clientApiKeys = {} }) {
     // Each step: { delayMs, message, workerTrigger, condition }
     // condition: 'always' | 'no-reply' | 'no-conversion'
     const sequences = getAllSequences();
@@ -26,6 +26,7 @@ function createSequence({ clientSlug, customerNumber, workerName, steps, twilioN
         customerNumber,
         workerName,
         twilioNumber,
+        clientApiKeys,
         steps,
         currentStep: 0,
         status: 'active',        // active | paused | completed | cancelled
@@ -137,6 +138,7 @@ async function runDueSequences(workerModules, twilioSender) {
                     to: seq.customerNumber,
                     body: step.message,
                     clientSlug: seq.clientSlug,
+                    clientApiKeys: seq.clientApiKeys || {},
                 });
             } else if (step.workerTrigger && workerModules[step.workerTrigger]) {
                 // Trigger a worker's send function

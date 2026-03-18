@@ -2,3 +2,10 @@ node_modules/
 .env
 memory/
 subagents/data/
+
+# Client configs with real API keys — never commit these
+# Only the template and test client (with null keys) are safe to commit
+clients/*.json
+!clients/_operator-template.json
+!clients/test-client.json
+!clients/loader.js

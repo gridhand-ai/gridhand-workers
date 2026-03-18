@@ -30,4 +30,17 @@ function loadClient(twilioNumber) {
     }
 }
 
-module.exports = { loadClient, NUMBER_MAP };
+function loadClientBySlug(slug) {
+    const filePath = path.join(__dirname, `${slug}.json`);
+    if (!fs.existsSync(filePath)) return null;
+    try {
+        const config = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        if (!config.slug) config.slug = slug;
+        return config;
+    } catch (e) {
+        console.log(`[Loader] Failed to parse config: ${e.message}`);
+        return null;
+    }
+}
+
+module.exports = { loadClient, loadClientBySlug, NUMBER_MAP };

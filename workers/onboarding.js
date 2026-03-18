@@ -5,7 +5,7 @@ const memoryModule = require('./memory');
 // Outbound: send welcome message to a new customer
 async function send({ client, customerNumber, customerName, serviceName }) {
     const biz = client.business;
-    const settings = client.settings?.workers?.onboarding || {};
+    const settings = client.settings?.onboarding || {};
     const welcomeMessage = settings.customWelcome || null;
 
     const nameGreet = customerName ? `Welcome, ${customerName}` : `Welcome`;
@@ -28,7 +28,7 @@ async function send({ client, customerNumber, customerName, serviceName }) {
 async function run({ client, message, customerNumber }) {
     const biz = client.business;
     const tone = base.getTone(client);
-    const settings = client.settings?.workers?.onboarding || {};
+    const settings = client.settings?.onboarding || {};
     const onboardingSteps = settings.steps || [
         'Confirm their contact details',
         'Explain what to expect next',

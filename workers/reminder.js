@@ -4,7 +4,7 @@ const sender = require('./twilio-sender');
 // Outbound: send appointment reminder
 async function send({ client, customerNumber, customerName, appointmentTime, serviceName, reminderType = '24hr' }) {
     const biz = client.business;
-    const settings = client.settings?.workers?.reminder || {};
+    const settings = client.settings?.reminder || {};
     const includeAddress = settings.includeAddress !== false;
     const includeCancellation = settings.includeCancellationInfo !== false;
 

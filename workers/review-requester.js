@@ -4,7 +4,7 @@ const sender = require('./twilio-sender');
 // Outbound: send a review request to a customer after service completion
 async function send({ client, customerNumber, customerName, serviceName }) {
     const biz = client.business;
-    const settings = client.settings?.workers?.['review-requester'] || {};
+    const settings = client.settings?.['review-requester'] || {};
     const reviewLink = settings.reviewLink || biz.website || '';
     const tone = base.getTone(client);
 
@@ -26,7 +26,7 @@ async function send({ client, customerNumber, customerName, serviceName }) {
 // Inbound: handle customer replies to a review request
 async function run({ client, message, customerNumber }) {
     const biz = client.business;
-    const settings = client.settings?.workers?.['review-requester'] || {};
+    const settings = client.settings?.['review-requester'] || {};
     const tone = base.getTone(client);
     const reviewLink = settings.reviewLink || biz.website || '';
 

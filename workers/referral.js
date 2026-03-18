@@ -4,7 +4,7 @@ const sender = require('./twilio-sender');
 // Outbound: ask satisfied customer for a referral
 async function send({ client, customerNumber, customerName, lastServiceName }) {
     const biz = client.business;
-    const settings = client.settings?.workers?.referral || {};
+    const settings = client.settings?.referral || {};
     const offerIncentive = settings.offerIncentive || false;
     const incentiveText = settings.incentiveText || '';
 
@@ -27,7 +27,7 @@ async function send({ client, customerNumber, customerName, lastServiceName }) {
 async function run({ client, message, customerNumber }) {
     const biz = client.business;
     const tone = base.getTone(client);
-    const settings = client.settings?.workers?.referral || {};
+    const settings = client.settings?.referral || {};
 
     const systemPrompt = `You are a referral assistant for ${biz.name}, a ${biz.industry} business.
 You just asked this customer to refer someone and they're replying.

@@ -5,7 +5,7 @@ const memoryModule = require('./memory');
 async function run({ client, message, customerNumber }) {
     const biz = client.business;
     const tone = base.getTone(client);
-    const settings = client.settings?.workers?.intake || {};
+    const settings = client.settings?.intake || {};
     const fields = settings.collectFields || ['name', 'service', 'preferredTime', 'contactInfo'];
 
     // Load history to understand what step we're on

@@ -4,7 +4,7 @@ const sender = require('./twilio-sender');
 // Outbound: send re-engagement message to dormant customer
 async function send({ client, customerNumber, customerName, lastServiceName, lastServiceDate }) {
     const biz = client.business;
-    const settings = client.settings?.workers?.reactivation || {};
+    const settings = client.settings?.reactivation || {};
     const offerDiscount = settings.offerDiscount || false;
     const discountText = settings.discountText || '';
 
@@ -27,7 +27,7 @@ async function send({ client, customerNumber, customerName, lastServiceName, las
 async function run({ client, message, customerNumber }) {
     const biz = client.business;
     const tone = base.getTone(client);
-    const settings = client.settings?.workers?.reactivation || {};
+    const settings = client.settings?.reactivation || {};
 
     const systemPrompt = `You are a re-engagement assistant for ${biz.name}, a ${biz.industry} business.
 You just sent this customer a message to bring them back after some time away.

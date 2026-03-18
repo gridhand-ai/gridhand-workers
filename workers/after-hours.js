@@ -45,7 +45,7 @@ function isBusinessOpen(hoursString) {
 async function run({ client, message, customerNumber }) {
     const biz = client.business;
     const tone = base.getTone(client);
-    const settings = client.settings?.workers?.['after-hours'] || {};
+    const settings = client.settings?.['after-hours'] || {};
     const captureMessage = settings.captureLeadInfo !== false;
 
     const systemPrompt = `You are an after-hours assistant for ${biz.name}, a ${biz.industry} business.

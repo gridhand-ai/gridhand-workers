@@ -5,7 +5,7 @@ const memoryModule = require('./memory');
 async function run({ client, message, customerNumber }) {
     const biz = client.business;
     const tone = base.getTone(client);
-    const settings = client.settings?.workers?.booking || {};
+    const settings = client.settings?.booking || {};
     const bookingMethod = settings.bookingMethod || 'phone'; // 'phone', 'website', 'both'
     const bookingLink = settings.bookingLink || biz.website || '';
 

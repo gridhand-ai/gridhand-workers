@@ -1,5 +1,5 @@
 const express = require('express');
-const { loadClient, NUMBER_MAP } = require('./clients/loader');
+const { loadClient, loadClientBySlug, NUMBER_MAP } = require('./clients/loader');
 const aiClientLib = require('./lib/ai-client');
 
 // Workers
@@ -43,6 +43,22 @@ const sender                = require('./workers/twilio-sender');
 const app = express();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
+
+// ─── API Key Auth Middleware ───────────────────────────────────────────────────
+// Protects admin endpoints. Set GRIDHAND_API_KEY in Railway env vars.
+function requireApiKey(req, res, next) {
+    const serverKey = process.env.GRIDHAND_API_KEY;
+    if (!serverKey) {
+        // If no key is configured, block all access to protected routes
+        return res.status(503).json({ error: 'Server not configured: GRIDHAND_API_KEY not set.' });
+    }
+    const authHeader = req.headers['authorization'] || '';
+    const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (provided !== serverKey) {
+        return res.status(401).json({ error: 'Unauthorized.' });
+    }
+    next();
+}
 
 // ─── Sequence Runner (every 60s) ──────────────────────────────────────────────
 setInterval(() => {
@@ -186,7 +202,7 @@ function outboundGuard(clientSlug, customerNumber) {
     if (tcpa) throw new Error('TCPA quiet hours — message blocked. Retry after 8am.');
 }
 
-app.post('/trigger/review-requester', async (req, res) => {
+app.post('/trigger/review-requester', requireApiKey, async (req, res) => {
     const { twilioNumber, customerNumber, customerName, serviceName } = req.body;
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
@@ -198,7 +214,7 @@ app.post('/trigger/review-requester', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/trigger/reminder', async (req, res) => {
+app.post('/trigger/reminder', requireApiKey, async (req, res) => {
     const { twilioNumber, customerNumber, customerName, appointmentTime, serviceName, reminderType } = req.body;
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
@@ -210,7 +226,7 @@ app.post('/trigger/reminder', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/trigger/reactivation', async (req, res) => {
+app.post('/trigger/reactivation', requireApiKey, async (req, res) => {
     const { twilioNumber, customerNumber, customerName, lastServiceName } = req.body;
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
@@ -222,7 +238,7 @@ app.post('/trigger/reactivation', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/trigger/lead-followup', async (req, res) => {
+app.post('/trigger/lead-followup', requireApiKey, async (req, res) => {
     const { twilioNumber, customerNumber, customerName, inquiryAbout, followUpNumber } = req.body;
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
@@ -234,7 +250,7 @@ app.post('/trigger/lead-followup', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/trigger/invoice-chaser', async (req, res) => {
+app.post('/trigger/invoice-chaser', requireApiKey, async (req, res) => {
     const { twilioNumber, customerNumber, customerName, invoiceNumber, amount, dueDate, paymentLink, chaseNumber } = req.body;
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
@@ -246,7 +262,7 @@ app.post('/trigger/invoice-chaser', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/trigger/quote', async (req, res) => {
+app.post('/trigger/quote', requireApiKey, async (req, res) => {
     const { twilioNumber, customerNumber, customerName, serviceName, quoteAmount, validUntil, quoteDetails } = req.body;
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
@@ -258,7 +274,7 @@ app.post('/trigger/quote', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/trigger/waitlist-notify', async (req, res) => {
+app.post('/trigger/waitlist-notify', requireApiKey, async (req, res) => {
     const { twilioNumber, customerNumber, customerName, serviceName, availableTime } = req.body;
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
@@ -270,7 +286,7 @@ app.post('/trigger/waitlist-notify', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/trigger/referral', async (req, res) => {
+app.post('/trigger/referral', requireApiKey, async (req, res) => {
     const { twilioNumber, customerNumber, customerName, lastServiceName } = req.body;
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
@@ -282,7 +298,7 @@ app.post('/trigger/referral', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/trigger/upsell', async (req, res) => {
+app.post('/trigger/upsell', requireApiKey, async (req, res) => {
     const { twilioNumber, customerNumber, customerName, completedServiceName, upsellServiceName, upsellReason } = req.body;
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
@@ -294,7 +310,7 @@ app.post('/trigger/upsell', async (req, res) => {
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-app.post('/trigger/onboarding', async (req, res) => {
+app.post('/trigger/onboarding', requireApiKey, async (req, res) => {
     const { twilioNumber, customerNumber, customerName, serviceName } = req.body;
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
@@ -309,7 +325,7 @@ app.post('/trigger/onboarding', async (req, res) => {
 // ─── Operator Validation ──────────────────────────────────────────────────────
 
 // GET /validate/:twilioNumber — check if a client config is ready to go live
-app.get('/validate/:twilioNumber', (req, res) => {
+app.get('/validate/:twilioNumber', requireApiKey, (req, res) => {
     const twilioNumber = decodeURIComponent(req.params.twilioNumber);
     const client = loadClient(twilioNumber);
     if (!client) {
@@ -349,7 +365,7 @@ app.get('/validate/:twilioNumber', (req, res) => {
 });
 
 // GET /validate — list all registered clients and their status
-app.get('/validate', (req, res) => {
+app.get('/validate', requireApiKey, (req, res) => {
     const results = [];
     for (const [number, slug] of Object.entries(NUMBER_MAP)) {
         const client = loadClient(number);
@@ -367,23 +383,74 @@ app.get('/validate', (req, res) => {
     res.json({ total: results.length, clients: results });
 });
 
+// ─── Agent Test Endpoint ──────────────────────────────────────────────────────
+// POST /test — run a worker with a test message, no Twilio, no SMS sent
+// Body: { workerName, clientSlug, message, customerNumber? }
+app.options('/test', (req, res) => {
+    res.set({
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+    }).sendStatus(204);
+});
+app.post('/test', async (req, res) => {
+    res.set('Access-Control-Allow-Origin', '*');
+    const { workerName, clientSlug, message, customerNumber = '+10000000000' } = req.body;
+
+    if (!workerName || !clientSlug || !message) {
+        return res.status(400).json({ error: 'workerName, clientSlug, and message are required' });
+    }
+
+    const client = loadClientBySlug(clientSlug);
+    if (!client) return res.status(404).json({ error: `No client config found for slug: ${clientSlug}` });
+
+    const workerMap = {
+        'receptionist':     receptionistWorker,
+        'faq':              faqWorker,
+        'booking':          bookingWorker,
+        'intake':           intakeWorker,
+        'after-hours':      afterHoursWorker,
+        'waitlist':         waitlistWorker,
+        'review-requester': reviewRequesterWorker,
+        'reminder':         reminderWorker,
+        'reactivation':     reactivationWorker,
+        'lead-followup':    leadFollowupWorker,
+        'invoice-chaser':   invoiceChaserWorker,
+        'quote':            quoteWorker,
+        'referral':         referralWorker,
+        'upsell':           upsellWorker,
+        'onboarding':       onboardingWorker,
+    };
+
+    const worker = workerMap[workerName];
+    if (!worker) return res.status(400).json({ error: `Unknown worker: ${workerName}` });
+    if (!worker.run) return res.status(400).json({ error: `Worker "${workerName}" is outbound-only and has no inbound run() handler` });
+
+    try {
+        const reply = await worker.run({ client, message, customerNumber });
+        res.json({ success: true, reply, worker: workerName, client: clientSlug });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // ─── Analytics & Reports ───────────────────────────────────────────────────────
 
-app.get('/reports/:twilioNumber', (req, res) => {
+app.get('/reports/:twilioNumber', requireApiKey, (req, res) => {
     const client = loadClient(req.params.twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
     const report = campaignTracker.getReport(client.slug);
     res.json(report);
 });
 
-app.get('/customers/:twilioNumber', (req, res) => {
+app.get('/customers/:twilioNumber', requireApiKey, (req, res) => {
     const client = loadClient(req.params.twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
     const customers = customerProfiler.getAllCustomers(client.slug);
     res.json({ total: Object.keys(customers).length, customers });
 });
 
-app.get('/queue/:twilioNumber', (req, res) => {
+app.get('/queue/:twilioNumber', requireApiKey, (req, res) => {
     const client = loadClient(req.params.twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
     const stats = reengagementScheduler.getQueueStats(client.slug);
