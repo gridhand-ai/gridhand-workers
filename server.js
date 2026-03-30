@@ -1,6 +1,9 @@
+const http = require('http');
 const express = require('express');
+const WebSocket = require('ws');
 const { loadClient, loadClientBySlug, NUMBER_MAP } = require('./clients/loader');
 const aiClientLib = require('./lib/ai-client');
+const { handleVoiceStream } = require('./voice-bridge');
 
 // Workers
 const afterHoursWorker      = require('./workers/after-hours');
@@ -43,6 +46,43 @@ const sender                = require('./workers/twilio-sender');
 const app = express();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
+
+// ─── Make.com two-way sync helper ─────────────────────────────────────────────
+// Fires after every inbound customer message so the CRM stays in sync.
+// Non-blocking — uses fire-and-forget so it never slows down SMS responses.
+function pushOutcomeToMake(client, customerPhone, workerName, customerMessage, workerReply) {
+    const url = process.env.MAKE_OUTBOUND_WEBHOOK_URL;
+    if (!url) return; // Only runs if Make outbound URL is configured
+
+    // Detect outcome from the worker reply and customer message
+    const replyLower = workerReply.toLowerCase();
+    const msgLower   = customerMessage.toLowerCase();
+    let outcome = 'responded';
+    if (/yes|confirm|sure|sounds good|perfect|great|ok|okay|will do|see you|i'll be there/i.test(msgLower))   outcome = 'confirmed';
+    else if (/no|cancel|stop|not interested|nevermind|skip|won't|can't make it/i.test(msgLower))               outcome = 'declined';
+    else if (/\?|how|what|when|where|why|tell me|can you|do you|is there/i.test(msgLower))                    outcome = 'question';
+    else if (/left a review|reviewed|posted|5 star|gave you|did it/i.test(msgLower))                          outcome = 'review_left';
+    else if (/paid|sent|transferred|venmo|zelle|i paid/i.test(msgLower))                                      outcome = 'paid';
+
+    const payload = {
+        event:          'worker_outcome',
+        twilioNumber:   client.twilioNumber || '',
+        clientSlug:     client.slug || '',
+        businessName:   client.business?.name || '',
+        customerPhone,
+        worker:         workerName || 'unknown',
+        outcome,
+        customerMessage,
+        workerReply,
+        timestamp:      new Date().toISOString(),
+    };
+
+    fetch(url, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload),
+    }).catch(e => console.log(`[Make sync] Pushback failed: ${e.message}`));
+}
 
 // ─── API Key Auth Middleware ───────────────────────────────────────────────────
 // Protects admin endpoints. Set GRIDHAND_API_KEY in Railway env vars.
@@ -184,6 +224,11 @@ app.post('/sms', async (req, res) => {
             console.log(`[SMS] Post-processing error: ${e.message}`);
         }
     });
+
+    // ── Step 7: Push outcome back to Make.com (two-way CRM sync) ──────────
+    if (reply) {
+        pushOutcomeToMake(client, customerNumber, intent?.suggestedWorker || 'receptionist', message, reply);
+    }
 
     const twiml = reply
         ? `<Response><Message>${reply}</Message></Response>`
@@ -460,7 +505,26 @@ app.get('/queue/:twilioNumber', requireApiKey, (req, res) => {
 
 // ─── Start Server ──────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+const server = http.createServer(app);
+
+// ─── WebSocket Server (Voice Bridge) ──────────────────────────────────────────
+const wss = new WebSocket.Server({ noServer: true });
+
+server.on('upgrade', (req, socket, head) => {
+    const url = new URL(req.url, `http://localhost:${PORT}`);
+    if (url.pathname === '/voice-stream') {
+        wss.handleUpgrade(req, socket, head, (ws) => {
+            handleVoiceStream(ws, url).catch(err => {
+                console.error(`[VoiceBridge] Unhandled error: ${err.message}`);
+                ws.close();
+            });
+        });
+    } else {
+        socket.destroy();
+    }
+});
+
+server.listen(PORT, () => {
     console.log(`GRIDHAND Workers running on port ${PORT}`);
-    console.log(`${15} workers | ${24} subagents | fully operational`);
+    console.log(`${15} workers | ${24} subagents | voice bridge active | fully operational`);
 });
