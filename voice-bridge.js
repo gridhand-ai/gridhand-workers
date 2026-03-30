@@ -65,7 +65,8 @@ async function handleVoiceStream(twilioWs, url) {
     )
     if (!sigRes.ok) throw new Error(`EL signed URL error: ${sigRes.status}`)
     const sigData = await sigRes.json()
-    elSignedUrl = sigData.signed_url
+    // Append output_format so ElevenLabs sends mulaw 8kHz — matches Twilio exactly
+    elSignedUrl = sigData.signed_url + '&output_format=ulaw_8000'
   } catch (err) {
     console.error(`[VoiceBridge] Failed to get ElevenLabs signed URL: ${err.message}`)
     twilioWs.close()
@@ -91,18 +92,6 @@ async function handleVoiceStream(twilioWs, url) {
         },
         tts: {
           voice_id: 'SF9uvIlY93SJRMdV5jeP',
-        },
-        // Tell ElevenLabs to use mulaw 8kHz — matches Twilio exactly, no conversion needed
-        audio: {
-          input: {
-            encoding: 'ulaw',
-            sample_rate: 8000,
-          },
-          output: {
-            encoding: 'ulaw',
-            sample_rate: 8000,
-            chunk_length_schedule: [50, 120, 150, 150], // ms — faster first chunk
-          },
         },
       },
     }))
