@@ -69,6 +69,14 @@ async function handleVoiceStream(twilioWs, url) {
         logCall()
         cleanup()
         break
+
+      case 'mark':
+        if (msg.mark?.name === 'end_of_response') {
+          console.log('[VoiceBridge] Twilio confirmed audio playback complete')
+          logCall()
+          cleanup()
+        }
+        break
     }
   })
 
@@ -134,15 +142,24 @@ async function handleVoiceStream(twilioWs, url) {
         console.log('[VoiceBridge] EL conversation started:', msg.conversation_initiation_metadata_event?.conversation_id)
         break
 
-      case 'audio':
-        if (streamSid && msg.audio_event?.audio_base_64 && twilioWs.readyState === WebSocket.OPEN) {
-          twilioWs.send(JSON.stringify({
-            event: 'media',
-            streamSid,
-            media: { payload: msg.audio_event.audio_base_64 },
-          }))
+      case 'audio': {
+        const audioPayload = msg.audio_event?.audio_base_64
+        if (streamSid && audioPayload && twilioWs.readyState === WebSocket.OPEN) {
+          // Split into 320-byte chunks (40ms of mulaw 8kHz each) so Twilio
+          // can buffer and play smoothly instead of receiving one massive blob
+          const CHUNK_BYTES = 320
+          const raw = Buffer.from(audioPayload, 'base64')
+          for (let i = 0; i < raw.length; i += CHUNK_BYTES) {
+            const slice = raw.slice(i, i + CHUNK_BYTES)
+            twilioWs.send(JSON.stringify({
+              event: 'media',
+              streamSid,
+              media: { payload: slice.toString('base64') },
+            }))
+          }
         }
         break
+      }
 
       case 'interruption':
         if (streamSid && twilioWs.readyState === WebSocket.OPEN) {
@@ -157,9 +174,13 @@ async function handleVoiceStream(twilioWs, url) {
         break
 
       case 'conversation_end':
-        console.log('[VoiceBridge] EL conversation ended')
-        logCall()
-        cleanup()
+        console.log('[VoiceBridge] EL conversation ended — waiting for audio drain')
+        // Send a mark so Twilio tells us when all queued audio has played
+        if (streamSid && twilioWs.readyState === WebSocket.OPEN) {
+          twilioWs.send(JSON.stringify({ event: 'mark', streamSid, mark: { name: 'end_of_response' } }))
+        }
+        // Fallback: force-close after 35s if mark never comes back
+        setTimeout(() => { logCall(); cleanup() }, 35000)
         break
 
       case 'ping':
@@ -170,8 +191,9 @@ async function handleVoiceStream(twilioWs, url) {
 
   elWs.on('error', (err) => console.error('[VoiceBridge] ElevenLabs WS error:', err.message))
   elWs.on('close', () => {
-    console.log('[VoiceBridge] ElevenLabs WS closed')
-    if (twilioWs.readyState === WebSocket.OPEN) twilioWs.close()
+    console.log('[VoiceBridge] ElevenLabs WS closed — keeping Twilio open to drain audio')
+    // Do NOT close Twilio here — audio may still be buffered and playing.
+    // Twilio will close via the mark callback or the 35s fallback timeout.
   })
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
