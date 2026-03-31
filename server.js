@@ -511,6 +511,7 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ noServer: true });
 
 server.on('upgrade', (req, socket, head) => {
+    console.log(`[WS Upgrade] raw req.url="${req.url}" host="${req.headers.host}"`)
     const url = new URL(req.url, `http://localhost:${PORT}`);
     if (url.pathname === '/voice-stream') {
         wss.handleUpgrade(req, socket, head, (ws) => {
