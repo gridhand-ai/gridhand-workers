@@ -42,7 +42,7 @@ async function handleVoiceStream(twilioWs, url) {
   // ── Fetch client info from Supabase ────────────────────────────────────────
   const { data: client } = await supabase
     .from('clients')
-    .select('elevenlabs_agent_id, business_name, industry, services, faqs')
+    .select('elevenlabs_agent_id, business_name')
     .eq('id', clientId)
     .single()
 
@@ -79,22 +79,9 @@ async function handleVoiceStream(twilioWs, url) {
   elWs.on('open', () => {
     console.log(`[VoiceBridge] ElevenLabs WS opened for ${businessName}`)
 
-    // Send conversation initiation config
-    elWs.send(JSON.stringify({
-      type: 'conversation_initiation_client_data',
-      conversation_config_override: {
-        agent: {
-          prompt: {
-            prompt: buildSystemPrompt(client),
-          },
-          first_message: `Hey, thanks for calling ${businessName}! The owner is with a customer right now. I'm their AI assistant — how can I help you today?`,
-          language: 'en',
-        },
-        tts: {
-          voice_id: 'SF9uvIlY93SJRMdV5jeP',
-        },
-      },
-    }))
+    // Minimal init — agent prompt/first_message/voice are configured in ElevenLabs dashboard
+    // Overriding those fields is locked by the agent config and causes an immediate 1008 close
+    elWs.send(JSON.stringify({ type: 'conversation_initiation_client_data' }))
   })
 
   // ── ElevenLabs WS: messages ─────────────────────────────────────────────────
@@ -243,28 +230,6 @@ async function handleVoiceStream(twilioWs, url) {
       console.error(`[VoiceBridge] Failed to log call: ${err.message}`)
     }
   }
-}
-
-function buildSystemPrompt(client) {
-  const businessName = client.business_name || 'this business'
-  const industry     = client.industry || 'local business'
-  const services     = Array.isArray(client.services) ? client.services.join(', ') : ''
-  const faqs         = Array.isArray(client.faqs)
-    ? client.faqs.map(f => `Q: ${f.question} A: ${f.answer}`).join('\n')
-    : ''
-
-  return `You are a friendly, professional AI receptionist for ${businessName}, a ${industry}. The owner is currently unavailable.
-
-Your job:
-- Greet the caller warmly and let them know the owner is with another customer or unavailable
-- Answer questions about the business if you can
-- Take a message: caller's name, phone number, and what they need
-- Let them know the owner will follow up soon
-- Keep responses SHORT and conversational — you're on a phone call, not writing an email
-- Never make promises you can't keep (exact pricing, availability, etc.)
-- If someone is upset or urgent, empathize and assure them the owner calls back promptly
-- Always confirm their message was received before ending the call
-${services ? `\nServices: ${services}` : ''}${faqs ? `\n\nFAQs:\n${faqs}` : ''}`
 }
 
 module.exports = { handleVoiceStream }
