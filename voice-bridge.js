@@ -5,11 +5,12 @@
  *
  * Flow:
  *   1. Twilio calls the owner, no answer → no-answer webhook fires
- *   2. no-answer returns <Connect><Stream url="wss://workers.railway.app/voice-stream?clientId=xxx"/>
+ *   2. no-answer returns <Connect><Stream> with <Parameter> elements for clientId/caller
  *   3. Twilio opens a WS here and streams raw mulaw 8kHz audio
- *   4. We open a WS to ElevenLabs ConvAI with ulaw_8000 format (no transcoding needed)
- *   5. We bridge audio both directions in real time
- *   6. ElevenLabs handles STT + LLM + TTS — all streaming, sub-second latency
+ *   4. We wait for the 'start' event to get clientId/caller from customParameters
+ *   5. We open a WS to ElevenLabs ConvAI with ulaw_8000 format (no transcoding needed)
+ *   6. We bridge audio both directions in real time
+ *   7. ElevenLabs handles STT + LLM + TTS — all streaming, sub-second latency
  */
 
 const WebSocket = require('ws')
@@ -22,44 +23,64 @@ const supabase = createClient(
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || ''
 
-async function handleVoiceStream(twilioWs, url) {
-  const clientId = url.searchParams.get('clientId') || ''
-  const caller   = url.searchParams.get('caller') || ''
-
-  console.log(`[VoiceBridge] New stream — clientId=${clientId} caller=${caller}`)
-
-  let elWs        = null
-  let streamSid   = null
-  let callSid     = null
-  let callLogId   = null
+async function handleVoiceStream(twilioWs) {
+  let clientId  = ''
+  let caller    = ''
+  let elWs      = null
+  let streamSid = null
+  let callSid   = null
+  let callLogId = null
   let transcript  = []
-  let audioBuffer = []   // buffer Twilio audio chunks until ElevenLabs WS is open
+  let audioBuffer = []   // buffer Twilio audio until ElevenLabs WS is open
+  let elReady     = false
 
-  // ── 1. Attach Twilio listeners IMMEDIATELY (sync) so no events are dropped ──
-  // Twilio sends 'connected' + 'start' within milliseconds of WS open.
-  // If we await anything before attaching, those events are lost and streamSid stays null.
+  console.log('[VoiceBridge] New stream — waiting for start event')
+
+  // ── 1. Wait for 'start' event to get clientId/caller from customParameters ──
+  // Twilio sends 'connected' then 'start' almost immediately after WS open.
+  // We use a Promise so we can await the start before fetching from Supabase.
+  const startPromise = new Promise((resolve) => {
+    twilioWs.once('message', function onFirst(raw) {
+      // first message is 'connected' — skip it, wait for next
+      let msg
+      try { msg = JSON.parse(raw) } catch { return }
+      if (msg.event === 'connected') {
+        console.log('[VoiceBridge] Twilio connected')
+        twilioWs.once('message', function onStart(raw2) {
+          let msg2
+          try { msg2 = JSON.parse(raw2) } catch { return }
+          if (msg2.event === 'start') {
+            streamSid = msg2.streamSid
+            callSid   = msg2.start?.callSid
+            clientId  = msg2.start?.customParameters?.clientId || ''
+            caller    = msg2.start?.customParameters?.caller   || ''
+            console.log(`[VoiceBridge] Stream started — streamSid=${streamSid} callSid=${callSid} clientId=${clientId} caller=${caller}`)
+            resolve()
+          }
+        })
+      } else if (msg.event === 'start') {
+        // In case connected + start arrive merged
+        streamSid = msg.streamSid
+        callSid   = msg.start?.callSid
+        clientId  = msg.start?.customParameters?.clientId || ''
+        caller    = msg.start?.customParameters?.caller   || ''
+        console.log(`[VoiceBridge] Stream started — streamSid=${streamSid} callSid=${callSid} clientId=${clientId} caller=${caller}`)
+        resolve()
+      }
+    })
+  })
+
+  // ── 2. Attach ongoing message handler (media, stop, mark) ──────────────────
   twilioWs.on('message', (raw) => {
     let msg
     try { msg = JSON.parse(raw) } catch { return }
 
     switch (msg.event) {
-      case 'connected':
-        console.log('[VoiceBridge] Twilio connected')
-        break
-
-      case 'start':
-        streamSid = msg.streamSid
-        callSid   = msg.start?.callSid
-        console.log(`[VoiceBridge] Stream started — streamSid=${streamSid} callSid=${callSid}`)
-        break
-
       case 'media':
         if (!msg.media?.payload) break
-        if (elWs?.readyState === WebSocket.OPEN) {
-          // ElevenLabs is ready — send directly
+        if (elReady && elWs?.readyState === WebSocket.OPEN) {
           elWs.send(JSON.stringify({ type: 'user_audio_chunk', user_audio_chunk: msg.media.payload }))
         } else {
-          // Buffer until ElevenLabs connects (max 200 chunks ~8s)
           if (audioBuffer.length < 200) audioBuffer.push(msg.media.payload)
         }
         break
@@ -87,7 +108,16 @@ async function handleVoiceStream(twilioWs, url) {
     cleanup()
   })
 
-  // ── 2. Async: fetch client + ElevenLabs signed URL ─────────────────────────
+  // ── 3. Wait for start event, then set up ElevenLabs ────────────────────────
+  await startPromise
+
+  if (!clientId) {
+    console.log('[VoiceBridge] No clientId in start event — closing')
+    twilioWs.close()
+    return
+  }
+
+  // ── 4. Fetch client from Supabase ───────────────────────────────────────────
   const { data: client } = await supabase
     .from('clients')
     .select('elevenlabs_agent_id, business_name')
@@ -100,6 +130,7 @@ async function handleVoiceStream(twilioWs, url) {
     return
   }
 
+  // ── 5. Get ElevenLabs signed URL ────────────────────────────────────────────
   let elSignedUrl
   try {
     const sigRes = await fetch(
@@ -115,13 +146,13 @@ async function handleVoiceStream(twilioWs, url) {
     return
   }
 
-  // ── 3. Connect to ElevenLabs ────────────────────────────────────────────────
+  // ── 6. Connect to ElevenLabs ────────────────────────────────────────────────
   elWs = new WebSocket(elSignedUrl)
 
   elWs.on('open', () => {
     console.log(`[VoiceBridge] ElevenLabs WS opened for ${client.business_name}`)
-    // Minimal init — prompt/first_message/voice are locked in ElevenLabs dashboard
     elWs.send(JSON.stringify({ type: 'conversation_initiation_client_data' }))
+    elReady = true
 
     // Flush buffered audio from caller
     if (audioBuffer.length > 0) {
@@ -145,12 +176,11 @@ async function handleVoiceStream(twilioWs, url) {
       case 'audio': {
         const audioPayload = msg.audio_event?.audio_base_64
         if (streamSid && audioPayload && twilioWs.readyState === WebSocket.OPEN) {
-          // Split into 320-byte chunks (40ms of mulaw 8kHz each) so Twilio
-          // can buffer and play smoothly instead of receiving one massive blob
+          // Split into 320-byte chunks (40ms of mulaw 8kHz each) for smooth Twilio playback
           const CHUNK_BYTES = 320
-          const raw = Buffer.from(audioPayload, 'base64')
-          for (let i = 0; i < raw.length; i += CHUNK_BYTES) {
-            const slice = raw.slice(i, i + CHUNK_BYTES)
+          const buf = Buffer.from(audioPayload, 'base64')
+          for (let i = 0; i < buf.length; i += CHUNK_BYTES) {
+            const slice = buf.slice(i, i + CHUNK_BYTES)
             twilioWs.send(JSON.stringify({
               event: 'media',
               streamSid,
@@ -175,11 +205,9 @@ async function handleVoiceStream(twilioWs, url) {
 
       case 'conversation_end':
         console.log('[VoiceBridge] EL conversation ended — waiting for audio drain')
-        // Send a mark so Twilio tells us when all queued audio has played
         if (streamSid && twilioWs.readyState === WebSocket.OPEN) {
           twilioWs.send(JSON.stringify({ event: 'mark', streamSid, mark: { name: 'end_of_response' } }))
         }
-        // Fallback: force-close after 35s if mark never comes back
         setTimeout(() => { logCall(); cleanup() }, 35000)
         break
 
@@ -192,8 +220,6 @@ async function handleVoiceStream(twilioWs, url) {
   elWs.on('error', (err) => console.error('[VoiceBridge] ElevenLabs WS error:', err.message))
   elWs.on('close', () => {
     console.log('[VoiceBridge] ElevenLabs WS closed — keeping Twilio open to drain audio')
-    // Do NOT close Twilio here — audio may still be buffered and playing.
-    // Twilio will close via the mark callback or the 35s fallback timeout.
   })
 
   // ── Helpers ──────────────────────────────────────────────────────────────────

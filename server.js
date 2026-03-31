@@ -515,7 +515,7 @@ server.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url, `http://localhost:${PORT}`);
     if (url.pathname === '/voice-stream') {
         wss.handleUpgrade(req, socket, head, (ws) => {
-            handleVoiceStream(ws, url).catch(err => {
+            handleVoiceStream(ws).catch(err => {
                 console.error(`[VoiceBridge] Unhandled error: ${err.message}`);
                 ws.close();
             });
