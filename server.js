@@ -4,6 +4,7 @@ const WebSocket = require('ws');
 const { loadClient, loadClientBySlug, NUMBER_MAP } = require('./clients/loader');
 const aiClientLib = require('./lib/ai-client');
 const { handleVoiceStream } = require('./voice-bridge');
+const deployWatch = require('./lib/deploy-watch');
 
 // Workers
 const afterHoursWorker      = require('./workers/after-hours');
@@ -107,7 +108,12 @@ setInterval(() => {
     );
 }, 60000);
 
-// ─── Health Check ─────────────────────────────────────────────────────────────
+// ─── Public health endpoint (used by Deploy Watch) ────────────────────────────
+app.get('/health', (req, res) => {
+    res.json({ ok: true, service: 'gridhand-workers', ts: Date.now() });
+});
+
+// ─── Authenticated status ──────────────────────────────────────────────────────
 app.get('/', requireApiKey, (req, res) => {
     res.json({
         status: 'GRIDHAND Workers online',
@@ -528,4 +534,5 @@ server.on('upgrade', (req, socket, head) => {
 server.listen(PORT, () => {
     console.log(`GRIDHAND Workers running on port ${PORT}`);
     console.log(`${15} workers | ${24} subagents | voice bridge active | fully operational`);
+    deployWatch.start();
 });
