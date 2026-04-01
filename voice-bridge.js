@@ -178,7 +178,12 @@ async function handleVoiceStream(twilioWs) {
 
   elWs.on('open', () => {
     console.log(`[VoiceBridge] ElevenLabs WS opened for ${client.business_name}`)
-    elWs.send(JSON.stringify({ type: 'conversation_initiation_client_data' }))
+    elWs.send(JSON.stringify({
+      type: 'conversation_initiation_client_data',
+      conversation_config_override: {
+        audio: { input_audio_format: 'ulaw_8000', output_audio_format: 'ulaw_8000' }
+      }
+    }))
     elReady = true
 
     // Flush buffered audio from caller
@@ -206,6 +211,7 @@ async function handleVoiceStream(twilioWs) {
           // Split into 320-byte chunks (40ms of mulaw 8kHz each) for smooth Twilio playback
           const CHUNK_BYTES = 320
           const buf = Buffer.from(audioPayload, 'base64')
+          console.log(`[VoiceBridge] Audio chunk: ${buf.length} bytes — expected mulaw=~320-3200, PCM=~1280-12800`)
           for (let i = 0; i < buf.length; i += CHUNK_BYTES) {
             const slice = buf.slice(i, i + CHUNK_BYTES)
             twilioWs.send(JSON.stringify({
