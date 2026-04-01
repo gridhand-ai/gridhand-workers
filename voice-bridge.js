@@ -203,11 +203,17 @@ async function handleVoiceStream(twilioWs) {
       case 'audio': {
         const audioPayload = msg.audio_event?.audio_base_64
         if (streamSid && audioPayload && twilioWs.readyState === WebSocket.OPEN) {
-          twilioWs.send(JSON.stringify({
-            event: 'media',
-            streamSid,
-            media: { payload: audioPayload },
-          }))
+          // Split into 320-byte chunks (40ms of mulaw 8kHz each) for smooth Twilio playback
+          const CHUNK_BYTES = 320
+          const buf = Buffer.from(audioPayload, 'base64')
+          for (let i = 0; i < buf.length; i += CHUNK_BYTES) {
+            const slice = buf.slice(i, i + CHUNK_BYTES)
+            twilioWs.send(JSON.stringify({
+              event: 'media',
+              streamSid,
+              media: { payload: slice.toString('base64') },
+            }))
+          }
         }
         break
       }
