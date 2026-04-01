@@ -8,66 +8,14 @@
  *   2. no-answer returns <Connect><Stream> with <Parameter> elements for clientId/caller
  *   3. Twilio opens a WS here and streams raw mulaw 8kHz audio
  *   4. We wait for the 'start' event to get clientId/caller from customParameters
- *   5. We open a WS to ElevenLabs ConvAI with pcm_16000 format
- *   6. We bridge audio both directions in real time
+ *   5. We open a WS to ElevenLabs ConvAI requesting ulaw_8000 output
+ *   6. We pass mulaw audio in both directions — no transcoding needed
+ *      ElevenLabs handles internal format conversion for STT + TTS
  *   7. ElevenLabs handles STT + LLM + TTS — all streaming, sub-second latency
  */
 
 const WebSocket = require('ws')
 const { createClient } = require('@supabase/supabase-js')
-
-// ── G.711 mulaw codec ────────────────────────────────────────────────────────
-
-// Encoder: signed 16-bit PCM sample → 8-bit mulaw byte
-function encodeMulaw(sample) {
-  const BIAS = 132
-  let sign = 0
-  if (sample < 0) { sign = 0x80; sample = -sample }
-  if (sample > 32767) sample = 32767
-  sample += BIAS
-  let exp = 7
-  for (let mask = 0x4000; (sample & mask) === 0 && exp > 0; mask >>= 1) exp--
-  const mantissa = (sample >> (exp + 3)) & 0x0F
-  return (~(sign | (exp << 4) | mantissa)) & 0xFF
-}
-
-// Decoder: 8-bit mulaw byte → signed 16-bit PCM sample
-function decodeMulaw(byte) {
-  byte = ~byte & 0xFF
-  const sign     = byte & 0x80
-  const exp      = (byte >> 4) & 0x07
-  const mantissa = byte & 0x0F
-  let sample     = ((mantissa << 3) + 0x84) << exp
-  sample        -= 0x84
-  return sign ? -sample : sample
-}
-
-// Twilio → ElevenLabs: mulaw 8kHz Buffer → PCM 16kHz signed-16-bit-LE Buffer
-// (decode each mulaw byte, then upsample 1:2 by duplicating each sample)
-function mulaw8kToPcm16k(mulawBuf) {
-  const srcSamples = mulawBuf.length
-  const out = Buffer.alloc(srcSamples * 4)  // 2x samples, 2 bytes each
-  for (let i = 0; i < srcSamples; i++) {
-    const sample = decodeMulaw(mulawBuf[i])
-    out.writeInt16LE(sample, i * 4)
-    out.writeInt16LE(sample, i * 4 + 2)    // duplicate for 1:2 upsample
-  }
-  return out
-}
-
-// ElevenLabs → Twilio: PCM 16kHz signed-16-bit-LE Buffer → mulaw 8kHz Buffer
-// (downsample 2:1 by averaging adjacent pairs, then mulaw-encode each sample)
-function pcm16kToMulaw8k(pcmBuf) {
-  const srcSamples = pcmBuf.length >> 1           // 2 bytes per sample
-  const dstSamples = srcSamples >> 1               // 2:1 downsample
-  const out = Buffer.alloc(dstSamples)
-  for (let i = 0; i < dstSamples; i++) {
-    const a = pcmBuf.readInt16LE(i * 4)
-    const b = pcmBuf.readInt16LE(i * 4 + 2)
-    out[i] = encodeMulaw(Math.round((a + b) / 2))
-  }
-  return out
-}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -76,8 +24,8 @@ const supabase = createClient(
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || ''
 
-const START_TIMEOUT_MS   = 10_000   // max wait for Twilio 'start' event
-const MAX_CALL_DURATION_MS = 300_000 // 5-minute hard cap per call
+const START_TIMEOUT_MS    = 10_000    // max wait for Twilio 'start' event
+const MAX_CALL_DURATION_MS = 300_000  // 5-minute hard cap per call
 
 async function handleVoiceStream(twilioWs) {
   let clientId  = ''
@@ -89,14 +37,12 @@ async function handleVoiceStream(twilioWs) {
   let transcript  = []
   let audioBuffer = []   // buffer Twilio audio until ElevenLabs WS is open
   let elReady     = false
-  let drainTimer  = null // setTimeout handle for post-call drain
+  let drainTimer  = null
   let maxCallTimer = null
 
   console.log('[VoiceBridge] New stream — waiting for start event')
 
-  // ── 1. Wait for 'start' event to get clientId/caller from customParameters ──
-  // Twilio sends 'connected' then 'start' almost immediately after WS open.
-  // We use a Promise so we can await the start before fetching from Supabase.
+  // ── 1. Wait for 'start' event ───────────────────────────────────────────────
   const startPromise = new Promise((resolve, reject) => {
     const startTimeout = setTimeout(() => {
       reject(new Error('Timeout waiting for Twilio start event'))
@@ -108,7 +54,6 @@ async function handleVoiceStream(twilioWs) {
     }
 
     twilioWs.once('message', function onFirst(raw) {
-      // first message is 'connected' — skip it, wait for next
       let msg
       try { msg = JSON.parse(raw) } catch { return }
       if (msg.event === 'connected') {
@@ -126,7 +71,6 @@ async function handleVoiceStream(twilioWs) {
           }
         })
       } else if (msg.event === 'start') {
-        // In case connected + start arrive merged
         streamSid = msg.streamSid
         callSid   = msg.start?.callSid
         clientId  = msg.start?.customParameters?.clientId || ''
@@ -137,7 +81,7 @@ async function handleVoiceStream(twilioWs) {
     })
   })
 
-  // ── 2. Attach ongoing message handler (media, stop, mark) ──────────────────
+  // ── 2. Attach ongoing Twilio message handler ────────────────────────────────
   twilioWs.on('message', (raw) => {
     let msg
     try { msg = JSON.parse(raw) } catch { return }
@@ -146,8 +90,8 @@ async function handleVoiceStream(twilioWs) {
       case 'media':
         if (!msg.media?.payload) break
         if (elReady && elWs?.readyState === WebSocket.OPEN) {
-          const pcmBuf = mulaw8kToPcm16k(Buffer.from(msg.media.payload, 'base64'))
-          elWs.send(JSON.stringify({ type: 'user_audio_chunk', user_audio_chunk: pcmBuf.toString('base64') }))
+          // Pass mulaw base64 directly — EL accepts mulaw 8kHz natively
+          elWs.send(JSON.stringify({ type: 'user_audio_chunk', user_audio_chunk: msg.media.payload }))
         } else {
           if (audioBuffer.length < 200) audioBuffer.push(msg.media.payload)
         }
@@ -176,7 +120,7 @@ async function handleVoiceStream(twilioWs) {
     cleanup()
   })
 
-  // ── 3. Wait for start event, then set up ElevenLabs ────────────────────────
+  // ── 3. Wait for start, then connect to ElevenLabs ──────────────────────────
   try {
     await startPromise
   } catch (err) {
@@ -185,7 +129,6 @@ async function handleVoiceStream(twilioWs) {
     return
   }
 
-  // Hard cap — close the call after MAX_CALL_DURATION_MS no matter what
   maxCallTimer = setTimeout(() => {
     console.warn('[VoiceBridge] Max call duration reached — forcing cleanup')
     logCall()
@@ -212,6 +155,7 @@ async function handleVoiceStream(twilioWs) {
   }
 
   // ── 5. Get ElevenLabs signed URL ────────────────────────────────────────────
+  // Request ulaw_8000 output so EL returns mulaw 8kHz — matches Twilio natively
   let elSignedUrl
   try {
     const sigRes = await fetch(
@@ -220,7 +164,7 @@ async function handleVoiceStream(twilioWs) {
     )
     if (!sigRes.ok) throw new Error(`EL signed URL ${sigRes.status}`)
     const sigData = await sigRes.json()
-    elSignedUrl = sigData.signed_url + '&output_format=pcm_16000'
+    elSignedUrl = sigData.signed_url + '&output_format=ulaw_8000'
   } catch (err) {
     console.error('[VoiceBridge] Failed to get ElevenLabs signed URL:', err.message)
     twilioWs.close()
@@ -235,12 +179,10 @@ async function handleVoiceStream(twilioWs) {
     elWs.send(JSON.stringify({ type: 'conversation_initiation_client_data' }))
     elReady = true
 
-    // Flush buffered audio from caller
     if (audioBuffer.length > 0) {
       console.log(`[VoiceBridge] Flushing ${audioBuffer.length} buffered audio chunks`)
       for (const payload of audioBuffer) {
-        const pcmBuf = mulaw8kToPcm16k(Buffer.from(payload, 'base64'))
-        elWs.send(JSON.stringify({ type: 'user_audio_chunk', user_audio_chunk: pcmBuf.toString('base64') }))
+        elWs.send(JSON.stringify({ type: 'user_audio_chunk', user_audio_chunk: payload }))
       }
       audioBuffer = []
     }
@@ -251,20 +193,20 @@ async function handleVoiceStream(twilioWs) {
     try { msg = JSON.parse(raw) } catch { return }
 
     switch (msg.type) {
-      case 'conversation_initiation_metadata':
-        console.log('[VoiceBridge] EL conversation started:', msg.conversation_initiation_metadata_event?.conversation_id)
+      case 'conversation_initiation_metadata': {
+        const meta = msg.conversation_initiation_metadata_event
+        console.log(`[VoiceBridge] EL conversation started: id=${meta?.conversation_id} output_format=${meta?.agent_output_audio_format} input_format=${meta?.user_input_audio_format}`)
         break
+      }
 
       case 'audio': {
         const audioPayload = msg.audio_event?.audio_base_64
         if (streamSid && audioPayload && twilioWs.readyState === WebSocket.OPEN) {
-          // ElevenLabs sends PCM 16kHz — transcode to mulaw 8kHz for Twilio
-          const pcmBuf = Buffer.from(audioPayload, 'base64')
-          const mulawBuf = pcm16kToMulaw8k(pcmBuf)
-          // Send in 320-byte chunks (40ms of mulaw 8kHz each)
-          const CHUNK_BYTES = 320
-          for (let i = 0; i < mulawBuf.length; i += CHUNK_BYTES) {
-            const slice = mulawBuf.slice(i, i + CHUNK_BYTES)
+          // EL returns ulaw_8000 — forward directly to Twilio, chunked in 320-byte pieces
+          const buf = Buffer.from(audioPayload, 'base64')
+          const CHUNK_BYTES = 320  // 40ms of mulaw 8kHz per chunk
+          for (let i = 0; i < buf.length; i += CHUNK_BYTES) {
+            const slice = buf.slice(i, i + CHUNK_BYTES)
             twilioWs.send(JSON.stringify({
               event: 'media',
               streamSid,
@@ -311,7 +253,7 @@ async function handleVoiceStream(twilioWs) {
   function cleanup() {
     if (drainTimer)   { clearTimeout(drainTimer);   drainTimer   = null }
     if (maxCallTimer) { clearTimeout(maxCallTimer);  maxCallTimer = null }
-    audioBuffer = [] // release buffered audio
+    audioBuffer = []
     if (elWs && elWs.readyState === WebSocket.OPEN) {
       try { elWs.close() } catch {}
     }
