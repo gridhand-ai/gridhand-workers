@@ -23,6 +23,9 @@ const supabase = createClient(
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || ''
 
+const START_TIMEOUT_MS   = 10_000   // max wait for Twilio 'start' event
+const MAX_CALL_DURATION_MS = 300_000 // 5-minute hard cap per call
+
 async function handleVoiceStream(twilioWs) {
   let clientId  = ''
   let caller    = ''
@@ -33,13 +36,24 @@ async function handleVoiceStream(twilioWs) {
   let transcript  = []
   let audioBuffer = []   // buffer Twilio audio until ElevenLabs WS is open
   let elReady     = false
+  let drainTimer  = null // setTimeout handle for post-call drain
+  let maxCallTimer = null
 
   console.log('[VoiceBridge] New stream — waiting for start event')
 
   // ── 1. Wait for 'start' event to get clientId/caller from customParameters ──
   // Twilio sends 'connected' then 'start' almost immediately after WS open.
   // We use a Promise so we can await the start before fetching from Supabase.
-  const startPromise = new Promise((resolve) => {
+  const startPromise = new Promise((resolve, reject) => {
+    const startTimeout = setTimeout(() => {
+      reject(new Error('Timeout waiting for Twilio start event'))
+    }, START_TIMEOUT_MS)
+
+    function resolveStart() {
+      clearTimeout(startTimeout)
+      resolve()
+    }
+
     twilioWs.once('message', function onFirst(raw) {
       // first message is 'connected' — skip it, wait for next
       let msg
@@ -55,7 +69,7 @@ async function handleVoiceStream(twilioWs) {
             clientId  = msg2.start?.customParameters?.clientId || ''
             caller    = msg2.start?.customParameters?.caller   || ''
             console.log(`[VoiceBridge] Stream started — streamSid=${streamSid} callSid=${callSid} clientId=${clientId} caller=${caller}`)
-            resolve()
+            resolveStart()
           }
         })
       } else if (msg.event === 'start') {
@@ -65,7 +79,7 @@ async function handleVoiceStream(twilioWs) {
         clientId  = msg.start?.customParameters?.clientId || ''
         caller    = msg.start?.customParameters?.caller   || ''
         console.log(`[VoiceBridge] Stream started — streamSid=${streamSid} callSid=${callSid} clientId=${clientId} caller=${caller}`)
-        resolve()
+        resolveStart()
       }
     })
   })
@@ -109,7 +123,20 @@ async function handleVoiceStream(twilioWs) {
   })
 
   // ── 3. Wait for start event, then set up ElevenLabs ────────────────────────
-  await startPromise
+  try {
+    await startPromise
+  } catch (err) {
+    console.error('[VoiceBridge] Start timeout — closing connection:', err.message)
+    twilioWs.close()
+    return
+  }
+
+  // Hard cap — close the call after MAX_CALL_DURATION_MS no matter what
+  maxCallTimer = setTimeout(() => {
+    console.warn('[VoiceBridge] Max call duration reached — forcing cleanup')
+    logCall()
+    cleanup()
+  }, MAX_CALL_DURATION_MS)
 
   if (!clientId) {
     console.log('[VoiceBridge] No clientId in start event — closing')
@@ -202,7 +229,8 @@ async function handleVoiceStream(twilioWs) {
         if (streamSid && twilioWs.readyState === WebSocket.OPEN) {
           twilioWs.send(JSON.stringify({ event: 'mark', streamSid, mark: { name: 'end_of_response' } }))
         }
-        setTimeout(() => { logCall(); cleanup() }, 35000)
+        if (drainTimer) clearTimeout(drainTimer)
+        drainTimer = setTimeout(() => { logCall(); cleanup() }, 35_000)
         break
 
       case 'ping':
@@ -218,6 +246,9 @@ async function handleVoiceStream(twilioWs) {
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   function cleanup() {
+    if (drainTimer)   { clearTimeout(drainTimer);   drainTimer   = null }
+    if (maxCallTimer) { clearTimeout(maxCallTimer);  maxCallTimer = null }
+    audioBuffer = [] // release buffered audio
     if (elWs && elWs.readyState === WebSocket.OPEN) {
       try { elWs.close() } catch {}
     }

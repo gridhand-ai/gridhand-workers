@@ -108,7 +108,7 @@ setInterval(() => {
 }, 60000);
 
 // ─── Health Check ─────────────────────────────────────────────────────────────
-app.get('/', (req, res) => {
+app.get('/', requireApiKey, (req, res) => {
     res.json({
         status: 'GRIDHAND Workers online',
         workers: [
