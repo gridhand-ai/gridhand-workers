@@ -16,6 +16,34 @@
 const WebSocket = require('ws')
 const { createClient } = require('@supabase/supabase-js')
 
+// ── G.711 mulaw encoder ───────────────────────────────────────────────────────
+// Converts a signed 16-bit PCM sample to an 8-bit mulaw byte
+function encodeMulaw(sample) {
+  const BIAS = 132
+  let sign = 0
+  if (sample < 0) { sign = 0x80; sample = -sample }
+  if (sample > 32767) sample = 32767
+  sample += BIAS
+  let exp = 7
+  for (let mask = 0x4000; (sample & mask) === 0 && exp > 0; mask >>= 1) exp--
+  const mantissa = (sample >> (exp + 3)) & 0x0F
+  return (~(sign | (exp << 4) | mantissa)) & 0xFF
+}
+
+// Converts PCM 16kHz signed-16-bit-LE mono Buffer → mulaw 8kHz Buffer
+// (downsample 2:1 by averaging adjacent pairs, then mulaw-encode each sample)
+function pcm16kToMulaw8k(pcmBuf) {
+  const srcSamples = pcmBuf.length >> 1           // 2 bytes per sample
+  const dstSamples = srcSamples >> 1               // 2:1 downsample
+  const out = Buffer.alloc(dstSamples)
+  for (let i = 0; i < dstSamples; i++) {
+    const a = pcmBuf.readInt16LE(i * 4)
+    const b = pcmBuf.readInt16LE(i * 4 + 2)
+    out[i] = encodeMulaw(Math.round((a + b) / 2))
+  }
+  return out
+}
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -166,7 +194,7 @@ async function handleVoiceStream(twilioWs) {
     )
     if (!sigRes.ok) throw new Error(`EL signed URL ${sigRes.status}`)
     const sigData = await sigRes.json()
-    elSignedUrl = sigData.signed_url + '&output_format=ulaw_8000'
+    elSignedUrl = sigData.signed_url + '&output_format=pcm_16000'
   } catch (err) {
     console.error('[VoiceBridge] Failed to get ElevenLabs signed URL:', err.message)
     twilioWs.close()
@@ -178,12 +206,7 @@ async function handleVoiceStream(twilioWs) {
 
   elWs.on('open', () => {
     console.log(`[VoiceBridge] ElevenLabs WS opened for ${client.business_name}`)
-    elWs.send(JSON.stringify({
-      type: 'conversation_initiation_client_data',
-      conversation_config_override: {
-        audio: { input_audio_format: 'ulaw_8000', output_audio_format: 'ulaw_8000' }
-      }
-    }))
+    elWs.send(JSON.stringify({ type: 'conversation_initiation_client_data' }))
     elReady = true
 
     // Flush buffered audio from caller
@@ -208,12 +231,13 @@ async function handleVoiceStream(twilioWs) {
       case 'audio': {
         const audioPayload = msg.audio_event?.audio_base_64
         if (streamSid && audioPayload && twilioWs.readyState === WebSocket.OPEN) {
-          // Split into 320-byte chunks (40ms of mulaw 8kHz each) for smooth Twilio playback
+          // ElevenLabs sends PCM 16kHz — transcode to mulaw 8kHz for Twilio
+          const pcmBuf = Buffer.from(audioPayload, 'base64')
+          const mulawBuf = pcm16kToMulaw8k(pcmBuf)
+          // Send in 320-byte chunks (40ms of mulaw 8kHz each)
           const CHUNK_BYTES = 320
-          const buf = Buffer.from(audioPayload, 'base64')
-          console.log(`[VoiceBridge] Audio chunk: ${buf.length} bytes — expected mulaw=~320-3200, PCM=~1280-12800`)
-          for (let i = 0; i < buf.length; i += CHUNK_BYTES) {
-            const slice = buf.slice(i, i + CHUNK_BYTES)
+          for (let i = 0; i < mulawBuf.length; i += CHUNK_BYTES) {
+            const slice = mulawBuf.slice(i, i + CHUNK_BYTES)
             twilioWs.send(JSON.stringify({
               event: 'media',
               streamSid,
