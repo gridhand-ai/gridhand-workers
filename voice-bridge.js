@@ -261,6 +261,7 @@ async function handleVoiceStream(twilioWs) {
 
   async function logCall() {
     if (!callSid || callLogId) return
+    callLogId = 'logging'  // set synchronously to block concurrent calls before any await
     callLogId = 'logged'
     const summary = transcript.map(t => `${t.role === 'user' ? 'Caller' : 'AI'}: ${t.text}`).join('\n')
     try {

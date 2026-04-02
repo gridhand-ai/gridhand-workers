@@ -9,8 +9,29 @@ const NUMBER_MAP = {
     '+14144044418': 'test-client'
 };
 
+const REGISTRY_PATH = path.join(__dirname, 'registry.json');
+
+// Load the dynamic registry (written by /provision endpoint — no redeploy needed)
+function loadRegistry() {
+    try {
+        if (fs.existsSync(REGISTRY_PATH)) {
+            return JSON.parse(fs.readFileSync(REGISTRY_PATH, 'utf8'));
+        }
+    } catch (e) {
+        console.log(`[Loader] Failed to read registry.json: ${e.message}`);
+    }
+    return {};
+}
+
+function resolveSlug(twilioNumber) {
+    // Check static map first, then dynamic registry
+    if (NUMBER_MAP[twilioNumber]) return NUMBER_MAP[twilioNumber];
+    const registry = loadRegistry();
+    return registry[twilioNumber] || null;
+}
+
 function loadClient(twilioNumber) {
-    const slug = NUMBER_MAP[twilioNumber];
+    const slug = resolveSlug(twilioNumber);
     if (!slug) return null;
 
     const filePath = path.join(__dirname, `${slug}.json`);

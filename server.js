@@ -23,6 +23,42 @@ const referralWorker        = require('./workers/referral');
 const upsellWorker          = require('./workers/upsell');
 const onboardingWorker      = require('./workers/onboarding');
 
+// ─── BENCH: Ready to activate (standalone microservices — NOT loadable into this server) ────
+//
+// These dental/healthcare workers are fully built but run as SEPARATE Express servers
+// on their own ports. Each requires external third-party API credentials per client.
+// To deploy, run each as an independent Railway/Render service with its own env vars.
+//
+// workers/recall-commander   — Dental patient recall via SMS (hygiene, exam, x-ray recall)
+//   Needs: Dentrix G6+ API key + secret (api.henryschein.com) OR Open Dental REST API key
+//   Stored per-client in: Supabase rc_connections table
+//   Default port: RECALL_PORT (3007)
+//
+// workers/no-show-nurse      — Medical appointment no-show detection + waitlist slot filling
+//   Needs: Epic FHIR R4 OR Cerner FHIR R4 client credentials (SMART on FHIR)
+//   Stored per-client in: Supabase nsn_connections table
+//   Default port: NSN_PORT (3011)
+//
+// workers/treatment-presenter — Dental treatment plan SMS automation + acceptance tracking
+//   Needs: Dentrix G6+ OR Open Dental PMS API key per practice
+//   Stored per-client in: Supabase tp_connections table
+//   Default port: TP_PORT (3009)
+//
+// workers/prior-auth-bot     — Medical prior authorization automation (Epic/Cerner + payer portals)
+//   Needs: Epic/Cerner FHIR credentials + PAB_API_KEY + PAB_WEBHOOK_SECRET + REDIS_URL
+//   Stored per-client in: Supabase pab_connections table
+//   Default port: PAB_PORT (3010)
+//
+// workers/vaccine-reminder   — Veterinary vaccine reminder (NOT human dental — vet practices only)
+//   Needs: EVET_BASE_URL + EVET_API_KEY (eVetPractice) OR PETDESK_API_KEY + REDIS_URL
+//   Default port: 3011
+//
+// workers/rebook-reminder    — Salon/beauty rebooking reminders (NOT dental — salon vertical)
+//   Needs: BOULEVARD_API_KEY + BOULEVARD_BUSINESS_ID OR SQUARE_ACCESS_TOKEN + SQUARE_LOCATION_ID
+//   Default port: 3013
+//
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+
 // Subagents — Intelligence
 const sentimentAnalyzer  = require('./subagents/intelligence/sentiment-analyzer');
 const intentClassifier   = require('./subagents/intelligence/intent-classifier');
@@ -507,6 +543,148 @@ app.get('/queue/:twilioNumber', requireApiKey, (req, res) => {
     const stats = reengagementScheduler.getQueueStats(client.slug);
     const due = reengagementScheduler.getDueForReengagement(client.slug);
     res.json({ stats, dueNow: due });
+});
+
+// ─── Client Auto-Provisioning ─────────────────────────────────────────────────
+// POST /provision — create a new client config from the portal on signup
+// Body: { slug, twilioNumber, businessName, industry, phone, hours, services, workers }
+app.post('/provision', requireApiKey, async (req, res) => {
+    const fs   = require('fs');
+    const path = require('path');
+
+    const {
+        slug,
+        twilioNumber,
+        businessName,
+        industry,
+        phone,
+        hours,
+        services,
+        workers,
+    } = req.body;
+
+    // Validate required fields
+    if (!slug || !twilioNumber || !businessName) {
+        return res.status(400).json({ error: 'slug, twilioNumber, and businessName are required' });
+    }
+
+    // Sanitize slug: lowercase alphanumeric + hyphens only
+    const safeSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    if (!safeSlug) {
+        return res.status(400).json({ error: 'slug produced an invalid filename after sanitization' });
+    }
+
+    const clientsDir    = path.join(__dirname, 'clients');
+    const configPath    = path.join(clientsDir, `${safeSlug}.json`);
+    const registryPath  = path.join(clientsDir, 'registry.json');
+
+    // Build the client config based on the operator template structure
+    const serviceList = Array.isArray(services) && services.length
+        ? services.map(s => (typeof s === 'string' ? { name: s, price: 'Contact us' } : s))
+        : [{ name: 'General Service', price: 'Contact us' }];
+
+    const workerList = Array.isArray(workers) && workers.length
+        ? workers
+        : ['receptionist', 'faq', 'after-hours'];
+
+    const config = {
+        slug:         safeSlug,
+        id:           safeSlug,
+        twilioNumber,
+
+        model: 'anthropic/claude-haiku-4-5-20251001',
+
+        apiKeys: {
+            anthropic:    null,
+            twilio:       { accountSid: null, authToken: null },
+            moonshot:     null,
+            ollamaBaseUrl: null,
+            openai:       null,
+        },
+
+        workers: workerList,
+
+        business: {
+            name:     businessName,
+            industry: industry || 'General',
+            city:     '',
+            address:  '',
+            phone:    phone || '',
+            website:  '',
+            hours:    hours || 'Mon-Fri 9am-5pm',
+            services: serviceList,
+            faqs: [
+                { q: 'What are your hours?',      a: `We're open ${hours || 'Mon-Fri 9am-5pm'}.` },
+                { q: 'Do you offer free quotes?', a: 'Yes! Contact us to get started.' },
+            ],
+        },
+
+        settings: {
+            global: {
+                tone:              'friendly',
+                faqHandoff:        true,
+                escalateOnUpset:   true,
+                escalationNumber:  phone || '',
+            },
+            'review-requester': { delayHours: 2, reviewLink: '' },
+            reminder:           { firstReminderHours: 24, secondReminderHours: 1, includeAddress: true, includeCancellationInfo: true },
+            'after-hours':      { captureLeadInfo: true },
+            reactivation:       { dormantDays: 90, offerDiscount: false, discountText: '' },
+            'lead-followup':    { followUpCount: 2, daysBetweenFollowUps: 3 },
+            intake:             { collectFields: ['name', 'service', 'preferredTime', 'contactInfo'] },
+            'invoice-chaser':   { firstChaseAfterDays: 3, followUpDays: 7, maxFollowUps: 3 },
+            referral:           { offerIncentive: false, incentiveText: '' },
+            upsell:             { triggerAfterCompletion: true },
+            booking:            { bookingMethod: 'phone', bookingLink: null },
+            onboarding: {
+                customWelcome: null,
+                steps: [
+                    'Confirm their contact details',
+                    'Explain what to expect next',
+                    `Share key business info for ${businessName} (hours, phone, website)`,
+                    'Answer any initial questions',
+                ],
+            },
+        },
+
+        integrations: {
+            googleBusiness: { placeId: null, apiKey: null },
+            calendar:       { provider: null, credentials: {} },
+            crm:            { provider: null, credentials: {} },
+            payments:       { provider: null, credentials: {} },
+        },
+    };
+
+    try {
+        // 1. Write the client config file
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+        console.log(`[Provision] Wrote config: ${configPath}`);
+
+        // 2. Update registry.json with the new twilioNumber → slug mapping
+        let registry = {};
+        try {
+            if (fs.existsSync(registryPath)) {
+                registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+            }
+        } catch (e) {
+            console.log(`[Provision] Could not read existing registry, starting fresh: ${e.message}`);
+        }
+
+        registry[twilioNumber] = safeSlug;
+        fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2), 'utf8');
+        console.log(`[Provision] Registry updated: ${twilioNumber} → ${safeSlug}`);
+
+        res.json({
+            success:      true,
+            slug:         safeSlug,
+            twilioNumber,
+            configPath:   `clients/${safeSlug}.json`,
+            workers:      workerList,
+        });
+    } catch (e) {
+        console.log(`[Provision] Error: ${e.message}`);
+        res.status(500).json({ error: `Failed to provision client: ${e.message}` });
+    }
 });
 
 // ─── Start Server ──────────────────────────────────────────────────────────────
