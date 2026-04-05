@@ -1,0 +1,25 @@
+{
+  "name": "renewal-radar",
+  "version": "1.0.0",
+  "description": "GRIDHAND Renewal Radar — Insurance policy renewal automation worker",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "worker": "node jobs.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.3",
+    "axios": "^1.6.7",
+    "bull": "^4.12.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "ioredis": "^5.3.2",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.10",
+    "twilio": "^5.3.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  }
+}

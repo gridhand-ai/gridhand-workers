@@ -1,0 +1,21 @@
+{
+  "name": "gridhand-waste-watcher",
+  "version": "1.0.0",
+  "description": "GRIDHAND AI — Restaurant Waste Watcher Worker",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "bull": "^4.12.0",
+    "ioredis": "^5.3.2",
+    "@supabase/supabase-js": "^2.39.0",
+    "twilio": "^4.19.0",
+    "node-cron": "^3.0.3",
+    "axios": "^1.6.0",
+    "dayjs": "^1.11.10",
+    "dotenv": "^16.3.1"
+  }
+}

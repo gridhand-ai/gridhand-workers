@@ -1,0 +1,180 @@
+{
+  "_instructions": "Copy this file, rename it to your-business-slug.json, fill it out, then add your slug and Twilio number to clients/loader.js",
+
+  "slug": "your-business-slug",
+  "id":   "your-business-slug",
+  "twilioNumber": "+1XXXXXXXXXX",
+
+  "_model_options": {
+    "budget_free":       "moonshot/kimi-k2.5",
+    "budget_local":      "ollama/qwen2.5:7b",
+    "standard":          "anthropic/claude-haiku-4-5-20251001",
+    "premium":           "anthropic/claude-sonnet-4-6",
+    "openai_budget":     "openai/gpt-4o-mini"
+  },
+  "model": "anthropic/claude-haiku-4-5-20251001",
+
+  "apiKeys": {
+    "_note": "Fill in your own keys. Any null value falls back to the server's environment variables.",
+
+    "anthropic": "sk-ant-YOUR_ANTHROPIC_KEY_HERE",
+
+    "twilio": {
+      "accountSid": "ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+      "authToken":  "your_twilio_auth_token_here"
+    },
+
+    "moonshot":    null,
+    "ollamaBaseUrl": null,
+    "openai":      null
+  },
+
+  "_workers_available": [
+    "receptionist",
+    "faq",
+    "booking",
+    "intake",
+    "after-hours",
+    "waitlist",
+    "review-requester",
+    "reminder",
+    "reactivation",
+    "lead-followup",
+    "invoice-chaser",
+    "quote",
+    "referral",
+    "upsell",
+    "onboarding"
+  ],
+  "workers": ["receptionist", "faq", "after-hours"],
+
+  "business": {
+    "name":     "Your Business Name",
+    "industry": "Your Industry",
+    "city":     "Your City",
+    "address":  "123 Main St, City, ST 00000",
+    "phone":    "(XXX) XXX-XXXX",
+    "website":  "https://yourbusiness.com",
+    "hours":    "Mon-Fri 9am-5pm",
+
+    "services": [
+      { "name": "Service 1", "price": "$XX" },
+      { "name": "Service 2", "price": "$XX" }
+    ],
+
+    "faqs": [
+      { "q": "What are your hours?",       "a": "We're open Mon-Fri 9am-5pm." },
+      { "q": "Do you offer free quotes?",  "a": "Yes! Contact us to get started." }
+    ]
+  },
+
+  "settings": {
+    "global": {
+      "_tone_options": ["friendly", "professional", "casual"],
+      "tone":             "friendly",
+      "faqHandoff":       true,
+      "escalateOnUpset":  true,
+      "escalationNumber": "+1XXXXXXXXXX"
+    },
+
+    "review-requester": {
+      "delayHours": 2,
+      "reviewLink": "https://g.page/r/YOUR_GOOGLE_REVIEW_LINK"
+    },
+
+    "reminder": {
+      "firstReminderHours":    24,
+      "secondReminderHours":   1,
+      "includeAddress":        true,
+      "includeCancellationInfo": true
+    },
+
+    "after-hours": {
+      "captureLeadInfo": true
+    },
+
+    "reactivation": {
+      "dormantDays":   90,
+      "offerDiscount": false,
+      "discountText":  "10% off your next visit"
+    },
+
+    "lead-followup": {
+      "followUpCount":         2,
+      "daysBetweenFollowUps":  3
+    },
+
+    "intake": {
+      "collectFields": ["name", "service", "preferredTime", "contactInfo"]
+    },
+
+    "invoice-chaser": {
+      "firstChaseAfterDays": 3,
+      "followUpDays":        7,
+      "maxFollowUps":        3
+    },
+
+    "referral": {
+      "offerIncentive": false,
+      "incentiveText":  "Get $25 off your next service"
+    },
+
+    "upsell": {
+      "triggerAfterCompletion": true,
+      "customLogic":            null
+    },
+
+    "booking": {
+      "_bookingMethod_options": ["phone", "website", "both"],
+      "bookingMethod": "phone",
+      "bookingLink":   null
+    },
+
+    "onboarding": {
+      "customWelcome": null,
+      "steps": [
+        "Confirm their contact details",
+        "Explain what to expect next",
+        "Share key business info (hours, phone, website)",
+        "Answer any initial questions"
+      ]
+    },
+
+    "vip": {
+      "thresholds": {
+        "minInteractions":    10,
+        "minSpend":           500,
+        "minAppointmentsKept": 5,
+        "minReferrals":       2,
+        "minInvoicesPaid":    3
+      }
+    }
+  },
+
+  "integrations": {
+    "_note": "All optional. Only configure what you use.",
+
+    "googleBusiness": {
+      "placeId": null,
+      "apiKey":  null
+    },
+
+    "calendar": {
+      "_provider_options": ["google", "calendly"],
+      "provider": null,
+      "credentials": {}
+    },
+
+    "crm": {
+      "_provider_options": ["gohighlevel", "hubspot", "airtable", "webhook"],
+      "provider": null,
+      "credentials": {}
+    },
+
+    "payments": {
+      "_provider_options": ["stripe", "square", "paypal"],
+      "provider": null,
+      "credentials": {}
+    }
+  }
+}

@@ -121,6 +121,16 @@ function pushOutcomeToMake(client, customerPhone, workerName, customerMessage, w
     }).catch(e => console.log(`[Make sync] Pushback failed: ${e.message}`));
 }
 
+// ─── XML Escape Helper (used for TwiML interpolation) ─────────────────────────
+function escapeXml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}
+
 // ─── API Key Auth Middleware ───────────────────────────────────────────────────
 // Protects admin endpoints.
 // Accepts either GRIDHAND_API_KEY (internal/operator use) or WORKERS_API_SECRET
@@ -139,9 +149,28 @@ function requireApiKey(req, res, next) {
     return res.status(401).json({ error: 'Unauthorized.' });
 }
 
+// ─── Worker module map (shared between /sms routing and sequence runner) ──────
+const workerModules = {
+    receptionist:       receptionistWorker,
+    faq:                faqWorker,
+    booking:            bookingWorker,
+    intake:             intakeWorker,
+    'after-hours':      afterHoursWorker,
+    waitlist:           waitlistWorker,
+    'review-requester': reviewRequesterWorker,
+    reminder:           reminderWorker,
+    reactivation:       reactivationWorker,
+    'lead-followup':    leadFollowupWorker,
+    'invoice-chaser':   invoiceChaserWorker,
+    quote:              quoteWorker,
+    referral:           referralWorker,
+    upsell:             upsellWorker,
+    onboarding:         onboardingWorker,
+};
+
 // ─── Sequence Runner (every 60s) ──────────────────────────────────────────────
 setInterval(() => {
-    sequenceOrchestrator.runDueSequences({}, sender).catch(e =>
+    sequenceOrchestrator.runDueSequences(workerModules, sender).catch(e =>
         console.log(`[Sequences] Runner error: ${e.message}`)
     );
 }, 60000);
@@ -175,6 +204,21 @@ app.get('/', requireApiKey, (req, res) => {
 
 // ─── Inbound SMS Webhook ───────────────────────────────────────────────────────
 app.post('/sms', async (req, res) => {
+    // Validate that the request genuinely came from Twilio
+    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioSignature = req.headers['x-twilio-signature'];
+    if (twilioAuthToken && twilioSignature) {
+        const twilio = require('twilio');
+        const webhookUrl = process.env.NEXT_PUBLIC_APP_URL
+            ? `${process.env.NEXT_PUBLIC_APP_URL}/sms`
+            : `https://${req.headers.host}/sms`;
+        const valid = twilio.validateRequest(twilioAuthToken, twilioSignature, webhookUrl, req.body);
+        if (!valid) {
+            console.warn('[SMS] Invalid Twilio signature — rejecting request');
+            return res.status(403).send('Forbidden');
+        }
+    }
+
     const incomingNumber = req.body.To;
     const customerNumber = req.body.From;
     const message        = req.body.Body?.trim();
@@ -193,7 +237,7 @@ app.post('/sms', async (req, res) => {
         campaignTracker.trackOptOut(client.slug, 'inbound');
         const reply = optout.reply || '';
         return res.set('Content-Type', 'text/xml').send(
-            reply ? `<Response><Message>${reply}</Message></Response>` : `<Response></Response>`
+            reply ? `<Response><Message>${escapeXml(reply)}</Message></Response>` : `<Response></Response>`
         );
     }
 
@@ -275,7 +319,7 @@ app.post('/sms', async (req, res) => {
     }
 
     const twiml = reply
-        ? `<Response><Message>${reply}</Message></Response>`
+        ? `<Response><Message>${escapeXml(reply)}</Message></Response>`
         : `<Response></Response>`;
 
     res.set('Content-Type', 'text/xml').send(twiml);
@@ -475,14 +519,14 @@ app.get('/validate', requireApiKey, (req, res) => {
 // ─── Agent Test Endpoint ──────────────────────────────────────────────────────
 // POST /test — run a worker with a test message, no Twilio, no SMS sent
 // Body: { workerName, clientSlug, message, customerNumber? }
-app.options('/test', (req, res) => {
+app.options('/test', requireApiKey, (req, res) => {
     res.set({
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     }).sendStatus(204);
 });
-app.post('/test', async (req, res) => {
+app.post('/test', requireApiKey, async (req, res) => {
     res.set('Access-Control-Allow-Origin', '*');
     const { workerName, clientSlug, message, customerNumber = '+10000000000' } = req.body;
 
@@ -664,6 +708,14 @@ app.post('/provision', requireApiKey, async (req, res) => {
             payments:       { provider: null, credentials: {} },
         },
     };
+
+    // Prevent overwriting an existing client config
+    if (fs.existsSync(configPath)) {
+        return res.status(409).json({
+            error: 'Client already provisioned. Use POST /provision/update to modify.',
+            slug: safeSlug,
+        });
+    }
 
     try {
         // 1. Write the client config file

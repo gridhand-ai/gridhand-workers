@@ -147,7 +147,14 @@ async function runDueSequences(workerModules, twilioSender) {
 
             advanceSequence(seq.id);
         } catch (e) {
-            console.log(`[SequenceOrchestrator] Error running sequence ${seq.id}: ${e.message}`);
+            console.error(`[SequenceOrchestrator] Step failed for ${seq.clientSlug} (${seq.id}): ${e.message}`);
+            // Defer the step by 4 hours to prevent hammering on repeated errors
+            const sequences = getAllSequences();
+            const record = sequences.find(s => s.id === seq.id);
+            if (record) {
+                record.nextRunAt = Date.now() + 4 * 60 * 60 * 1000;
+                saveAllSequences(sequences);
+            }
         }
     }
 }
