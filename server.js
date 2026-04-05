@@ -122,19 +122,21 @@ function pushOutcomeToMake(client, customerPhone, workerName, customerMessage, w
 }
 
 // ─── API Key Auth Middleware ───────────────────────────────────────────────────
-// Protects admin endpoints. Set GRIDHAND_API_KEY in Railway env vars.
+// Protects admin endpoints.
+// Accepts either GRIDHAND_API_KEY (internal/operator use) or WORKERS_API_SECRET
+// (portal auto-provisioning). At least one must be set.
 function requireApiKey(req, res, next) {
-    const serverKey = process.env.GRIDHAND_API_KEY;
-    if (!serverKey) {
-        // If no key is configured, block all access to protected routes
-        return res.status(503).json({ error: 'Server not configured: GRIDHAND_API_KEY not set.' });
+    const serverKey    = process.env.GRIDHAND_API_KEY;
+    const portalSecret = process.env.WORKERS_API_SECRET;
+    if (!serverKey && !portalSecret) {
+        return res.status(503).json({ error: 'Server not configured: no API key set.' });
     }
     const authHeader = req.headers['authorization'] || '';
     const provided = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-    if (provided !== serverKey) {
-        return res.status(401).json({ error: 'Unauthorized.' });
+    if ((serverKey && provided === serverKey) || (portalSecret && provided === portalSecret)) {
+        return next();
     }
-    next();
+    return res.status(401).json({ error: 'Unauthorized.' });
 }
 
 // ─── Sequence Runner (every 60s) ──────────────────────────────────────────────
@@ -547,25 +549,28 @@ app.get('/queue/:twilioNumber', requireApiKey, (req, res) => {
 
 // ─── Client Auto-Provisioning ─────────────────────────────────────────────────
 // POST /provision — create a new client config from the portal on signup
-// Body: { slug, twilioNumber, businessName, industry, phone, hours, services, workers }
+// Body: { slug, businessName, clientId?, twilioNumber?, industry?, city?, phone?, hours?, services?, workers? }
+// twilioNumber is optional at signup — clients are added to the registry only when a real number is assigned.
 app.post('/provision', requireApiKey, async (req, res) => {
     const fs   = require('fs');
     const path = require('path');
 
     const {
         slug,
-        twilioNumber,
+        twilioNumber,   // optional at signup — can be empty string or omitted
         businessName,
+        clientId,       // Supabase user ID — stored for future portal↔workers linkage
         industry,
+        city,
         phone,
         hours,
         services,
         workers,
     } = req.body;
 
-    // Validate required fields
-    if (!slug || !twilioNumber || !businessName) {
-        return res.status(400).json({ error: 'slug, twilioNumber, and businessName are required' });
+    // Validate required fields (twilioNumber is no longer required at signup)
+    if (!slug || !businessName) {
+        return res.status(400).json({ error: 'slug and businessName are required' });
     }
 
     // Sanitize slug: lowercase alphanumeric + hyphens only
@@ -587,10 +592,15 @@ app.post('/provision', requireApiKey, async (req, res) => {
         ? workers
         : ['receptionist', 'faq', 'after-hours'];
 
+    const safeNumber = (typeof twilioNumber === 'string' && twilioNumber.trim()) ? twilioNumber.trim() : '';
+
     const config = {
         slug:         safeSlug,
         id:           safeSlug,
-        twilioNumber,
+        twilioNumber: safeNumber,
+
+        // Portal client ID (Supabase UUID) — used to link this config back to the portal client record
+        ...(clientId ? { clientId } : {}),
 
         model: 'anthropic/claude-haiku-4-5-20251001',
 
@@ -607,7 +617,7 @@ app.post('/provision', requireApiKey, async (req, res) => {
         business: {
             name:     businessName,
             industry: industry || 'General',
-            city:     '',
+            city:     city || '',
             address:  '',
             phone:    phone || '',
             website:  '',
@@ -660,30 +670,94 @@ app.post('/provision', requireApiKey, async (req, res) => {
         fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
         console.log(`[Provision] Wrote config: ${configPath}`);
 
-        // 2. Update registry.json with the new twilioNumber → slug mapping
-        let registry = {};
-        try {
-            if (fs.existsSync(registryPath)) {
-                registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+        // 2. Update registry.json with the twilioNumber → slug mapping (only if a real number was supplied)
+        if (safeNumber) {
+            let registry = {};
+            try {
+                if (fs.existsSync(registryPath)) {
+                    registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+                }
+            } catch (e) {
+                console.log(`[Provision] Could not read existing registry, starting fresh: ${e.message}`);
             }
-        } catch (e) {
-            console.log(`[Provision] Could not read existing registry, starting fresh: ${e.message}`);
+            registry[safeNumber] = safeSlug;
+            fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2), 'utf8');
+            console.log(`[Provision] Registry updated: ${safeNumber} → ${safeSlug}`);
+        } else {
+            console.log(`[Provision] No Twilio number supplied — skipping registry entry for "${safeSlug}". Update via /provision/update when number is assigned.`);
         }
-
-        registry[twilioNumber] = safeSlug;
-        fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2), 'utf8');
-        console.log(`[Provision] Registry updated: ${twilioNumber} → ${safeSlug}`);
 
         res.json({
             success:      true,
             slug:         safeSlug,
-            twilioNumber,
+            twilioNumber: safeNumber || null,
             configPath:   `clients/${safeSlug}.json`,
             workers:      workerList,
+            note:         safeNumber ? undefined : 'No Twilio number assigned yet. POST to /provision/update when ready.',
         });
     } catch (e) {
         console.log(`[Provision] Error: ${e.message}`);
         res.status(500).json({ error: `Failed to provision client: ${e.message}` });
+    }
+});
+
+// ─── Provision Update — assign/update Twilio number for an existing client ────
+// POST /provision/update — called from portal admin when a Twilio number is assigned to a client
+// Body: { slug, twilioNumber, [any config fields to patch] }
+app.post('/provision/update', requireApiKey, (req, res) => {
+    const fs   = require('fs');
+    const path = require('path');
+
+    const { slug, twilioNumber, ...patches } = req.body;
+
+    if (!slug || !twilioNumber) {
+        return res.status(400).json({ error: 'slug and twilioNumber are required' });
+    }
+
+    const safeSlug   = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    const safeNumber = twilioNumber.trim();
+
+    const clientsDir   = path.join(__dirname, 'clients');
+    const configPath   = path.join(clientsDir, `${safeSlug}.json`);
+    const registryPath = path.join(clientsDir, 'registry.json');
+
+    if (!fs.existsSync(configPath)) {
+        return res.status(404).json({ error: `No config found for slug "${safeSlug}". Call /provision first.` });
+    }
+
+    try {
+        // Patch config file with the new twilioNumber and any other supplied fields
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        config.twilioNumber = safeNumber;
+
+        // Apply any additional top-level patches (e.g. city, phone, hours)
+        const allowedPatches = ['city', 'phone', 'hours', 'clientId'];
+        for (const key of allowedPatches) {
+            if (patches[key] !== undefined) {
+                if (key === 'city' || key === 'phone' || key === 'hours') {
+                    config.business = config.business || {};
+                    config.business[key] = patches[key];
+                } else {
+                    config[key] = patches[key];
+                }
+            }
+        }
+
+        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+
+        // Update registry
+        let registry = {};
+        try {
+            if (fs.existsSync(registryPath)) registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+        } catch (e) { /* start fresh */ }
+        registry[safeNumber] = safeSlug;
+        fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2), 'utf8');
+
+        console.log(`[Provision/Update] ${safeSlug} → ${safeNumber}`);
+        res.json({ success: true, slug: safeSlug, twilioNumber: safeNumber });
+    } catch (e) {
+        console.log(`[Provision/Update] Error: ${e.message}`);
+        res.status(500).json({ error: `Failed to update client: ${e.message}` });
     }
 });
 

@@ -262,7 +262,8 @@ async function handleVoiceStream(twilioWs) {
   async function logCall() {
     if (!callSid || callLogId) return
     callLogId = 'logging'  // set synchronously to block concurrent calls before any await
-    callLogId = 'logged'
+    // NOTE: do NOT overwrite callLogId here — keep it as 'logging' until insert succeeds,
+    // so any concurrent logCall() calls that slip through before the first await are blocked.
     const summary = transcript.map(t => `${t.role === 'user' ? 'Caller' : 'AI'}: ${t.text}`).join('\n')
     try {
       await supabase.from('call_logs').insert({
@@ -273,8 +274,10 @@ async function handleVoiceStream(twilioWs) {
         transcript,
         ai_summary:    summary || null,
       })
+      callLogId = 'logged'
       console.log('[VoiceBridge] Call logged for', caller)
     } catch (err) {
+      callLogId = null  // reset so a retry attempt is possible on error
       console.error('[VoiceBridge] Failed to log call:', err.message)
     }
   }
