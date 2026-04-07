@@ -27,15 +27,16 @@ const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || ''
 const START_TIMEOUT_MS    = 10_000    // max wait for Twilio 'start' event
 const MAX_CALL_DURATION_MS = 300_000  // 5-minute hard cap per call
 
-async function handleVoiceStream(twilioWs) {
+async function handleVoiceStream(twilioWs, authClaim = null) {
   let clientId  = ''
   let caller    = ''
   let elWs      = null
   let streamSid = null
   let callSid   = null
   let callLogId = null
+  let started   = false
   let transcript  = []
-  let audioBuffer = []   // buffer Twilio audio until ElevenLabs WS is open
+  let audioBuffer = []   // safety-net buffer until ElevenLabs WS is open
   let elReady     = false
   let drainTimer  = null
   let maxCallTimer = null
@@ -43,49 +44,61 @@ async function handleVoiceStream(twilioWs) {
   console.log('[VoiceBridge] New stream — waiting for start event')
 
   // ── 1. Wait for 'start' event ───────────────────────────────────────────────
+  // Single persistent handler. Until `started` flips true we only look for the
+  // start/connected envelope; afterward we route media/stop/mark normally.
+  let resolveStart, rejectStart
   const startPromise = new Promise((resolve, reject) => {
-    const startTimeout = setTimeout(() => {
-      reject(new Error('Timeout waiting for Twilio start event'))
-    }, START_TIMEOUT_MS)
-
-    function resolveStart() {
-      clearTimeout(startTimeout)
-      resolve()
-    }
-
-    twilioWs.once('message', function onFirst(raw) {
-      let msg
-      try { msg = JSON.parse(raw) } catch { return }
-      if (msg.event === 'connected') {
-        console.log('[VoiceBridge] Twilio connected')
-        twilioWs.once('message', function onStart(raw2) {
-          let msg2
-          try { msg2 = JSON.parse(raw2) } catch { return }
-          if (msg2.event === 'start') {
-            streamSid = msg2.streamSid
-            callSid   = msg2.start?.callSid
-            clientId  = msg2.start?.customParameters?.clientId || ''
-            caller    = msg2.start?.customParameters?.caller   || ''
-            console.log(`[VoiceBridge] Stream started — streamSid=${streamSid} callSid=${callSid} clientId=${clientId} caller=${caller}`)
-            resolveStart()
-          }
-        })
-      } else if (msg.event === 'start') {
-        streamSid = msg.streamSid
-        callSid   = msg.start?.callSid
-        clientId  = msg.start?.customParameters?.clientId || ''
-        caller    = msg.start?.customParameters?.caller   || ''
-        console.log(`[VoiceBridge] Stream started — streamSid=${streamSid} callSid=${callSid} clientId=${clientId} caller=${caller}`)
-        resolveStart()
-      }
-    })
+    resolveStart = resolve
+    rejectStart  = reject
   })
+  const startTimeout = setTimeout(() => {
+    if (!started) rejectStart(new Error('Timeout waiting for Twilio start event'))
+  }, START_TIMEOUT_MS)
 
-  // ── 2. Attach ongoing Twilio message handler ────────────────────────────────
   twilioWs.on('message', (raw) => {
     let msg
     try { msg = JSON.parse(raw) } catch { return }
 
+    if (!started) {
+      if (msg.event === 'connected') {
+        console.log('[VoiceBridge] Twilio connected')
+        return
+      }
+      if (msg.event === 'start') {
+        streamSid = msg.streamSid
+        callSid   = msg.start?.callSid
+        clientId  = msg.start?.customParameters?.clientId || ''
+        caller    = msg.start?.customParameters?.caller   || ''
+
+        // Enforce auth claim — callSid + clientId MUST match the signed token.
+        if (authClaim) {
+          if (authClaim.callSid && authClaim.callSid !== callSid) {
+            console.warn(`[VoiceBridge] callSid mismatch token=${authClaim.callSid} start=${callSid} — closing`)
+            clearTimeout(startTimeout)
+            try { twilioWs.close() } catch {}
+            rejectStart(new Error('callSid mismatch'))
+            return
+          }
+          if (authClaim.clientId && authClaim.clientId !== clientId) {
+            console.warn(`[VoiceBridge] clientId mismatch token=${authClaim.clientId} start=${clientId} — closing`)
+            clearTimeout(startTimeout)
+            try { twilioWs.close() } catch {}
+            rejectStart(new Error('clientId mismatch'))
+            return
+          }
+        }
+
+        console.log(`[VoiceBridge] Stream started — streamSid=${streamSid} callSid=${callSid} clientId=${clientId} caller=${caller}`)
+        started = true
+        clearTimeout(startTimeout)
+        resolveStart()
+        return
+      }
+      // Unknown pre-start event — drop it
+      return
+    }
+
+    // Post-start routing
     switch (msg.event) {
       case 'media':
         if (!msg.media?.payload) break
@@ -93,6 +106,7 @@ async function handleVoiceStream(twilioWs) {
           // Pass mulaw base64 directly — EL accepts mulaw 8kHz natively
           elWs.send(JSON.stringify({ type: 'user_audio_chunk', user_audio_chunk: msg.media.payload }))
         } else {
+          // Safety net — briefly buffer until EL WS opens
           if (audioBuffer.length < 200) audioBuffer.push(msg.media.payload)
         }
         break
@@ -120,12 +134,12 @@ async function handleVoiceStream(twilioWs) {
     cleanup()
   })
 
-  // ── 3. Wait for start, then connect to ElevenLabs ──────────────────────────
+  // ── 2. Wait for start, then connect to ElevenLabs ──────────────────────────
   try {
     await startPromise
   } catch (err) {
-    console.error('[VoiceBridge] Start timeout — closing connection:', err.message)
-    twilioWs.close()
+    console.error('[VoiceBridge] Start failed — closing connection:', err.message)
+    try { twilioWs.close() } catch {}
     return
   }
 

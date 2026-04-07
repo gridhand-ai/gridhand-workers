@@ -21,11 +21,20 @@ const HIGH_RISK_PHRASES = [
     'unsubscribe link',
 ];
 
+function getHourInTz(timezone) {
+    // Intl.DateTimeFormat returns the correct wall-clock hour in the target TZ
+    // regardless of the server's own timezone. The old approach of re-parsing
+    // toLocaleString() through `new Date(...)` silently used server-local TZ
+    // and produced off-by-TZ-offset hours.
+    return parseInt(
+        new Intl.DateTimeFormat('en-US', { timeZone: timezone, hour: 'numeric', hour12: false }).format(new Date()),
+        10
+    );
+}
+
 function isQuietHours(timezone = TIMEZONE_DEFAULT) {
     try {
-        const now = new Date();
-        const localTime = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
-        const hour = localTime.getHours();
+        const hour = getHourInTz(timezone);
         return hour >= QUIET_HOURS_START || hour < QUIET_HOURS_END;
     } catch {
         const hour = new Date().getHours();
@@ -92,21 +101,34 @@ function check(message, clientTimezone = TIMEZONE_DEFAULT) {
     return result;
 }
 
-// Queue a message for later (when quiet hours end)
+// Queue a message for later (when quiet hours end).
+// Returns an ISO timestamp — safe to pass to `new Date(iso).getTime()`.
+// Uses Intl to compute the wall-clock Y/M/D/H in the target TZ, then walks
+// forward one hour at a time (TZ-agnostic UTC math) until we hit QUIET_HOURS_END.
 function getNextSendTime(timezone = TIMEZONE_DEFAULT) {
-    const now = new Date();
-    const localTime = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
-    const tomorrow = new Date(localTime);
-    tomorrow.setHours(QUIET_HOURS_END, 0, 0, 0);
-    if (localTime.getHours() < QUIET_HOURS_END) {
-        // Before 8am today — schedule for 8am today
-        const today = new Date(localTime);
-        today.setHours(QUIET_HOURS_END, 0, 0, 0);
-        return today.toISOString();
+    const fmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: timezone,
+        hour: 'numeric',
+        hour12: false,
+    });
+
+    let cursor = new Date();
+    // If currently pre-8am, send-time is the next 8am (usually today).
+    // If currently >=21, walk forward until the hour flips to 8.
+    // Cap the loop at 48 hours to guarantee termination.
+    for (let i = 0; i < 48; i++) {
+        const hour = parseInt(fmt.format(cursor), 10);
+        if (hour === QUIET_HOURS_END) {
+            // Snap to the top of this hour in UTC (close enough — we just want
+            // an in-window send time; minute precision isn't critical).
+            const snapped = new Date(cursor);
+            snapped.setUTCMinutes(0, 0, 0);
+            return snapped.toISOString();
+        }
+        cursor = new Date(cursor.getTime() + 60 * 60 * 1000);
     }
-    // After 9pm — schedule for 8am tomorrow
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString();
+    // Fallback — 8 hours out
+    return new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString();
 }
 
 module.exports = { check, isQuietHours, getNextSendTime };

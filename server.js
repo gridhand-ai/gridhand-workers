@@ -1,4 +1,5 @@
 const http = require('http');
+const crypto = require('crypto');
 const express = require('express');
 const WebSocket = require('ws');
 const { loadClient, loadClientBySlug, NUMBER_MAP } = require('./clients/loader');
@@ -131,6 +132,27 @@ function escapeXml(str) {
         .replace(/'/g, '&apos;');
 }
 
+// ─── Registry / Config Mutex + Atomic Write Helpers ──────────────────────────
+// Both /provision and /provision/update read-modify-write registry.json and
+// per-client config files. Two concurrent requests can clobber each other.
+// This simple promise-chain lock serializes all writes through a single critical
+// section while still letting Express handle other routes concurrently.
+let _registryLock = Promise.resolve();
+function withRegistryLock(fn) {
+    const next = _registryLock.then(() => fn(), () => fn());
+    _registryLock = next.catch(() => {}); // don't let a rejection poison the chain
+    return next;
+}
+
+// Atomic write: write-then-rename. On POSIX filesystems rename(2) is atomic,
+// so a concurrent reader never sees a half-written file.
+function atomicWriteFileSync(targetPath, contents) {
+    const fs = require('fs');
+    const tmp = `${targetPath}.tmp.${process.pid}.${Date.now()}`;
+    fs.writeFileSync(tmp, contents, 'utf8');
+    fs.renameSync(tmp, targetPath);
+}
+
 // ─── API Key Auth Middleware ───────────────────────────────────────────────────
 // Protects admin endpoints.
 // Accepts either GRIDHAND_API_KEY (internal/operator use) or WORKERS_API_SECRET
@@ -170,7 +192,7 @@ const workerModules = {
 
 // ─── Sequence Runner (every 60s) ──────────────────────────────────────────────
 setInterval(() => {
-    sequenceOrchestrator.runDueSequences(workerModules, sender).catch(e =>
+    sequenceOrchestrator.runDueSequences(workerModules, sender, loadClientBySlug).catch(e =>
         console.log(`[Sequences] Runner error: ${e.message}`)
     );
 }, 60000);
@@ -327,12 +349,13 @@ app.post('/sms', async (req, res) => {
 
 // ─── Outbound Trigger Routes ───────────────────────────────────────────────────
 
-function outboundGuard(clientSlug, customerNumber) {
+function outboundGuard(clientSlug, customerNumber, client = null) {
     // Opt-out guard
     optoutManager.guardOutbound(clientSlug, customerNumber);
-    // TCPA quiet hours check
-    const tcpa = tcpaChecker.isQuietHours();
-    if (tcpa) throw new Error('TCPA quiet hours — message blocked. Retry after 8am.');
+    // TCPA quiet hours check — use the client's own timezone, not server local.
+    const tz = client?.business?.timezone || 'America/Chicago';
+    const tcpa = tcpaChecker.isQuietHours(tz);
+    if (tcpa) throw new Error(`TCPA quiet hours (${tz}) — message blocked. Retry after 8am.`);
 }
 
 app.post('/trigger/review-requester', requireApiKey, async (req, res) => {
@@ -340,7 +363,7 @@ app.post('/trigger/review-requester', requireApiKey, async (req, res) => {
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
     try {
-        outboundGuard(client.slug, customerNumber);
+        outboundGuard(client.slug, customerNumber, client);
         await reviewRequesterWorker.send({ client, customerNumber, customerName, serviceName });
         campaignTracker.trackSent(client.slug, 'review-requester');
         res.json({ success: true });
@@ -352,7 +375,7 @@ app.post('/trigger/reminder', requireApiKey, async (req, res) => {
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
     try {
-        outboundGuard(client.slug, customerNumber);
+        outboundGuard(client.slug, customerNumber, client);
         await reminderWorker.send({ client, customerNumber, customerName, appointmentTime, serviceName, reminderType });
         campaignTracker.trackSent(client.slug, 'reminder');
         res.json({ success: true });
@@ -364,7 +387,7 @@ app.post('/trigger/reactivation', requireApiKey, async (req, res) => {
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
     try {
-        outboundGuard(client.slug, customerNumber);
+        outboundGuard(client.slug, customerNumber, client);
         await reactivationWorker.send({ client, customerNumber, customerName, lastServiceName });
         campaignTracker.trackSent(client.slug, 'reactivation');
         res.json({ success: true });
@@ -376,7 +399,7 @@ app.post('/trigger/lead-followup', requireApiKey, async (req, res) => {
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
     try {
-        outboundGuard(client.slug, customerNumber);
+        outboundGuard(client.slug, customerNumber, client);
         await leadFollowupWorker.send({ client, customerNumber, customerName, inquiryAbout, followUpNumber });
         campaignTracker.trackSent(client.slug, 'lead-followup');
         res.json({ success: true });
@@ -388,7 +411,7 @@ app.post('/trigger/invoice-chaser', requireApiKey, async (req, res) => {
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
     try {
-        outboundGuard(client.slug, customerNumber);
+        outboundGuard(client.slug, customerNumber, client);
         await invoiceChaserWorker.send({ client, customerNumber, customerName, invoiceNumber, amount, dueDate, paymentLink, chaseNumber });
         campaignTracker.trackSent(client.slug, 'invoice-chaser');
         res.json({ success: true });
@@ -400,7 +423,7 @@ app.post('/trigger/quote', requireApiKey, async (req, res) => {
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
     try {
-        outboundGuard(client.slug, customerNumber);
+        outboundGuard(client.slug, customerNumber, client);
         await quoteWorker.send({ client, customerNumber, customerName, serviceName, quoteAmount, validUntil, quoteDetails });
         campaignTracker.trackSent(client.slug, 'quote');
         res.json({ success: true });
@@ -412,7 +435,7 @@ app.post('/trigger/waitlist-notify', requireApiKey, async (req, res) => {
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
     try {
-        outboundGuard(client.slug, customerNumber);
+        outboundGuard(client.slug, customerNumber, client);
         await waitlistWorker.sendSpotAvailable({ client, customerNumber, customerName, serviceName, availableTime });
         campaignTracker.trackSent(client.slug, 'waitlist');
         res.json({ success: true });
@@ -424,7 +447,7 @@ app.post('/trigger/referral', requireApiKey, async (req, res) => {
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
     try {
-        outboundGuard(client.slug, customerNumber);
+        outboundGuard(client.slug, customerNumber, client);
         await referralWorker.send({ client, customerNumber, customerName, lastServiceName });
         campaignTracker.trackSent(client.slug, 'referral');
         res.json({ success: true });
@@ -436,7 +459,7 @@ app.post('/trigger/upsell', requireApiKey, async (req, res) => {
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
     try {
-        outboundGuard(client.slug, customerNumber);
+        outboundGuard(client.slug, customerNumber, client);
         await upsellWorker.send({ client, customerNumber, customerName, completedServiceName, upsellServiceName, upsellReason });
         campaignTracker.trackSent(client.slug, 'upsell');
         res.json({ success: true });
@@ -448,7 +471,7 @@ app.post('/trigger/onboarding', requireApiKey, async (req, res) => {
     const client = loadClient(twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
     try {
-        outboundGuard(client.slug, customerNumber);
+        outboundGuard(client.slug, customerNumber, client);
         await onboardingWorker.send({ client, customerNumber, customerName, serviceName });
         campaignTracker.trackSent(client.slug, 'onboarding');
         res.json({ success: true });
@@ -718,26 +741,38 @@ app.post('/provision', requireApiKey, async (req, res) => {
     }
 
     try {
-        // 1. Write the client config file
-        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
-        console.log(`[Provision] Wrote config: ${configPath}`);
-
-        // 2. Update registry.json with the twilioNumber → slug mapping (only if a real number was supplied)
-        if (safeNumber) {
-            let registry = {};
-            try {
-                if (fs.existsSync(registryPath)) {
-                    registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
-                }
-            } catch (e) {
-                console.log(`[Provision] Could not read existing registry, starting fresh: ${e.message}`);
+        await withRegistryLock(async () => {
+            // Re-check existence INSIDE the lock to close the TOCTOU window
+            if (fs.existsSync(configPath)) {
+                const err = new Error('Client already provisioned');
+                err.statusCode = 409;
+                throw err;
             }
-            registry[safeNumber] = safeSlug;
-            fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2), 'utf8');
-            console.log(`[Provision] Registry updated: ${safeNumber} → ${safeSlug}`);
-        } else {
-            console.log(`[Provision] No Twilio number supplied — skipping registry entry for "${safeSlug}". Update via /provision/update when number is assigned.`);
-        }
+
+            // Stamp revision so /provision/update can do compare-and-set later
+            config.revision = 1;
+
+            // 1. Write the client config file (atomic)
+            atomicWriteFileSync(configPath, JSON.stringify(config, null, 2));
+            console.log(`[Provision] Wrote config: ${configPath}`);
+
+            // 2. Update registry.json with the twilioNumber → slug mapping
+            if (safeNumber) {
+                let registry = {};
+                try {
+                    if (fs.existsSync(registryPath)) {
+                        registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+                    }
+                } catch (e) {
+                    console.log(`[Provision] Could not read existing registry, starting fresh: ${e.message}`);
+                }
+                registry[safeNumber] = safeSlug;
+                atomicWriteFileSync(registryPath, JSON.stringify(registry, null, 2));
+                console.log(`[Provision] Registry updated: ${safeNumber} → ${safeSlug}`);
+            } else {
+                console.log(`[Provision] No Twilio number supplied — skipping registry entry for "${safeSlug}". Update via /provision/update when number is assigned.`);
+            }
+        });
 
         res.json({
             success:      true,
@@ -745,22 +780,24 @@ app.post('/provision', requireApiKey, async (req, res) => {
             twilioNumber: safeNumber || null,
             configPath:   `clients/${safeSlug}.json`,
             workers:      workerList,
+            revision:     1,
             note:         safeNumber ? undefined : 'No Twilio number assigned yet. POST to /provision/update when ready.',
         });
     } catch (e) {
         console.log(`[Provision] Error: ${e.message}`);
-        res.status(500).json({ error: `Failed to provision client: ${e.message}` });
+        const code = e.statusCode || 500;
+        res.status(code).json({ error: code === 409 ? e.message : `Failed to provision client: ${e.message}`, slug: safeSlug });
     }
 });
 
 // ─── Provision Update — assign/update Twilio number for an existing client ────
 // POST /provision/update — called from portal admin when a Twilio number is assigned to a client
 // Body: { slug, twilioNumber, [any config fields to patch] }
-app.post('/provision/update', requireApiKey, (req, res) => {
+app.post('/provision/update', requireApiKey, async (req, res) => {
     const fs   = require('fs');
     const path = require('path');
 
-    const { slug, twilioNumber, ...patches } = req.body;
+    const { slug, twilioNumber, revision: callerRevision, ...patches } = req.body;
 
     if (!slug || !twilioNumber) {
         return res.status(400).json({ error: 'slug and twilioNumber are required' });
@@ -778,38 +815,54 @@ app.post('/provision/update', requireApiKey, (req, res) => {
     }
 
     try {
-        // Patch config file with the new twilioNumber and any other supplied fields
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        config.twilioNumber = safeNumber;
+        let newRevision;
+        await withRegistryLock(async () => {
+            // Patch config file with the new twilioNumber and any other supplied fields
+            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
-        // Apply any additional top-level patches (e.g. city, phone, hours)
-        const allowedPatches = ['city', 'phone', 'hours', 'clientId'];
-        for (const key of allowedPatches) {
-            if (patches[key] !== undefined) {
-                if (key === 'city' || key === 'phone' || key === 'hours') {
-                    config.business = config.business || {};
-                    config.business[key] = patches[key];
-                } else {
-                    config[key] = patches[key];
+            // Compare-and-set: if the caller supplied a revision, it must match
+            // the on-disk revision, otherwise another writer beat us to it.
+            if (typeof callerRevision === 'number' && (config.revision || 0) !== callerRevision) {
+                const err = new Error(`revision mismatch: expected ${config.revision || 0}, got ${callerRevision}`);
+                err.statusCode = 409;
+                throw err;
+            }
+
+            config.twilioNumber = safeNumber;
+
+            // Apply any additional top-level patches (e.g. city, phone, hours)
+            const allowedPatches = ['city', 'phone', 'hours', 'clientId'];
+            for (const key of allowedPatches) {
+                if (patches[key] !== undefined) {
+                    if (key === 'city' || key === 'phone' || key === 'hours') {
+                        config.business = config.business || {};
+                        config.business[key] = patches[key];
+                    } else {
+                        config[key] = patches[key];
+                    }
                 }
             }
-        }
 
-        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+            // Bump revision then write atomically
+            config.revision = (config.revision || 0) + 1;
+            newRevision = config.revision;
+            atomicWriteFileSync(configPath, JSON.stringify(config, null, 2));
 
-        // Update registry
-        let registry = {};
-        try {
-            if (fs.existsSync(registryPath)) registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
-        } catch (e) { /* start fresh */ }
-        registry[safeNumber] = safeSlug;
-        fs.writeFileSync(registryPath, JSON.stringify(registry, null, 2), 'utf8');
+            // Update registry atomically
+            let registry = {};
+            try {
+                if (fs.existsSync(registryPath)) registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+            } catch (e) { /* start fresh */ }
+            registry[safeNumber] = safeSlug;
+            atomicWriteFileSync(registryPath, JSON.stringify(registry, null, 2));
+        });
 
-        console.log(`[Provision/Update] ${safeSlug} → ${safeNumber}`);
-        res.json({ success: true, slug: safeSlug, twilioNumber: safeNumber });
+        console.log(`[Provision/Update] ${safeSlug} → ${safeNumber} (rev ${newRevision})`);
+        res.json({ success: true, slug: safeSlug, twilioNumber: safeNumber, revision: newRevision });
     } catch (e) {
         console.log(`[Provision/Update] Error: ${e.message}`);
-        res.status(500).json({ error: `Failed to update client: ${e.message}` });
+        const code = e.statusCode || 500;
+        res.status(code).json({ error: code === 409 ? e.message : `Failed to update client: ${e.message}` });
     }
 });
 
@@ -820,12 +873,53 @@ const server = http.createServer(app);
 // ─── WebSocket Server (Voice Bridge) ──────────────────────────────────────────
 const wss = new WebSocket.Server({ noServer: true });
 
+// Verify a short-lived HMAC token issued by the portal no-answer handler.
+// Tokens sign `${sid}.${cid}.${exp}` with VOICE_BRIDGE_HMAC_SECRET.
+function verifyVoiceBridgeToken(url) {
+    const secret = process.env.VOICE_BRIDGE_HMAC_SECRET;
+    if (!secret) {
+        console.warn('[VoiceBridge] VOICE_BRIDGE_HMAC_SECRET not set — refusing connection');
+        return null;
+    }
+    const token = url.searchParams.get('token') || '';
+    const exp   = url.searchParams.get('exp')   || '';
+    const sid   = url.searchParams.get('sid')   || '';
+    const cid   = url.searchParams.get('cid')   || '';
+    if (!token || !exp || !sid || !cid) return null;
+
+    const expNum = parseInt(exp, 10);
+    if (!Number.isFinite(expNum) || expNum * 1000 < Date.now()) {
+        console.warn('[VoiceBridge] token expired');
+        return null;
+    }
+
+    const expected = crypto.createHmac('sha256', secret).update(`${sid}.${cid}.${exp}`).digest('hex');
+    let ok = false;
+    try {
+        const a = Buffer.from(token, 'hex');
+        const b = Buffer.from(expected, 'hex');
+        ok = a.length === b.length && crypto.timingSafeEqual(a, b);
+    } catch { ok = false; }
+    if (!ok) {
+        console.warn('[VoiceBridge] token signature mismatch');
+        return null;
+    }
+    return { callSid: sid, clientId: cid };
+}
+
 server.on('upgrade', (req, socket, head) => {
     console.log(`[WS Upgrade] raw req.url="${req.url}" host="${req.headers.host}"`)
     const url = new URL(req.url, `http://localhost:${PORT}`);
     if (url.pathname === '/voice-stream') {
+        const authed = verifyVoiceBridgeToken(url);
+        if (!authed) {
+            console.warn('[VoiceBridge] Rejecting unauthenticated /voice-stream upgrade');
+            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+            socket.destroy();
+            return;
+        }
         wss.handleUpgrade(req, socket, head, (ws) => {
-            handleVoiceStream(ws).catch(err => {
+            handleVoiceStream(ws, authed).catch(err => {
                 console.error(`[VoiceBridge] Unhandled error: ${err.message}`);
                 ws.close();
             });
