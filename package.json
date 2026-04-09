@@ -5,7 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "doctor": "node lib/doctor.js",
+    "doctor:json": "node lib/doctor.js --json",
+    "monitor:daily": "node lib/monitor.js daily",
+    "monitor:health": "node lib/monitor.js health"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.79.0",

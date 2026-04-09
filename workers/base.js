@@ -1,7 +1,8 @@
 const aiClient = require('../lib/ai-client');
 const memoryModule = require('./memory');
 const { emit, withRetry, sendTelegramAlert } = require('../lib/events');
-const taskCounter = require('../lib/task-counter');
+const taskCounter  = require('../lib/task-counter');
+const clientIntel  = require('../lib/client-intel');
 
 const UPSET_TRIGGERS = [
     'speak to someone', 'talk to a person', 'real person', 'human', 'manager',
@@ -64,6 +65,7 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
 
     // Escalate if upset
     if (!skipHandoffs && global.escalateOnUpset && isUpset(message)) {
+        clientIntel.recordTask(clientSlug, { workerName, wasUpset: true });
         await emit('task_completed', { workerName, clientSlug, customerNumber, summary: 'escalated_upset' });
         return `I understand your concern and want to make sure you're taken care of. Someone from the ${biz.name} team will reach out to you directly very shortly. We appreciate your patience.`;
     }
@@ -104,6 +106,7 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
     if (reply && reply !== fallbackReply) {
         memoryModule.saveMessage(clientSlug, customerNumber, 'user', message);
         memoryModule.saveMessage(clientSlug, customerNumber, 'assistant', reply);
+        clientIntel.recordTask(clientSlug, { workerName, wasUpset: isUpset(message) });
         await emit('task_completed', {
             workerName, clientSlug, customerNumber,
             summary: reply.slice(0, 60),
