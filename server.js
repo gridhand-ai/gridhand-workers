@@ -592,6 +592,33 @@ app.post('/test', requireApiKey, async (req, res) => {
 
 // ─── Analytics & Reports ───────────────────────────────────────────────────────
 
+// ── Worker state machine snapshot ─────────────────────────────────────────────
+app.get('/worker-states', requireApiKey, (req, res) => {
+    const { stateMachine } = require('./lib/worker-state');
+    const clientSlug = req.query.client || null;
+    const states = clientSlug
+        ? stateMachine.getClientStates(clientSlug)
+        : stateMachine.snapshot();
+    res.json({ active: stateMachine.getActive().length, states });
+});
+
+// ── Client intelligence summary ───────────────────────────────────────────────
+app.get('/intel/:slug', requireApiKey, (req, res) => {
+    const clientIntel = require('./lib/client-intel');
+    const summary = clientIntel.getSummary(req.params.slug);
+    res.json(summary);
+});
+
+// ── Doctor health check ───────────────────────────────────────────────────────
+app.get('/doctor/:slug', requireApiKey, async (req, res) => {
+    const { execFile } = require('child_process');
+    const path = require('path');
+    execFile('node', [path.join(__dirname, 'lib/doctor.js'), req.params.slug, '--json'], (err, stdout) => {
+        try { res.json(JSON.parse(stdout)); }
+        catch { res.status(500).json({ error: err?.message || 'Doctor failed' }); }
+    });
+});
+
 app.get('/reports/:twilioNumber', requireApiKey, (req, res) => {
     const client = loadClient(req.params.twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });

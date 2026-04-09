@@ -1,8 +1,9 @@
 const aiClient = require('../lib/ai-client');
 const memoryModule = require('./memory');
 const { emit, withRetry, sendTelegramAlert } = require('../lib/events');
-const taskCounter  = require('../lib/task-counter');
-const clientIntel  = require('../lib/client-intel');
+const taskCounter   = require('../lib/task-counter');
+const clientIntel   = require('../lib/client-intel');
+const { stateMachine } = require('../lib/worker-state');
 
 const UPSET_TRIGGERS = [
     'speak to someone', 'talk to a person', 'real person', 'human', 'manager',
@@ -58,6 +59,7 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
     }
 
     if (taskCheck.isNewTask) {
+        stateMachine.start(workerName, clientSlug, customerNumber);
         await emit('task_started', { workerName, clientSlug, customerNumber,
             summary: `Task ${taskCheck.count}/${taskCheck.limit === Infinity ? '∞' : taskCheck.limit} (${taskCheck.tier})`,
         });
@@ -107,11 +109,14 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
         memoryModule.saveMessage(clientSlug, customerNumber, 'user', message);
         memoryModule.saveMessage(clientSlug, customerNumber, 'assistant', reply);
         clientIntel.recordTask(clientSlug, { workerName, wasUpset: isUpset(message) });
+        stateMachine.complete(workerName, clientSlug);
         await emit('task_completed', {
             workerName, clientSlug, customerNumber,
             summary: reply.slice(0, 60),
             provider: aiClient.getModelLabel(modelString),
         });
+    } else {
+        stateMachine.escalate(workerName, clientSlug);
     }
 
     return reply || fallbackReply;
