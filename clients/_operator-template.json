@@ -5,6 +5,14 @@
   "id":   "your-business-slug",
   "twilioNumber": "+1XXXXXXXXXX",
 
+  "billing": {
+    "_tier_options": ["free", "starter", "growth", "command"],
+    "_tier_limits":  {"free": 100, "starter": 1000, "growth": 5000, "command": "unlimited"},
+    "tier": "free",
+    "specialistAddOn": false,
+    "_specialistAddOn_note": "Set true if client pays à la carte for specialist workers — exempts them from task quota"
+  },
+
   "_model_options": {
     "budget_free":       "moonshot/kimi-k2.5",
     "budget_local":      "ollama/qwen2.5:7b",

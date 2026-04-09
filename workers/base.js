@@ -1,6 +1,7 @@
 const aiClient = require('../lib/ai-client');
 const memoryModule = require('./memory');
-const { emit, withRetry } = require('../lib/events');
+const { emit, withRetry, sendTelegramAlert } = require('../lib/events');
+const taskCounter = require('../lib/task-counter');
 
 const UPSET_TRIGGERS = [
     'speak to someone', 'talk to a person', 'real person', 'human', 'manager',
@@ -34,7 +35,32 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
     const global = client.settings?.global || {};
     const clientSlug = client.slug;
 
-    await emit('task_started', { workerName, clientSlug, customerNumber });
+    // ─── Task limit check ─────────────────────────────────────────────────────
+    const taskCheck = await taskCounter.checkAndCount({ client, workerName, customerNumber });
+
+    if (!taskCheck.allowed) {
+        await emit('task_blocked', {
+            workerName, clientSlug, customerNumber,
+            summary: `Limit reached: ${taskCheck.count}/${taskCheck.limit} tasks (${taskCheck.tier} tier)`,
+        });
+
+        // Alert MJ via Telegram (non-blocking)
+        sendTelegramAlert([
+            `*Task Limit Hit* 🔒`,
+            `Client: \`${clientSlug}\``,
+            `Tier: ${taskCheck.tier} | Used: ${taskCheck.count}/${taskCheck.limit}`,
+            `Worker: ${workerName}`,
+            `Customer: ${customerNumber || 'outbound'}`,
+        ].join('\n')).catch(() => {});
+
+        return `Thanks for reaching out to ${biz.name}! We'll get back to you soon.`;
+    }
+
+    if (taskCheck.isNewTask) {
+        await emit('task_started', { workerName, clientSlug, customerNumber,
+            summary: `Task ${taskCheck.count}/${taskCheck.limit === Infinity ? '∞' : taskCheck.limit} (${taskCheck.tier})`,
+        });
+    }
 
     // Escalate if upset
     if (!skipHandoffs && global.escalateOnUpset && isUpset(message)) {
