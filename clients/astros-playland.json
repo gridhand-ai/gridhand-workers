@@ -1,7 +1,7 @@
 {
   "slug": "astros-playland",
   "id": "astros-playland",
-  "supabaseClientId": "a782da11-bddd-4701-9624-6f94f43d4456",
+  "supabaseClientId": "21530b67-d845-4227-9fbe-7327d080523a",
   "twilioNumber": "+14144044418",
 
   "model": "anthropic/claude-haiku-4-5-20251001",
