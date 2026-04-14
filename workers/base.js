@@ -1,9 +1,11 @@
-const aiClient = require('../lib/ai-client');
-const memoryModule = require('./memory');
+const aiClient          = require('../lib/ai-client');
+const memoryModule      = require('./memory');
 const { emit, withRetry, sendTelegramAlert } = require('../lib/events');
-const taskCounter   = require('../lib/task-counter');
-const clientIntel   = require('../lib/client-intel');
-const { stateMachine } = require('../lib/worker-state');
+const taskCounter       = require('../lib/task-counter');
+const clientIntel       = require('../lib/client-intel');
+const { stateMachine }  = require('../lib/worker-state');
+const industryLearnings = require('../lib/industry-learnings');
+const clientPrefs       = require('../lib/client-prefs');
 
 const UPSET_TRIGGERS = [
     'speak to someone', 'talk to a person', 'real person', 'human', 'manager',
@@ -89,12 +91,20 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
     const clientApiKeys = client.apiKeys || {};
     const fallbackReply = `Thanks for reaching out to ${biz.name}! We'll get back to you shortly.`;
 
+    // Enrich system prompt with pooled industry learnings + client-specific preferences
+    // Fetched in parallel, appended to base prompt. Cached, silent on error.
+    const [industryCtx, prefsCtx] = await Promise.all([
+        industryLearnings.get(biz.industry),
+        clientPrefs.get(client.clientId, global.tone),
+    ]);
+    const enrichedPrompt = systemPrompt + industryCtx + prefsCtx;
+
     const reply = await withRetry(
         async () => {
             const r = await aiClient.call({
                 modelString,
                 clientApiKeys,
-                systemPrompt,
+                systemPrompt: enrichedPrompt,
                 messages,
                 maxTokens,
                 _workerName: workerName,
