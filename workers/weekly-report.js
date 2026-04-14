@@ -1,7 +1,7 @@
 const { createClient } = require('@supabase/supabase-js')
 const twilio = require('twilio')
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY)
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
 const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
 
 async function generateWeeklyReport(clientId, businessName) {
@@ -43,7 +43,7 @@ module.exports = {
 
     await twilioClient.messages.create({
       body: report,
-      from: process.env.TWILIO_PHONE_NUMBER,
+      from: process.env.TWILIO_FROM_NUMBER,
       to: phoneNumber,
     })
 
