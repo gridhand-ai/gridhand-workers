@@ -1,5 +1,6 @@
-const base = require('./base');
-const sender = require('./twilio-sender');
+const base       = require('./base');
+const sender     = require('./twilio-sender');
+const makeClient = require('../lib/make-client');
 
 // Outbound: send re-engagement message to dormant customer
 async function send({ client, customerNumber, customerName, lastServiceName, lastServiceDate }) {
@@ -21,6 +22,15 @@ async function send({ client, customerNumber, customerName, lastServiceName, las
         clientSlug: client.slug,
         clientApiKeys: client.apiKeys || {}
     });
+
+    // Fire Make.com: update CRM contact status, remove from dormant segment
+    makeClient.reactivationSent({
+        clientSlug:    client.slug,
+        customerPhone: customerNumber,
+        customerName:  customerName || null,
+        daysDormant:   null,
+        offerText:     settings.offerDiscount ? settings.discountText : null,
+    }).catch(() => {});
 }
 
 // Inbound: handle replies to reactivation messages

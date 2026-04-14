@@ -160,7 +160,7 @@
   },
 
   "integrations": {
-    "_note": "All optional. Only configure what you use.",
+    "_note": "All optional. Only configure what you use. Connections set in the GRIDHAND portal sync here automatically.",
 
     "googleBusiness": {
       "placeId": null,
@@ -168,21 +168,33 @@
     },
 
     "calendar": {
-      "_provider_options": ["google", "calendly"],
+      "_provider_options": ["google", "calendly", "acuity", "square_appointments"],
       "provider": null,
       "credentials": {}
     },
 
     "crm": {
-      "_provider_options": ["gohighlevel", "hubspot", "airtable", "webhook"],
+      "_provider_options": ["gohighlevel", "hubspot", "airtable", "salesforce", "webhook"],
       "provider": null,
       "credentials": {}
     },
 
     "payments": {
-      "_provider_options": ["stripe", "square", "paypal"],
+      "_provider_options": ["stripe", "square", "quickbooks", "paypal"],
       "provider": null,
       "credentials": {}
+    },
+
+    "review_platform": {
+      "_provider_options": ["google", "yelp", "birdeye", "podium"],
+      "provider": "google",
+      "credentials": {}
+    },
+
+    "social": {
+      "_note": "Connected social accounts for the Social Post Worker",
+      "_provider_options": ["facebook", "instagram", "google_business_posts"],
+      "accounts": []
     }
   }
 }

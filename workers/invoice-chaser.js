@@ -1,5 +1,6 @@
-const base = require('./base');
-const sender = require('./twilio-sender');
+const base       = require('./base');
+const sender     = require('./twilio-sender');
+const makeClient = require('../lib/make-client');
 
 // Outbound: send invoice reminder
 async function send({ client, customerNumber, customerName, invoiceNumber, amount, dueDate, paymentLink, chaseNumber = 1 }) {
@@ -26,6 +27,16 @@ async function send({ client, customerNumber, customerName, invoiceNumber, amoun
         clientSlug: client.slug,
         clientApiKeys: client.apiKeys || {}
     });
+
+    // Fire Make.com: update invoice status in QuickBooks/Stripe/Square, log to CRM
+    makeClient.invoiceReminderSent({
+        clientSlug:    client.slug,
+        customerPhone: customerNumber,
+        customerName:  customerName || null,
+        invoiceAmount: amount || null,
+        invoiceId:     invoiceNumber || null,
+        daysOverdue:   null, // passed if available
+    }).catch(() => {});
 }
 
 // Inbound: handle replies to invoice messages

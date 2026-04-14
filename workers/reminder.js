@@ -1,5 +1,6 @@
-const base = require('./base');
-const sender = require('./twilio-sender');
+const base       = require('./base');
+const sender     = require('./twilio-sender');
+const makeClient = require('../lib/make-client');
 
 // Outbound: send appointment reminder
 async function send({ client, customerNumber, customerName, appointmentTime, serviceName, reminderType = '24hr' }) {
@@ -23,6 +24,15 @@ async function send({ client, customerNumber, customerName, appointmentTime, ser
         clientSlug: client.slug,
         clientApiKeys: client.apiKeys || {}
     });
+
+    // Fire Make.com: update appointment status in calendar/scheduling system
+    makeClient.appointmentReminderSent({
+        clientSlug:      client.slug,
+        customerPhone:   customerNumber,
+        customerName:    customerName || null,
+        appointmentTime: appointmentTime || null,
+        serviceType:     serviceName || null,
+    }).catch(() => {});
 }
 
 // Inbound: handle replies to reminders (C = confirm, R = reschedule, questions)

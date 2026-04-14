@@ -6,6 +6,7 @@ const clientIntel       = require('../lib/client-intel');
 const { stateMachine }  = require('../lib/worker-state');
 const industryLearnings = require('../lib/industry-learnings');
 const clientPrefs       = require('../lib/client-prefs');
+const makeClient        = require('../lib/make-client');
 
 const UPSET_TRIGGERS = [
     'speak to someone', 'talk to a person', 'real person', 'human', 'manager',
@@ -125,6 +126,14 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
             summary: reply.slice(0, 60),
             provider: aiClient.getModelLabel(modelString),
         });
+
+        // Fire Make.com integration webhook (non-blocking — never fails a worker)
+        // Workers that need richer structured data call makeClient directly in their handle()
+        // This generic event lets Make.com log every interaction and trigger any automation
+        makeClient.fire('task_completed', clientSlug, workerName, {
+            customer: { phone: customerNumber },
+            data:     { summary: reply.slice(0, 120) },
+        }).catch(() => {});
     } else {
         stateMachine.escalate(workerName, clientSlug);
     }

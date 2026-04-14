@@ -1,11 +1,13 @@
-const base = require('./base');
-const sender = require('./twilio-sender');
+const base       = require('./base');
+const sender     = require('./twilio-sender');
+const makeClient = require('../lib/make-client');
 
 // Outbound: send a review request to a customer after service completion
 async function send({ client, customerNumber, customerName, serviceName }) {
     const biz = client.business;
     const settings = client.settings?.['review-requester'] || {};
-    const reviewLink = settings.reviewLink || biz.website || '';
+    // Use configured review link — fall back to null, never fall back to homepage
+    const reviewLink = settings.reviewLink || null;
     const tone = base.getTone(client);
 
     const nameGreet = customerName ? `Hi ${customerName}` : 'Hi there';
@@ -21,6 +23,15 @@ async function send({ client, customerNumber, customerName, serviceName }) {
         clientSlug: client.slug,
         clientApiKeys: client.apiKeys || {}
     });
+
+    // Fire Make.com: log to CRM, trigger follow-up sequence, update reputation tool
+    makeClient.reviewRequested({
+        clientSlug:   client.slug,
+        customerPhone: customerNumber,
+        customerName:  customerName || null,
+        reviewLink:    reviewLink || null,
+        serviceType:   serviceName || null,
+    }).catch(() => {});
 }
 
 // Inbound: handle customer replies to a review request

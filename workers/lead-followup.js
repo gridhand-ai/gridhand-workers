@@ -1,5 +1,6 @@
-const base = require('./base');
-const sender = require('./twilio-sender');
+const base       = require('./base');
+const sender     = require('./twilio-sender');
+const makeClient = require('../lib/make-client');
 
 // Outbound: follow up with a new lead
 async function send({ client, customerNumber, customerName, inquiryAbout, followUpNumber = 1 }) {
@@ -21,6 +22,15 @@ async function send({ client, customerNumber, customerName, inquiryAbout, follow
         clientSlug: client.slug,
         clientApiKeys: client.apiKeys || {}
     });
+
+    // Fire Make.com: update lead status in CRM, trigger next step in nurture sequence
+    makeClient.leadFollowupSent({
+        clientSlug:    client.slug,
+        customerPhone: customerNumber,
+        customerName:  customerName || null,
+        followupNumber,
+        source:        inquiryAbout || null,
+    }).catch(() => {});
 }
 
 // Inbound: handle lead replies
