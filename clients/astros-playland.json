@@ -1,0 +1,106 @@
+{
+  "slug": "astros-playland",
+  "id": "astros-playland",
+  "supabaseClientId": "a782da11-bddd-4701-9624-6f94f43d4456",
+  "twilioNumber": "+14144044418",
+
+  "model": "anthropic/claude-haiku-4-5-20251001",
+
+  "apiKeys": {
+    "anthropic": null,
+    "twilio": {
+      "accountSid": null,
+      "authToken": null
+    },
+    "moonshot": null,
+    "ollamaBaseUrl": null
+  },
+
+  "workers": [
+    "receptionist",
+    "faq",
+    "after-hours",
+    "review-requester",
+    "reminder",
+    "reactivation",
+    "lead-followup",
+    "invoice-chaser"
+  ],
+
+  "business": {
+    "name": "Astros Playland & Cafe",
+    "industry": "Family Entertainment / Cafe",
+    "city": "Oak Creek, WI",
+    "address": "140 E Rawson Ave Suite 116, Oak Creek, WI 53154",
+    "phone": "(414) 301-4781",
+    "website": "https://www.astrosplaylandcafe.com/",
+    "hours": "Mon-Thu 10am-9pm, Fri-Sat 10am-10pm, Sun 10am-9pm",
+    "services": [
+      { "name": "Indoor Playground", "price": "Check website" },
+      { "name": "Pizza", "price": "Menu pricing" },
+      { "name": "Coffee & Espresso", "price": "Menu pricing" },
+      { "name": "Snacks & Appetizers (cheese curds, wings, tenders, fries)", "price": "Menu pricing" },
+      { "name": "Private Party Bookings", "price": "Contact for details" }
+    ],
+    "faqs": [
+      { "q": "What are your hours?", "a": "We're open Monday–Thursday 10am–9pm, Friday–Saturday 10am–10pm, Sunday 10am–9pm." },
+      { "q": "Where are you located?", "a": "We're at 140 E Rawson Ave Suite 116, Oak Creek, WI 53154." },
+      { "q": "What food do you serve?", "a": "We serve pizza, coffee, espresso, cheese curds, wings, tenders, fries, and other snacks." },
+      { "q": "Is this good for little kids?", "a": "Absolutely! We're an indoor playground and cafe designed for families with young kids. They'll have a blast!" },
+      { "q": "Can I book a birthday party?", "a": "Yes! We offer private party bookings. Visit our website or call (414) 301-4781 for availability and pricing." },
+      { "q": "Do you have a website?", "a": "Yes! Visit https://www.astrosplaylandcafe.com/ for menus, party info, and more." }
+    ]
+  },
+
+  "settings": {
+    "global": {
+      "tone": "friendly, warm, family-focused",
+      "faqHandoff": true,
+      "escalateOnUpset": true,
+      "escalationNumber": null
+    },
+    "review-requester": {
+      "delayHours": 2,
+      "reviewLink": "https://maps.google.com/?cid=5655487815922698538"
+    },
+    "reminder": {
+      "firstReminderHours": 24,
+      "secondReminderHours": 1,
+      "includeAddress": true,
+      "includeCancellationInfo": true
+    },
+    "after-hours": {
+      "captureLeadInfo": true
+    },
+    "reactivation": {
+      "dormantDays": 45,
+      "offerDiscount": false,
+      "discountText": "Come visit us again soon — the kids will love it!"
+    },
+    "lead-followup": {
+      "followUpCount": 2,
+      "daysBetweenFollowUps": 3
+    },
+    "intake": {
+      "collectFields": ["name", "service", "preferredTime", "contactInfo"]
+    },
+    "invoice-chaser": {
+      "firstChaseAfterDays": 3,
+      "followUpDays": 7,
+      "maxFollowUps": 3
+    },
+    "booking": {
+      "bookingMethod": "phone",
+      "bookingLink": "https://www.astrosplaylandcafe.com/"
+    }
+  },
+
+  "integrations": {
+    "googleBusiness": {
+      "placeId": "ChIJn9t9Ap0VBYgRKkmfWzRUfE4",
+      "googleMapsUrl": "https://maps.google.com/?cid=5655487815922698538",
+      "currentRating": 4.4,
+      "totalReviews": 64
+    }
+  }
+}
