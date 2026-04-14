@@ -33,28 +33,97 @@
     "city": "Oak Creek, WI",
     "address": "140 E Rawson Ave Suite 116, Oak Creek, WI 53154",
     "phone": "(414) 301-4781",
+    "email": "hello@astrosplaylandcafe.com",
     "website": "https://www.astrosplaylandcafe.com/",
-    "hours": "Mon-Thu 10am-9pm, Fri-Sat 10am-10pm, Sun 10am-9pm",
-    "services": [
-      { "name": "Indoor Playground", "price": "Check website" },
-      { "name": "Pizza", "price": "Menu pricing" },
-      { "name": "Coffee & Espresso", "price": "Menu pricing" },
-      { "name": "Snacks & Appetizers (cheese curds, wings, tenders, fries)", "price": "Menu pricing" },
-      { "name": "Private Party Bookings", "price": "Contact for details" }
+    "instagram": "https://www.instagram.com/astrosplaylandcafe/",
+    "hours": "Mon-Thu 10am-9pm, Fri-Sun 10am-10pm",
+    "description": "Oak Creek's premier space-themed indoor playground and family cafe. An intergalactic adventure designed for curious explorers aged 1-12.",
+    "targetAges": "1-12 years",
+    "status": "Party room bookings are open now. General walk-in admission is coming soon — currently by booking only.",
+
+    "admission": {
+      "childPerDay": "$18.99 per child (all-day, no time limits)",
+      "adults": "2 adults FREE per play pass. Additional adults $4.99 each.",
+      "underOne": "FREE",
+      "reentry": "No re-entry once you leave",
+      "socks": "$3.99 Astro socks required for all guests (can be purchased at front desk)",
+      "waiver": "Required for all participants — sign online at https://waiver.roller.app/astrosplaylandandcafe or at the front desk"
+    },
+
+    "membership": {
+      "price": "$39.99 per child per month",
+      "includes": "Unlimited visits, cafe discounts, buddy pass (bring a friend twice per month — valid after 1 month of membership)",
+      "cancellation": "Cancel anytime, no fee"
+    },
+
+    "partyPackages": {
+      "rooms": ["Rocket Party Room (rocket ship theme)", "Galaxy Party Room (planets and galaxy theme)"],
+      "capacity": "Up to 30 guests (kids + adults) per room",
+      "duration": "2-hour private room rental",
+      "pricing": "$300 Mon-Thu / $400 Fri-Sun",
+      "includes": [
+        "Private party room for 2 hours",
+        "2 party pizzas (choice of cheese, veggie, or beef)",
+        "2 pitchers of lemonade",
+        "10 play access passes",
+        "Astro socks for 10 kids",
+        "Tables, chairs, plates, cups, napkins"
+      ],
+      "outsideFood": "Birthday cake only — no other outside food or drinks permitted",
+      "waiver": "Required for all participants",
+      "cancellation": "Cancel within 7 days for full deposit back as in-store credit",
+      "bookingAdvice": "Book 2-4 weeks in advance — weekends fill quickly",
+      "bookingUrl": "https://ecom.roller.app/astrosplaylandandcafe/buynow/en-us/home"
+    },
+
+    "playAreas": [
+      "Multi-level space station with cosmic slides and interactive mission zones",
+      "Spider web climbing structure (ages 5+)",
+      "5 slides — gentle slopes to fast drops for all ages",
+      "Inflatable air court (basketball and soccer)",
+      "Toddler Galaxy — safe area for ages 1-4: soft ball pit, gentle slide, interactive supermarket, role-play police station, padded play area"
     ],
+
+    "cafe": {
+      "description": "Order from your seat with full view of the play area",
+      "menu": ["Pizza (cheese, veggie, beef)", "Chicken tenders", "Fries", "Coffee", "Lattes", "Teas"],
+      "priceRange": "$5–$20",
+      "dietary": "Veggie pizza available. More vegetarian, vegan, and gluten-free options coming soon.",
+      "allergens": "Allergen info available online. Notify staff of allergies when ordering."
+    },
+
+    "services": [
+      { "name": "General Admission (coming soon)", "price": "$18.99/child, adults 2 free per pass" },
+      { "name": "Monthly Membership", "price": "$39.99/child/month — unlimited visits" },
+      { "name": "Party Room — Mon-Thu", "price": "$300" },
+      { "name": "Party Room — Fri-Sun", "price": "$400" },
+      { "name": "Astro Socks", "price": "$3.99 (required for all guests)" },
+      { "name": "Gift Cards", "price": "Available online" }
+    ],
+
     "faqs": [
-      { "q": "What are your hours?", "a": "We're open Monday–Thursday 10am–9pm, Friday–Saturday 10am–10pm, Sunday 10am–9pm." },
+      { "q": "What are your hours?", "a": "We're open Monday–Thursday 10am–9pm and Friday–Sunday 10am–10pm, 7 days a week!" },
+      { "q": "Are you open for walk-ins?", "a": "Party room bookings are open now! General walk-in admission is coming soon. Stay tuned — we'll announce it on our Instagram @astrosplaylandcafe." },
       { "q": "Where are you located?", "a": "We're at 140 E Rawson Ave Suite 116, Oak Creek, WI 53154." },
-      { "q": "What food do you serve?", "a": "We serve pizza, coffee, espresso, cheese curds, wings, tenders, fries, and other snacks." },
-      { "q": "Is this good for little kids?", "a": "Absolutely! We're an indoor playground and cafe designed for families with young kids. They'll have a blast!" },
-      { "q": "Can I book a birthday party?", "a": "Yes! We offer private party bookings. Visit our website or call (414) 301-4781 for availability and pricing." },
-      { "q": "Do you have a website?", "a": "Yes! Visit https://www.astrosplaylandcafe.com/ for menus, party info, and more." }
+      { "q": "How much does it cost?", "a": "All-day admission is $18.99 per child (no time limits!). 2 adults get in FREE per play pass, and additional adults are $4.99 each. Kids under 1 are always free." },
+      { "q": "Do kids need socks?", "a": "Yes! All guests need Astro socks. They're $3.99 at the front desk or you can bring your own clean socks." },
+      { "q": "Is there a time limit?", "a": "Nope! It's all-day admission. Stay as long as you want — no time limits. Just no re-entry if you leave." },
+      { "q": "What ages is this for?", "a": "We're designed for kids aged 1–12. We have a dedicated Toddler Galaxy for our littlest explorers (ages 1–4) and bigger structures like the spider web climb and slides for older kids (ages 5+)." },
+      { "q": "Do you have food?", "a": "Yes! We have a full cafe — pizza (cheese, veggie, or beef), chicken tenders, fries, coffee, lattes, and teas. Menu items range from $5–$20. You can order right from your seat while watching the kids play." },
+      { "q": "Can I bring outside food?", "a": "No outside food or drinks are allowed, except birthday cake for parties. We have a great menu to keep everyone fueled up!" },
+      { "q": "Can I book a birthday party?", "a": "Absolutely! We have two private party rooms — the Rocket Room and the Galaxy Room. Parties are $300 Mon–Thu and $400 Fri–Sun. Each package includes 2 hours in a private room, 2 pizzas, 2 pitchers of lemonade, 10 play passes, Astro socks for 10 kids, and all the setup. We recommend booking 2–4 weeks in advance — weekends go fast!" },
+      { "q": "How many people can come to a party?", "a": "Each party room fits up to 30 guests (kids and adults combined)." },
+      { "q": "Can I bring my own cake?", "a": "Yes! Birthday cake is the only outside food permitted. Bring the cake, we handle everything else." },
+      { "q": "What is your cancellation policy for parties?", "a": "Cancel within 7 days of booking and you'll receive your full deposit back as in-store credit." },
+      { "q": "Do I need a waiver?", "a": "Yes, all participants must complete a waiver before play. You can sign online at https://waiver.roller.app/astrosplaylandandcafe or at the front desk when you arrive." },
+      { "q": "Do you have a membership?", "a": "Yes! Our monthly membership is $39.99 per child per month and includes unlimited visits, cafe discounts, and a buddy pass to bring a friend twice per month. Cancel anytime, no fees." },
+      { "q": "Do you have a website?", "a": "Yes! Visit https://www.astrosplaylandcafe.com/ for booking, party info, and more. You can also follow us on Instagram @astrosplaylandcafe." }
     ]
   },
 
   "settings": {
     "global": {
-      "tone": "friendly, warm, family-focused",
+      "tone": "friendly, warm, family-focused, space-themed enthusiasm",
       "faqHandoff": true,
       "escalateOnUpset": true,
       "escalationNumber": null
@@ -75,7 +144,7 @@
     "reactivation": {
       "dormantDays": 45,
       "offerDiscount": false,
-      "discountText": "Come visit us again soon — the kids will love it!"
+      "discountText": "We'd love to have your family back for another cosmic adventure!"
     },
     "lead-followup": {
       "followUpCount": 2,
@@ -90,8 +159,8 @@
       "maxFollowUps": 3
     },
     "booking": {
-      "bookingMethod": "phone",
-      "bookingLink": "https://www.astrosplaylandcafe.com/"
+      "bookingMethod": "online",
+      "bookingLink": "https://ecom.roller.app/astrosplaylandandcafe/buynow/en-us/home"
     }
   },
 
@@ -101,6 +170,19 @@
       "googleMapsUrl": "https://maps.google.com/?cid=5655487815922698538",
       "currentRating": 4.4,
       "totalReviews": 64
+    },
+    "roller": {
+      "venueSlug": "astrosplaylandandcafe",
+      "checkoutUrl": "https://ecom.roller.app/astrosplaylandandcafe/buynow/en-us/home",
+      "waiverUrl": "https://waiver.roller.app/astrosplaylandandcafe",
+      "productIds": {
+        "allDayPass": "1745120",
+        "membership": "1736058",
+        "giftCard": "1752414",
+        "partyRocket": "1749579",
+        "partyGalaxy": "1778055"
+      },
+      "status": "pending_oauth"
     }
   }
 }
