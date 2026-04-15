@@ -779,8 +779,9 @@ app.post('/provision', requireApiKey, async (req, res) => {
         id:           safeSlug,
         twilioNumber: safeNumber,
 
-        // Portal client ID (Supabase UUID) — used to link this config back to the portal client record
-        ...(clientId ? { clientId } : {}),
+        // Portal client ID (Supabase UUID) — used to link this config back to the portal client record.
+        // MUST be "supabaseClientId" — loadClientBySupabaseId() in loader.js searches for this field.
+        ...(clientId ? { supabaseClientId: clientId } : {}),
 
         model: 'anthropic/claude-haiku-4-5-20251001',
 

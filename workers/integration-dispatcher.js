@@ -23,13 +23,14 @@ const onboardingWorker      = require('./onboarding');
 // Every slug in the catalog maps to one of these categories.
 // New platforms: add the slug here with the right category — no other changes needed.
 const PLATFORM_CATEGORY = {
-  // Appointments
+  // Appointments / Bookings
   calendly: 'appointment', acuity_scheduling: 'appointment', mindbody: 'appointment',
   vagaro: 'appointment', booksy: 'appointment', glossgenius: 'appointment',
   fresha: 'appointment', setmore: 'appointment', simplybook: 'appointment',
   zenoti: 'appointment', phorest: 'appointment', jane_app: 'appointment',
   styleseat: 'appointment', schedulicity: 'appointment', appointy: 'appointment',
   square_appointments: 'appointment', timely: 'appointment', bookedby: 'appointment',
+  roller: 'appointment',
 
   // Payments
   stripe: 'payment', square: 'payment', paypal: 'payment', clover: 'payment',
@@ -213,20 +214,6 @@ async function dispatchEvent(client, platform, eventType, data) {
 
     // ── Calendly (specific event handling) ────────────────────────────────────
     if (platformLower === 'calendly') {
-            // New booking: send appointment reminder
-            const appointmentTime = extractAppointmentTime(platform, data);
-            const serviceName = data?.payload?.event_type?.name || null;
-            await reminderWorker.send({
-                client,
-                customerNumber:  customerPhone,
-                customerName,
-                appointmentTime: appointmentTime || 'your upcoming appointment',
-                serviceName,
-                reminderType:    '24hr',
-            });
-            return { dispatched: true, worker: 'reminder', action: 'appointment_reminder' };
-        }
-
         if (eventLower === 'invitee.canceled') {
             // Cancellation: try to re-engage
             await reactivationWorker.send({
@@ -251,6 +238,19 @@ async function dispatchEvent(client, platform, eventType, data) {
             });
             return { dispatched: true, worker: 'reminder', action: 'reschedule_reminder' };
         }
+
+        // Default: new booking (invitee.created or any other Calendly event) — send reminder
+        const appointmentTime = extractAppointmentTime(platform, data);
+        const serviceName = data?.payload?.event_type?.name || null;
+        await reminderWorker.send({
+            client,
+            customerNumber:  customerPhone,
+            customerName,
+            appointmentTime: appointmentTime || 'your upcoming appointment',
+            serviceName,
+            reminderType:    '24hr',
+        });
+        return { dispatched: true, worker: 'reminder', action: 'appointment_reminder' };
     }
 
     // ── Stripe ────────────────────────────────────────────────────────────────
