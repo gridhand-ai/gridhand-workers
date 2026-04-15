@@ -190,7 +190,14 @@ async function handleVoiceStream(twilioWs, authClaim = null) {
 
   elWs.on('open', () => {
     console.log(`[VoiceBridge] ElevenLabs WS opened for ${client.business_name}`)
-    elWs.send(JSON.stringify({ type: 'conversation_initiation_client_data' }))
+    // Tell ElevenLabs we're sending mulaw 8kHz (Twilio's native format).
+    // Without this override the agent defaults to pcm_16000 and misreads the audio.
+    elWs.send(JSON.stringify({
+      type: 'conversation_initiation_client_data',
+      conversation_config_override: {
+        asr: { user_input_audio_format: 'ulaw_8000' }
+      }
+    }))
     elReady = true
 
     if (audioBuffer.length > 0) {
