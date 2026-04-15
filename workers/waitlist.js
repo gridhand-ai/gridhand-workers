@@ -34,15 +34,20 @@ async function run({ client, message, customerNumber }) {
         return `No problem! We'll keep you on the list for next time. We'll reach out when another spot opens up. — ${biz.name}`;
     }
 
-    const systemPrompt = `You are a waitlist manager for ${biz.name}, a ${biz.industry} business.
-${tone}
+    const systemPrompt = `You are a waitlist manager for ${biz.name}, a ${biz.industry} business. ${tone}
+
+<business>
+Services: ${biz.services?.map(s => s.name).join(', ') || 'N/A'}
+Phone: ${biz.phone}
+</business>
+
+<rules>
 - Keep replies SHORT — 1-2 sentences max.
 - If they want to join the waitlist: confirm you've noted them and will reach out when a spot opens.
 - If they're responding to a spot notification and want it: direct them to call ${biz.phone} immediately to confirm.
 - If they want to be removed from the waitlist: confirm removal graciously.
-- Services: ${biz.services?.map(s => s.name).join(', ') || 'N/A'}
-- Phone: ${biz.phone}
-- Sign off as ${biz.name}.`;
+- Sign off as ${biz.name}.
+</rules>`;
 
     return base.run({ client, message, customerNumber, workerName: 'Waitlist', systemPrompt });
 }

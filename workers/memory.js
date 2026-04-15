@@ -1,41 +1,48 @@
-const fs = require('fs');
-const path = require('path');
+const { createClient } = require('@supabase/supabase-js');
 
-const MEMORY_DIR = path.join(__dirname, '../memory');
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
 const MAX_HISTORY = 20;
 
-function getMemoryPath(clientSlug, customerNumber) {
-    const dir = path.join(MEMORY_DIR, clientSlug);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    const safe = customerNumber.replace(/[^a-zA-Z0-9]/g, '');
-    return path.join(dir, `${safe}.json`);
-}
-
-function loadHistory(clientSlug, customerNumber) {
+async function loadHistory(clientSlug, customerNumber) {
     try {
-        const filePath = getMemoryPath(clientSlug, customerNumber);
-        if (!fs.existsSync(filePath)) return [];
-        return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        const { data } = await supabase
+            .from('conversation_memory')
+            .select('messages')
+            .eq('client_slug', clientSlug)
+            .eq('customer_phone', customerNumber)
+            .maybeSingle();
+        return data?.messages || [];
     } catch {
         return [];
     }
 }
 
-function saveMessage(clientSlug, customerNumber, role, content) {
+async function saveMessage(clientSlug, customerNumber, role, content) {
     try {
-        const filePath = getMemoryPath(clientSlug, customerNumber);
-        const history = loadHistory(clientSlug, customerNumber);
-        history.push({ role, content, ts: Date.now() });
-        fs.writeFileSync(filePath, JSON.stringify(history.slice(-MAX_HISTORY), null, 2));
+        const history = await loadHistory(clientSlug, customerNumber);
+        const updated = [...history, { role, content, ts: Date.now() }].slice(-MAX_HISTORY);
+        await supabase
+            .from('conversation_memory')
+            .upsert(
+                { client_slug: clientSlug, customer_phone: customerNumber, messages: updated },
+                { onConflict: 'client_slug,customer_phone' }
+            );
     } catch (e) {
         console.log(`[Memory] Failed to save: ${e.message}`);
     }
 }
 
-function clearHistory(clientSlug, customerNumber) {
+async function clearHistory(clientSlug, customerNumber) {
     try {
-        const filePath = getMemoryPath(clientSlug, customerNumber);
-        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        await supabase
+            .from('conversation_memory')
+            .delete()
+            .eq('client_slug', clientSlug)
+            .eq('customer_phone', customerNumber);
     } catch (e) {
         console.log(`[Memory] Failed to clear: ${e.message}`);
     }

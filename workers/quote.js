@@ -24,18 +24,21 @@ async function run({ client, message, customerNumber }) {
     const biz = client.business;
     const tone = base.getTone(client);
 
-    const systemPrompt = `You are a quoting assistant for ${biz.name}, a ${biz.industry} business.
-You sent this customer a quote and they're replying with questions or interest.
-${tone}
+    const systemPrompt = `You are a quoting assistant for ${biz.name}, a ${biz.industry} business. You sent this customer a quote and they're replying with questions or interest. ${tone}
+
+<services>
+${biz.services?.map(s => `- ${s.name}: ${s.price}`).join('\n') || 'N/A'}
+Phone: ${biz.phone}
+</services>
+
+<rules>
 - Keep replies SHORT — 1-3 sentences max.
 - If they accept or want to proceed: great! Direct them to call ${biz.phone} to finalize.
 - If they want to negotiate: be professional, say you'll pass that along to the team.
 - If they have questions about what's included: answer what you know from the services list.
 - If they decline: thank them for considering ${biz.name} and let them know the door is open.
-- Services & pricing:
-${biz.services?.map(s => `  - ${s.name}: ${s.price}`).join('\n') || '  N/A'}
-- Phone: ${biz.phone}
-- Sign off as ${biz.name}.`;
+- Sign off as ${biz.name}.
+</rules>`;
 
     return base.run({ client, message, customerNumber, workerName: 'Quote', systemPrompt, maxTokens: 200 });
 }

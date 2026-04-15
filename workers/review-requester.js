@@ -41,16 +41,22 @@ async function run({ client, message, customerNumber }) {
     const tone = base.getTone(client);
     const reviewLink = settings.reviewLink || biz.website || '';
 
-    const systemPrompt = `You are a friendly assistant for ${biz.name}, a ${biz.industry} business.
-You just sent this customer a request to leave a Google review.
-${tone}
+    const systemPrompt = `You are a friendly assistant for ${biz.name}, a ${biz.industry} business. You just sent this customer a request to leave a Google review. ${tone}
+
+<business>
+Hours: ${biz.hours}
+Phone: ${biz.phone}
+Website: ${biz.website || 'N/A'}
+Review link: ${reviewLink || 'N/A'}
+</business>
+
+<rules>
 - Keep replies SHORT — 1-2 sentences max.
 - If they say they left a review or will leave one: thank them warmly.
 - If they say they won't or ask why: be understanding, never push.
-- If they have a service question: answer helpfully using this info:
-  Hours: ${biz.hours} | Phone: ${biz.phone} | Website: ${biz.website || 'N/A'}
-- Review link (if needed): ${reviewLink}
-- Sign off as ${biz.name}.`;
+- If they have a service question: answer helpfully using the business info above.
+- Sign off as ${biz.name}.
+</rules>`;
 
     return base.run({ client, message, customerNumber, workerName: 'ReviewRequester', systemPrompt });
 }

@@ -9,28 +9,32 @@ async function run({ client, message, customerNumber }) {
     const fields = settings.collectFields || ['name', 'service', 'preferredTime', 'contactInfo'];
 
     // Load history to understand what step we're on
-    const history = memoryModule.loadHistory(client.slug, customerNumber);
+    const history = await memoryModule.loadHistory(client.slug, customerNumber);
 
-    const systemPrompt = `You are an intake assistant for ${biz.name}, a ${biz.industry} business.
-Your job is to collect information from a new customer through a friendly SMS conversation.
-${tone}
+    const systemPrompt = `You are an intake assistant for ${biz.name}, a ${biz.industry} business. Your job is to collect information from a new customer through a friendly SMS conversation. ${tone}
 
-FIELDS TO COLLECT (in order): ${fields.join(', ')}
+<fields>
+Collect these in order: ${fields.join(', ')}
+</fields>
 
-CONVERSATION RULES:
+<business>
+Services: ${biz.services?.map(s => `${s.name} (${s.price})`).join(', ') || 'N/A'}
+Hours: ${biz.hours}
+Phone: ${biz.phone}
+</business>
+
+<rules>
 - Ask for ONE piece of information at a time — never list multiple questions.
 - Be warm and conversational, not robotic.
 - If they've already provided a piece of info naturally, don't ask for it again.
 - Once all fields are collected, thank them and let them know the team will follow up.
-- If they ask about services, pricing, or hours, answer using this info:
-  Services: ${biz.services?.map(s => `${s.name} (${s.price})`).join(', ') || 'N/A'}
-  Hours: ${biz.hours}
-  Phone: ${biz.phone}
 - Keep each reply to 1-2 sentences.
 - Sign off with "${biz.name}" only at the end.
+</rules>
 
-CURRENT CONVERSATION HISTORY:
-${history.map(h => `${h.role === 'user' ? 'Customer' : 'You'}: ${h.content}`).join('\n') || 'No history yet — this is the first message.'}`;
+<history>
+${history.map(h => `${h.role === 'user' ? 'Customer' : 'You'}: ${h.content}`).join('\n') || 'No history yet — this is the first message.'}
+</history>`;
 
     return base.run({
         client,

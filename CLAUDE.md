@@ -1,6 +1,6 @@
 # GRIDHAND Workers — Claude Config
 
-See master config at `~/Desktop/workspace/CLAUDE.md` for full context.
+See master config at `~/.claude/CLAUDE.md` for full context.
 
 ## This Project
 Node.js + Express. SMS AI worker backend. Deployed on Railway.

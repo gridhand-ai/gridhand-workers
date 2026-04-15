@@ -1,37 +1,40 @@
-const { createClient } = require('@supabase/supabase-js')
-const twilio = require('twilio')
+const { createClient } = require('@supabase/supabase-js');
+const twilio = require('twilio');
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
-const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
 async function generateWeeklyReport(clientId, businessName) {
-  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const { data: activities } = await supabase
     .from('activity_log')
     .select('worker_type, created_at, description')
     .eq('client_id', clientId)
     .gte('created_at', weekAgo)
-    .order('created_at', { ascending: false })
+    .order('created_at', { ascending: false });
 
   if (!activities?.length) {
-    return `${businessName} Weekly Report\n\nNo activity this week. Your workers are standing by.`
+    return `${businessName} Weekly Report\n\nNo activity this week. Your workers are standing by.`;
   }
 
-  const workerCounts = {}
+  const workerCounts = {};
   activities.forEach(a => {
-    workerCounts[a.worker_type] = (workerCounts[a.worker_type] || 0) + 1
-  })
-  const topWorker = Object.entries(workerCounts).sort((a, b) => b[1] - a[1])[0]
+    workerCounts[a.worker_type] = (workerCounts[a.worker_type] || 0) + 1;
+  });
+  const topWorker = Object.entries(workerCounts).sort((a, b) => b[1] - a[1])[0];
 
-  const dayCounts = {}
+  const dayCounts = {};
   activities.forEach(a => {
-    const day = new Date(a.created_at).toLocaleDateString('en-US', { weekday: 'long' })
-    dayCounts[day] = (dayCounts[day] || 0) + 1
-  })
-  const busiestDay = Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0]
+    const day = new Date(a.created_at).toLocaleDateString('en-US', { weekday: 'long' });
+    dayCounts[day] = (dayCounts[day] || 0) + 1;
+  });
+  const busiestDay = Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0];
 
-  return `${businessName} — Weekly Report\n\n${activities.length} tasks completed\nTop worker: ${topWorker[0]} (${topWorker[1]} tasks)\nBusiest day: ${busiestDay[0]}\n\nYour AI team handled everything while you focused on your work.\n\n— GRIDHAND AI`
+  return `${businessName} — Weekly Report\n\n${activities.length} tasks completed\nTop worker: ${topWorker[0]} (${topWorker[1]} tasks)\nBusiest day: ${busiestDay[0]}\n\nYour AI team handled everything while you focused on your work.\n\n— GRIDHAND AI`;
 }
 
 module.exports = {
@@ -39,28 +42,28 @@ module.exports = {
   description: 'Sends weekly performance summary every Monday',
 
   async run(clientId, businessName, phoneNumber) {
-    const report = await generateWeeklyReport(clientId, businessName)
+    const report = await generateWeeklyReport(clientId, businessName);
 
     await twilioClient.messages.create({
       body: report,
-      from: process.env.TWILIO_FROM_NUMBER,
+      from: process.env.TWILIO_PHONE_NUMBER,
       to: phoneNumber,
-    })
+    });
 
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const { data: activities } = await supabase
       .from('activity_log')
       .select('worker_type')
       .eq('client_id', clientId)
-      .gte('created_at', weekAgo)
+      .gte('created_at', weekAgo);
 
     await supabase.from('activity_log').insert({
       client_id: clientId,
       worker_type: 'weekly-report',
       description: `Weekly report sent: ${activities?.length || 0} tasks this week`,
       created_at: new Date().toISOString(),
-    })
+    });
 
-    return { success: true, report }
+    return { success: true, report };
   },
-}
+};

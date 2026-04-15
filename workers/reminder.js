@@ -50,15 +50,21 @@ async function run({ client, message, customerNumber }) {
         return `No problem! Please call us at ${biz.phone} or visit ${biz.website || 'our website'} to reschedule. We'll find a time that works for you. — ${biz.name}`;
     }
 
-    const systemPrompt = `You are an appointment assistant for ${biz.name}, a ${biz.industry} business.
-You sent this customer an appointment reminder and they're replying.
-${tone}
+    const systemPrompt = `You are an appointment assistant for ${biz.name}, a ${biz.industry} business. You sent this customer an appointment reminder and they're replying. ${tone}
+
+<business>
+Hours: ${biz.hours}
+Address: ${biz.address}
+Phone: ${biz.phone}
+</business>
+
+<rules>
 - Keep replies SHORT — 1-2 sentences max.
 - If they want to confirm: confirm happily.
 - If they want to reschedule: direct them to call ${biz.phone}.
 - If they want to cancel: be understanding, ask them to call ${biz.phone} to cancel officially.
-- Hours: ${biz.hours} | Address: ${biz.address}
-- Sign off as ${biz.name}.`;
+- Sign off as ${biz.name}.
+</rules>`;
 
     return base.run({ client, message, customerNumber, workerName: 'Reminder', systemPrompt });
 }

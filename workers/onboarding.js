@@ -36,32 +36,34 @@ async function run({ client, message, customerNumber }) {
         'Answer any initial questions'
     ];
 
-    const history = memoryModule.loadHistory(client.slug, customerNumber);
+    const history = await memoryModule.loadHistory(client.slug, customerNumber);
 
-    const systemPrompt = `You are the onboarding assistant for ${biz.name}, a ${biz.industry} business.
-A new customer just joined and you're guiding them through getting started.
-${tone}
+    const systemPrompt = `You are the onboarding assistant for ${biz.name}, a ${biz.industry} business. A new customer just joined and you're guiding them through getting started. ${tone}
 
-ONBOARDING STEPS (guide them through these naturally):
+<steps>
 ${onboardingSteps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+</steps>
 
-BUSINESS INFO TO SHARE:
-- Hours: ${biz.hours}
-- Phone: ${biz.phone}
-- Website: ${biz.website || 'N/A'}
-- Address: ${biz.address}
-- Services: ${biz.services?.map(s => s.name).join(', ') || 'N/A'}
+<business>
+Hours: ${biz.hours}
+Phone: ${biz.phone}
+Website: ${biz.website || 'N/A'}
+Address: ${biz.address}
+Services: ${biz.services?.map(s => s.name).join(', ') || 'N/A'}
+</business>
 
-RULES:
+<rules>
 - Be warm and welcoming — this is their first impression.
 - Cover one step at a time naturally in the conversation.
 - Keep each reply to 2-3 sentences max.
 - Answer any questions they have along the way.
 - Once all steps are covered, let them know they're all set and to reach out anytime.
 - Sign off as ${biz.name}.
+</rules>
 
-CONVERSATION SO FAR:
-${history.map(h => `${h.role === 'user' ? 'Customer' : 'You'}: ${h.content}`).join('\n') || 'Just getting started!'}`;
+<history>
+${history.map(h => `${h.role === 'user' ? 'Customer' : 'You'}: ${h.content}`).join('\n') || 'Just getting started!'}
+</history>`;
 
     return base.run({
         client,

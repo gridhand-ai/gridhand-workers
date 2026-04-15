@@ -38,19 +38,26 @@ async function run({ client, message, customerNumber }) {
     const biz = client.business;
     const tone = base.getTone(client);
 
-    const systemPrompt = `You are a lead follow-up assistant for ${biz.name}, a ${biz.industry} business.
-This person showed interest in ${biz.name} and you're following up.
-${tone}
+    const systemPrompt = `You are a lead follow-up assistant for ${biz.name}, a ${biz.industry} business. This person showed interest in ${biz.name} and you're following up. ${tone}
+
+<services>
+${biz.services?.map(s => `- ${s.name}: ${s.price}`).join('\n') || 'N/A'}
+Hours: ${biz.hours}
+Phone: ${biz.phone}
+Website: ${biz.website || 'N/A'}
+</services>
+
+<faqs>
+${biz.faqs?.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n') || 'N/A'}
+</faqs>
+
+<rules>
 - Keep replies SHORT — 1-3 sentences max.
 - Goal: answer their questions and move them toward booking/calling.
 - To book or get a quote: call ${biz.phone} or visit ${biz.website || 'our website'}.
 - Never be pushy — be helpful and let them lead.
-- Services & pricing:
-${biz.services?.map(s => `  - ${s.name}: ${s.price}`).join('\n') || '  N/A'}
-- Hours: ${biz.hours}
-- FAQs:
-${biz.faqs?.map(f => `  Q: ${f.q}\n  A: ${f.a}`).join('\n\n') || '  N/A'}
-- Sign off as ${biz.name}.`;
+- Sign off as ${biz.name}.
+</rules>`;
 
     return base.run({ client, message, customerNumber, workerName: 'LeadFollowup', systemPrompt, maxTokens: 200 });
 }

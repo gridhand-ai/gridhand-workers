@@ -82,7 +82,7 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
     }
 
     // Load conversation history
-    const history  = memoryModule.loadHistory(clientSlug, customerNumber);
+    const history  = await memoryModule.loadHistory(clientSlug, customerNumber);
     const messages = [
         ...history.map(h => ({ role: h.role, content: h.content })),
         { role: 'user', content: message },
@@ -117,8 +117,8 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
     );
 
     if (reply && reply !== fallbackReply) {
-        memoryModule.saveMessage(clientSlug, customerNumber, 'user', message);
-        memoryModule.saveMessage(clientSlug, customerNumber, 'assistant', reply);
+        await memoryModule.saveMessage(clientSlug, customerNumber, 'user', message);
+        await memoryModule.saveMessage(clientSlug, customerNumber, 'assistant', reply);
         clientIntel.recordTask(clientSlug, { workerName, wasUpset: isUpset(message) });
         stateMachine.complete(workerName, clientSlug);
         await emit('task_completed', {
