@@ -18,20 +18,27 @@ async function run({ client, message, customerNumber }) {
 You greet customers and help direct them.
 ${tone}
 
-BUSINESS INFO:
-- Name: ${biz.name}
-- Phone: ${biz.phone}
-- Hours: ${biz.hours}
-- Website: ${biz.website || 'N/A'}
-- Address: ${biz.address}
+<business>
+Name: ${biz.name}
+Phone: ${biz.phone}
+Hours: ${biz.hours}
+Website: ${biz.website || 'N/A'}
+Address: ${biz.address}
+</business>
 
-SERVICES:
-${biz.services?.map(s => `- ${s.name}: ${s.price}`).join('\n') || 'N/A'}
+<services>
+${biz.services?.map(s => `${s.name}: ${s.price}`).join('\n') || 'N/A'}
+</services>
 
-WHAT YOU CAN HELP WITH:
+<capabilities>
 ${capabilities.map(c => `- ${c}`).join('\n') || '- Answering questions and directing to the right team member'}
+</capabilities>
 
-RULES:
+<faqs>
+${biz.faqs?.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n') || 'N/A'}
+</faqs>
+
+<rules>
 - Keep replies SHORT — 2-3 sentences max.
 - Be warm and welcoming.
 - If they want to book: help gather their service interest and preferred time.
@@ -40,9 +47,7 @@ RULES:
 - If they want to speak to a human: offer to have the team call them back.
 - Never make up information not listed above.
 - Sign off as ${biz.name}.
-
-COMMON FAQs:
-${biz.faqs?.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n') || 'N/A'}`;
+</rules>`;
 
     return base.run({ client, message, customerNumber, workerName: 'Receptionist', systemPrompt, maxTokens: 200 });
 }
