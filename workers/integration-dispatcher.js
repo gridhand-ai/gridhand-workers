@@ -19,6 +19,65 @@ const leadFollowupWorker    = require('./lead-followup');
 const invoiceChaserWorker   = require('./invoice-chaser');
 const onboardingWorker      = require('./onboarding');
 
+// ── Platform → category map ───────────────────────────────────────────────────
+// Every slug in the catalog maps to one of these categories.
+// New platforms: add the slug here with the right category — no other changes needed.
+const PLATFORM_CATEGORY = {
+  // Appointments
+  calendly: 'appointment', acuity_scheduling: 'appointment', mindbody: 'appointment',
+  vagaro: 'appointment', booksy: 'appointment', glossgenius: 'appointment',
+  fresha: 'appointment', setmore: 'appointment', simplybook: 'appointment',
+  zenoti: 'appointment', phorest: 'appointment', jane_app: 'appointment',
+  styleseat: 'appointment', schedulicity: 'appointment', appointy: 'appointment',
+  square_appointments: 'appointment', timely: 'appointment', bookedby: 'appointment',
+
+  // Payments
+  stripe: 'payment', square: 'payment', paypal: 'payment', clover: 'payment',
+  lightspeed: 'payment', zettle: 'payment', sumup: 'payment',
+  heartland: 'payment', payanywhere: 'payment', quickbooks_payments: 'payment',
+
+  // E-commerce
+  shopify: 'ecommerce', woocommerce: 'ecommerce', bigcommerce: 'ecommerce',
+  etsy: 'ecommerce', wix: 'ecommerce', squarespace: 'ecommerce',
+  ecwid: 'ecommerce', prestashop: 'ecommerce',
+
+  // CRM
+  hubspot: 'crm', salesforce: 'crm', zoho_crm: 'crm', pipedrive: 'crm',
+  gohighlevel: 'crm', keap: 'crm', close: 'crm', monday: 'crm',
+  freshsales: 'crm', nimble: 'crm', activecampaign_crm: 'crm',
+
+  // Email marketing
+  mailchimp: 'marketing', klaviyo: 'marketing', activecampaign: 'marketing',
+  constantcontact: 'marketing', convertkit: 'marketing', drip: 'marketing',
+  brevo: 'marketing', omnisend: 'marketing', moosend: 'marketing', aweber: 'marketing',
+
+  // Field service
+  jobber: 'fieldservice', housecall_pro: 'fieldservice', servicetitan: 'fieldservice',
+  workiz: 'fieldservice', fieldedge: 'fieldservice', service_fusion: 'fieldservice',
+  mhelpdesk: 'fieldservice',
+
+  // Restaurant
+  toast: 'restaurant', opentable: 'restaurant', resy: 'restaurant',
+  sevenrooms: 'restaurant', olo: 'restaurant', tock: 'restaurant',
+
+  // Lead gen
+  facebook: 'leadgen', facebook_ads: 'leadgen', instagram: 'leadgen',
+  google_ads: 'leadgen', linkedin: 'leadgen', typeform: 'leadgen',
+  tiktok_ads: 'leadgen',
+
+  // Reviews
+  google: 'review', yelp: 'review', trustpilot: 'review',
+  birdeye: 'review', podium: 'review',
+
+  // Accounting
+  quickbooks: 'accounting', xero: 'accounting', freshbooks: 'accounting',
+  wave: 'accounting', zoho_books: 'accounting',
+
+  // Helpdesk
+  intercom: 'helpdesk', zendesk: 'helpdesk', freshdesk: 'helpdesk',
+  gorgias: 'helpdesk',
+};
+
 /**
  * Extract customer phone number from event data.
  * Each platform buries the phone differently.
@@ -144,14 +203,16 @@ async function dispatchEvent(client, platform, eventType, data) {
         return { dispatched: false, worker: null, action: 'no_phone' };
     }
 
-    const platformLower = (platform || '').toLowerCase();
+    const platformLower = (platform || '').toLowerCase().replace(/[^a-z0-9]/g, '_');
     const eventLower    = (eventType || '').toLowerCase();
 
     console.log(`[Dispatcher] ${platformLower}/${eventLower} → ${customerPhone} (${customerName || 'unknown'})`);
 
-    // ── Calendly ──────────────────────────────────────────────────────────────
+    // Resolve category — specific platform checks first, then catalog lookup
+    const category = PLATFORM_CATEGORY[platformLower] || null;
+
+    // ── Calendly (specific event handling) ────────────────────────────────────
     if (platformLower === 'calendly') {
-        if (eventLower === 'invitee.created') {
             // New booking: send appointment reminder
             const appointmentTime = extractAppointmentTime(platform, data);
             const serviceName = data?.payload?.event_type?.name || null;
@@ -358,6 +419,134 @@ async function dispatchEvent(client, platform, eventType, data) {
                 serviceName: null,
             });
             return { dispatched: true, worker: 'review-requester', action: 'yelp_followup' };
+        }
+    }
+
+    // ── Category-based fallback routing (covers all 100 catalog platforms) ────
+    // Platforms without a specific handler above route here based on category.
+    if (category) {
+        switch (category) {
+            case 'appointment': {
+                const isCancel = eventLower.includes('cancel') || eventLower.includes('declined');
+                const isComplete = eventLower.includes('complete') || eventLower.includes('checked_out') || eventLower.includes('checkout');
+                if (isCancel) {
+                    await reactivationWorker.send({ client, customerNumber: customerPhone, customerName, reason: 'appointment_canceled' });
+                    return { dispatched: true, worker: 'reactivation', action: 'appointment_cancel_recovery' };
+                }
+                if (isComplete) {
+                    await reviewRequesterWorker.send({ client, customerNumber: customerPhone, customerName, serviceName: data?.service_name || data?.event_type?.name || null });
+                    return { dispatched: true, worker: 'review-requester', action: 'post_appointment_review' };
+                }
+                // Default: new booking → reminder
+                const apptTime = extractAppointmentTime(platformLower, data);
+                await reminderWorker.send({ client, customerNumber: customerPhone, customerName, appointmentTime: apptTime || 'your upcoming appointment', serviceName: data?.service_name || null, reminderType: '24hr' });
+                return { dispatched: true, worker: 'reminder', action: 'appointment_reminder' };
+            }
+
+            case 'payment': {
+                const isFailed = eventLower.includes('fail') || eventLower.includes('declined') || eventLower.includes('dispute');
+                const isCanceled = eventLower.includes('cancel') || eventLower.includes('refund') || eventLower.includes('chargeback');
+                if (isFailed) {
+                    await invoiceChaserWorker.send({ client, customerNumber: customerPhone, customerName, amount: data?.amount ? `$${(Number(data.amount) / 100).toFixed(2)}` : null });
+                    return { dispatched: true, worker: 'invoice-chaser', action: 'payment_failure_followup' };
+                }
+                if (isCanceled) {
+                    await reactivationWorker.send({ client, customerNumber: customerPhone, customerName, reason: 'subscription_canceled' });
+                    return { dispatched: true, worker: 'reactivation', action: 'churn_recovery' };
+                }
+                await reviewRequesterWorker.send({ client, customerNumber: customerPhone, customerName, serviceName: data?.description || null });
+                return { dispatched: true, worker: 'review-requester', action: 'post_payment_review' };
+            }
+
+            case 'ecommerce': {
+                const isAbandoned = eventLower.includes('checkout') || eventLower.includes('cart') || eventLower.includes('abandon');
+                const isNewCustomer = eventLower.includes('customer') && eventLower.includes('creat');
+                if (isAbandoned) {
+                    await leadFollowupWorker.send({ client, customerNumber: customerPhone, customerName, context: 'abandoned_cart', productName: data?.line_items?.[0]?.title || null });
+                    return { dispatched: true, worker: 'lead-followup', action: 'abandoned_cart' };
+                }
+                if (isNewCustomer) {
+                    await onboardingWorker.send({ client, customerNumber: customerPhone, customerName });
+                    return { dispatched: true, worker: 'onboarding', action: 'new_customer_welcome' };
+                }
+                await reviewRequesterWorker.send({ client, customerNumber: customerPhone, customerName, serviceName: data?.line_items?.[0]?.name || null });
+                return { dispatched: true, worker: 'review-requester', action: 'post_order_review' };
+            }
+
+            case 'crm': {
+                const isDeal = eventLower.includes('deal') || eventLower.includes('opportunity');
+                await leadFollowupWorker.send({ client, customerNumber: customerPhone, customerName, context: isDeal ? 'new_deal' : 'new_crm_contact', dealName: data?.properties?.dealname?.value || data?.title || null });
+                return { dispatched: true, worker: 'lead-followup', action: isDeal ? 'new_deal_followup' : 'new_contact_followup' };
+            }
+
+            case 'marketing': {
+                const isUnsub = eventLower.includes('unsub') || eventLower === 'unsubscribe';
+                if (isUnsub) {
+                    await reactivationWorker.send({ client, customerNumber: customerPhone, customerName, reason: 'email_unsubscribed' });
+                    return { dispatched: true, worker: 'reactivation', action: 'unsubscribe_recovery' };
+                }
+                await onboardingWorker.send({ client, customerNumber: customerPhone, customerName });
+                return { dispatched: true, worker: 'onboarding', action: 'subscriber_welcome' };
+            }
+
+            case 'fieldservice': {
+                const isInvoice = eventLower.includes('invoice') || eventLower.includes('payment');
+                const isComplete = eventLower.includes('complete') || eventLower.includes('finished') || eventLower.includes('closed');
+                if (isInvoice && !isComplete) {
+                    await invoiceChaserWorker.send({ client, customerNumber: customerPhone, customerName, amount: data?.total || null });
+                    return { dispatched: true, worker: 'invoice-chaser', action: 'invoice_followup' };
+                }
+                await reviewRequesterWorker.send({ client, customerNumber: customerPhone, customerName, serviceName: data?.job_type || data?.title || null });
+                return { dispatched: true, worker: 'review-requester', action: 'post_job_review' };
+            }
+
+            case 'restaurant': {
+                const isCancel = eventLower.includes('cancel') || eventLower.includes('noshow');
+                const isSeated = eventLower.includes('seat') || eventLower.includes('complet') || eventLower.includes('check');
+                if (isCancel) {
+                    await reactivationWorker.send({ client, customerNumber: customerPhone, customerName, reason: 'reservation_canceled' });
+                    return { dispatched: true, worker: 'reactivation', action: 'reservation_cancel_recovery' };
+                }
+                if (isSeated) {
+                    await reviewRequesterWorker.send({ client, customerNumber: customerPhone, customerName, serviceName: null });
+                    return { dispatched: true, worker: 'review-requester', action: 'post_dining_review' };
+                }
+                // Confirmation: send reminder
+                await reminderWorker.send({ client, customerNumber: customerPhone, customerName, appointmentTime: data?.reservation_time || data?.date || 'your reservation', serviceName: null, reminderType: '24hr' });
+                return { dispatched: true, worker: 'reminder', action: 'reservation_reminder' };
+            }
+
+            case 'leadgen': {
+                const email = data?.field_data?.find(f => f.name === 'email')?.values?.[0]
+                    || data?.email || null;
+                await leadFollowupWorker.send({ client, customerNumber: customerPhone, customerName, context: `${platformLower}_lead`, email });
+                return { dispatched: true, worker: 'lead-followup', action: `${platformLower}_lead_followup` };
+            }
+
+            case 'review': {
+                await reviewRequesterWorker.send({ client, customerNumber: customerPhone, customerName, serviceName: null });
+                return { dispatched: true, worker: 'review-requester', action: 'review_platform_followup' };
+            }
+
+            case 'accounting': {
+                const isPaid = eventLower.includes('paid') || eventLower.includes('payment');
+                if (isPaid) {
+                    await reviewRequesterWorker.send({ client, customerNumber: customerPhone, customerName, serviceName: null });
+                    return { dispatched: true, worker: 'review-requester', action: 'post_payment_review' };
+                }
+                await invoiceChaserWorker.send({ client, customerNumber: customerPhone, customerName, amount: data?.total || data?.amount_due || null });
+                return { dispatched: true, worker: 'invoice-chaser', action: 'invoice_followup' };
+            }
+
+            case 'helpdesk': {
+                const isSolved = eventLower.includes('solved') || eventLower.includes('resolved') || eventLower.includes('closed');
+                if (isSolved) {
+                    await reviewRequesterWorker.send({ client, customerNumber: customerPhone, customerName, serviceName: null });
+                    return { dispatched: true, worker: 'review-requester', action: 'post_support_review' };
+                }
+                await leadFollowupWorker.send({ client, customerNumber: customerPhone, customerName, context: 'support_ticket' });
+                return { dispatched: true, worker: 'lead-followup', action: 'support_ticket_followup' };
+            }
         }
     }
 
