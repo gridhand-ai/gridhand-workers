@@ -20,7 +20,8 @@ async function send({ client, customerNumber, customerName, lastServiceName, las
         to: customerNumber,
         body,
         clientSlug: client.slug,
-        clientApiKeys: client.apiKeys || {}
+        clientApiKeys: client.apiKeys || {},
+        clientTimezone: client.business?.timezone,
     });
 
     // Fire Make.com: update CRM contact status, remove from dormant segment

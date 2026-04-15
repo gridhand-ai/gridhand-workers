@@ -20,7 +20,8 @@ async function send({ client, customerNumber, customerName, inquiryAbout, follow
         to: customerNumber,
         body,
         clientSlug: client.slug,
-        clientApiKeys: client.apiKeys || {}
+        clientApiKeys: client.apiKeys || {},
+        clientTimezone: client.business?.timezone,
     });
 
     // Fire Make.com: update lead status in CRM, trigger next step in nurture sequence

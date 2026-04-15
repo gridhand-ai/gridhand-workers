@@ -25,7 +25,8 @@ async function send({ client, customerNumber, customerName, invoiceNumber, amoun
         to: customerNumber,
         body,
         clientSlug: client.slug,
-        clientApiKeys: client.apiKeys || {}
+        clientApiKeys: client.apiKeys || {},
+        clientTimezone: client.business?.timezone,
     });
 
     // Fire Make.com: update invoice status in QuickBooks/Stripe/Square, log to CRM

@@ -22,7 +22,8 @@ async function send({ client, customerNumber, customerName, appointmentTime, ser
         to: customerNumber,
         body,
         clientSlug: client.slug,
-        clientApiKeys: client.apiKeys || {}
+        clientApiKeys: client.apiKeys || {},
+        clientTimezone: client.business?.timezone,
     });
 
     // Fire Make.com: update appointment status in calendar/scheduling system

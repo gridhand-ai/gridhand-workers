@@ -21,7 +21,8 @@ async function send({ client, customerNumber, customerName, serviceName }) {
         to: customerNumber,
         body,
         clientSlug: client.slug,
-        clientApiKeys: client.apiKeys || {}
+        clientApiKeys: client.apiKeys || {},
+        clientTimezone: client.business?.timezone,
     });
 
     // Fire Make.com: log to CRM, trigger follow-up sequence, update reputation tool

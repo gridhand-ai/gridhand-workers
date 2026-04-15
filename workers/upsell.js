@@ -16,7 +16,8 @@ async function send({ client, customerNumber, customerName, completedServiceName
         to: customerNumber,
         body,
         clientSlug: client.slug,
-        clientApiKeys: client.apiKeys || {}
+        clientApiKeys: client.apiKeys || {},
+        clientTimezone: client.business?.timezone,
     });
 }
 

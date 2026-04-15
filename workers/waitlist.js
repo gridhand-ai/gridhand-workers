@@ -15,7 +15,8 @@ async function sendSpotAvailable({ client, customerNumber, customerName, service
         to: customerNumber,
         body,
         clientSlug: client.slug,
-        clientApiKeys: client.apiKeys || {}
+        clientApiKeys: client.apiKeys || {},
+        clientTimezone: client.business?.timezone,
     });
 }
 
