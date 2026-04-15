@@ -1,6 +1,13 @@
 const http = require('http');
 const crypto = require('crypto');
 const express = require('express');
+const { createClient } = require('@supabase/supabase-js');
+
+// Lightweight Supabase client for workers_paused checks
+const supabaseAdmin = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '',
+    process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+);
 const WebSocket = require('ws');
 const { loadClient, loadClientBySlug, loadClientBySupabaseId, NUMBER_MAP } = require('./clients/loader');
 const aiClientLib = require('./lib/ai-client');
@@ -272,6 +279,21 @@ app.post('/sms', async (req, res) => {
         return res.set('Content-Type', 'text/xml').send('<Response></Response>');
     }
 
+    // ── workers_paused check — stop processing for cancelled/paused clients ─
+    if (client.supabaseClientId) {
+        try {
+            const { data: clientStatus } = await supabaseAdmin
+                .from('clients')
+                .select('workers_paused')
+                .eq('id', client.supabaseClientId)
+                .single();
+            if (clientStatus?.workers_paused) {
+                console.log(`[SMS] Workers paused for ${client.slug} — dropping inbound`);
+                return res.set('Content-Type', 'text/xml').send('<Response></Response>');
+            }
+        } catch { /* fail open — don't block SMS on DB error */ }
+    }
+
     // ── Step 1: Opt-out check (MUST run first, always) ─────────────────────
     const optout = optoutManager.process(client.slug, customerNumber, message);
     if (optout.action === 'opted-out' || optout.blocked) {
@@ -537,6 +559,7 @@ app.post('/events/integration', requireApiKey, async (req, res) => {
         return res.json({ success: true, ...result });
     } catch (err) {
         console.error(`[Integration] Dispatch error for ${platform}/${event}:`, err.message);
+        reportWorkerError(clientId, `integration:${platform}`, err.message, { platform, event });
         return res.status(500).json({ error: err.message });
     }
 });
