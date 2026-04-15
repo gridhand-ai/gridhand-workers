@@ -68,7 +68,8 @@ async function handleVoiceStream(twilioWs, authClaim = null) {
         streamSid = msg.streamSid
         callSid   = msg.start?.callSid
         clientId  = msg.start?.customParameters?.clientId || ''
-        caller    = msg.start?.customParameters?.caller   || ''
+        // Decode caller — it arrives URL-encoded from TwiML <Parameter> (e.g. %2B12625551234)
+        caller    = decodeURIComponent(msg.start?.customParameters?.caller || '')
 
         // Enforce auth claim — callSid + clientId MUST match the signed token.
         if (authClaim) {
@@ -192,10 +193,13 @@ async function handleVoiceStream(twilioWs, authClaim = null) {
     console.log(`[VoiceBridge] ElevenLabs WS opened for ${client.business_name}`)
     // Tell ElevenLabs we're sending mulaw 8kHz (Twilio's native format).
     // Without this override the agent defaults to pcm_16000 and misreads the audio.
+    // Force mulaw 8kHz both ways — defense-in-depth even if agent config drifts.
+    // ASR: Twilio sends mulaw 8kHz; TTS: we need mulaw 8kHz back for Twilio to play.
     elWs.send(JSON.stringify({
       type: 'conversation_initiation_client_data',
       conversation_config_override: {
-        asr: { user_input_audio_format: 'ulaw_8000' }
+        asr: { user_input_audio_format: 'ulaw_8000' },
+        tts: { agent_output_audio_format: 'ulaw_8000' },
       }
     }))
     elReady = true
@@ -265,7 +269,13 @@ async function handleVoiceStream(twilioWs, authClaim = null) {
     }
   })
 
-  elWs.on('error', (err) => console.error('[VoiceBridge] ElevenLabs WS error:', err.message))
+  elWs.on('error', (err) => {
+    console.error('[VoiceBridge] ElevenLabs WS error:', err.message)
+    // EL is gone — log the call and tear down. Without this, the Twilio call
+    // would hang in silence for up to 5 minutes until maxCallTimer fires.
+    logCall()
+    cleanup()
+  })
   elWs.on('close', () => {
     console.log('[VoiceBridge] ElevenLabs WS closed — keeping Twilio open to drain audio')
   })
@@ -277,6 +287,11 @@ async function handleVoiceStream(twilioWs, authClaim = null) {
     audioBuffer = []
     if (elWs && elWs.readyState === WebSocket.OPEN) {
       try { elWs.close() } catch {}
+    }
+    // Also close the Twilio WS — otherwise Twilio holds the call open in silence
+    // after EL disconnects or the 5-min cap fires.
+    if (twilioWs && twilioWs.readyState === WebSocket.OPEN) {
+      try { twilioWs.close() } catch {}
     }
   }
 
