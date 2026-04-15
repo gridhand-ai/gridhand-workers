@@ -913,12 +913,12 @@ app.post('/provision/update', requireApiKey, async (req, res) => {
 
     const { slug, twilioNumber, revision: callerRevision, ...patches } = req.body;
 
-    if (!slug || !twilioNumber) {
-        return res.status(400).json({ error: 'slug and twilioNumber are required' });
+    if (!slug) {
+        return res.status(400).json({ error: 'slug is required' });
     }
 
     const safeSlug   = slug.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-    const safeNumber = twilioNumber.trim();
+    const safeNumber = twilioNumber ? twilioNumber.trim() : null;
 
     const clientsDir   = path.join(__dirname, 'clients');
     const configPath   = path.join(clientsDir, `${safeSlug}.json`);
@@ -942,15 +942,19 @@ app.post('/provision/update', requireApiKey, async (req, res) => {
                 throw err;
             }
 
-            config.twilioNumber = safeNumber;
+            if (safeNumber) config.twilioNumber = safeNumber;
 
-            // Apply any additional top-level patches (e.g. city, phone, hours)
+            // Apply any additional top-level patches (e.g. city, phone, hours, clientId)
             const allowedPatches = ['city', 'phone', 'hours', 'clientId'];
             for (const key of allowedPatches) {
                 if (patches[key] !== undefined) {
                     if (key === 'city' || key === 'phone' || key === 'hours') {
                         config.business = config.business || {};
                         config.business[key] = patches[key];
+                    } else if (key === 'clientId') {
+                        // clientId in the API maps to supabaseClientId in the config
+                        // (same convention used in POST /provision)
+                        config.supabaseClientId = patches[key];
                     } else {
                         config[key] = patches[key];
                     }
@@ -967,11 +971,13 @@ app.post('/provision/update', requireApiKey, async (req, res) => {
             try {
                 if (fs.existsSync(registryPath)) registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
             } catch (e) { /* start fresh */ }
-            registry[safeNumber] = safeSlug;
-            atomicWriteFileSync(registryPath, JSON.stringify(registry, null, 2));
+            if (safeNumber) {
+                registry[safeNumber] = safeSlug;
+                atomicWriteFileSync(registryPath, JSON.stringify(registry, null, 2));
+            }
         });
 
-        console.log(`[Provision/Update] ${safeSlug} → ${safeNumber} (rev ${newRevision})`);
+        console.log(`[Provision/Update] ${safeSlug} → ${safeNumber || '(no number change)'} (rev ${newRevision})`);
         res.json({ success: true, slug: safeSlug, twilioNumber: safeNumber, revision: newRevision });
     } catch (e) {
         console.log(`[Provision/Update] Error: ${e.message}`);
