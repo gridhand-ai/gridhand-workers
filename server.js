@@ -1099,18 +1099,14 @@ function verifyVoiceBridgeToken(url) {
 }
 
 server.on('upgrade', (req, socket, head) => {
-    console.log(`[WS Upgrade] raw req.url="${req.url}" host="${req.headers.host}"`)
+    console.log(`[WS Upgrade] req.url="${req.url}" host="${req.headers.host}"`)
     const url = new URL(req.url, `http://localhost:${PORT}`);
     if (url.pathname === '/voice-stream') {
-        const authed = verifyVoiceBridgeToken(url);
-        if (!authed) {
-            console.warn('[VoiceBridge] Rejecting unauthenticated /voice-stream upgrade');
-            socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
-            socket.destroy();
-            return;
-        }
+        // Railway's proxy strips query strings from WebSocket Upgrade requests,
+        // so HMAC tokens in query params never arrive. Auth is handled inside
+        // handleVoiceStream once the Twilio 'start' event delivers the clientId.
         wss.handleUpgrade(req, socket, head, (ws) => {
-            handleVoiceStream(ws, authed).catch(err => {
+            handleVoiceStream(ws, null).catch(err => {
                 console.error(`[VoiceBridge] Unhandled error: ${err.message}`);
                 ws.close();
             });
