@@ -6,7 +6,7 @@ const path = require('path');
 // Value: client config filename (e.g. "test-client")
 const NUMBER_MAP = {
     // Add entries here as you onboard clients
-    '+14144044418': 'test-client'
+    '+14144044418': 'astros-playland'
 };
 
 const REGISTRY_PATH = path.join(__dirname, 'registry.json');
@@ -64,4 +64,27 @@ function loadClientBySlug(slug) {
     }
 }
 
-module.exports = { loadClient, loadClientBySlug, NUMBER_MAP };
+/**
+ * Load client config by Supabase UUID (supabaseClientId field in JSON).
+ * Used by integration event dispatcher — Make.com events carry clientId not phone.
+ */
+function loadClientBySupabaseId(supabaseId) {
+    if (!supabaseId) return null;
+    try {
+        const files = fs.readdirSync(__dirname).filter(f => f.endsWith('.json') && f !== 'registry.json');
+        for (const file of files) {
+            try {
+                const config = JSON.parse(fs.readFileSync(path.join(__dirname, file), 'utf8'));
+                if (config.supabaseClientId === supabaseId) {
+                    if (!config.slug) config.slug = file.replace('.json', '');
+                    return config;
+                }
+            } catch { /* skip unparseable files */ }
+        }
+    } catch (e) {
+        console.log(`[Loader] loadClientBySupabaseId error: ${e.message}`);
+    }
+    return null;
+}
+
+module.exports = { loadClient, loadClientBySlug, loadClientBySupabaseId, NUMBER_MAP };

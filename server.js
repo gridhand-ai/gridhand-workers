@@ -2,7 +2,7 @@ const http = require('http');
 const crypto = require('crypto');
 const express = require('express');
 const WebSocket = require('ws');
-const { loadClient, loadClientBySlug, NUMBER_MAP } = require('./clients/loader');
+const { loadClient, loadClientBySlug, loadClientBySupabaseId, NUMBER_MAP } = require('./clients/loader');
 const aiClientLib = require('./lib/ai-client');
 const { handleVoiceStream } = require('./voice-bridge');
 const deployWatch = require('./lib/deploy-watch');
@@ -84,6 +84,25 @@ const sender                = require('./workers/twilio-sender');
 const app = express();
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
+
+// ─── Portal error reporter ────────────────────────────────────────────────────
+// Fire-and-forget: POSTs worker execution failures to /api/workers/error so
+// MJ can see them in the admin dashboard and get SMS alerts from the health cron.
+// Never throws — a failed error report must never break the SMS response path.
+function reportWorkerError(clientId, workerName, errorMessage, context) {
+    const portalUrl = process.env.PORTAL_URL || 'https://gridhand.ai';
+    const secret    = process.env.WORKERS_API_SECRET;
+    if (!secret) return; // silently skip if not configured
+
+    fetch(`${portalUrl}/api/workers/error`, {
+        method:  'POST',
+        headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${secret}`,
+        },
+        body: JSON.stringify({ clientId, workerName, errorMessage, context }),
+    }).catch(e => console.log(`[ErrorReporter] Failed to send error report: ${e.message}`));
+}
 
 // ─── Make.com two-way sync helper ─────────────────────────────────────────────
 // Fires after every inbound customer message so the CRM stays in sync.
@@ -318,6 +337,13 @@ app.post('/sms', async (req, res) => {
     } catch (e) {
         console.log(`[SMS] Worker error: ${e.message}`);
         reply = `Thanks for reaching out to ${client.business.name}! We'll get back to you shortly.`;
+        // Report to portal so MJ sees it in the admin error log and health alerts
+        reportWorkerError(
+            client.supabaseClientId || client.slug,
+            intent?.suggestedWorker || 'unknown',
+            e.message,
+            { customerPhone: customerNumber, incomingNumber }
+        );
     }
 
     // ── Step 6: Update customer profile (async) ────────────────────────────
@@ -476,6 +502,43 @@ app.post('/trigger/onboarding', requireApiKey, async (req, res) => {
         campaignTracker.trackSent(client.slug, 'onboarding');
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Integration Event Dispatcher ────────────────────────────────────────────
+//
+// POST /events/integration
+// Receives events from Make.com scenarios (Calendly, Stripe, Shopify, etc.)
+// and routes each to the correct worker so real action fires — SMS, review
+// request, re-engagement, etc.
+//
+// Body: { clientId, platform, event, data, source, fired_at }
+// Auth: WORKERS_API_KEY or WORKERS_API_SECRET bearer token
+
+const integrationDispatcher = require('./workers/integration-dispatcher');
+
+app.post('/events/integration', requireApiKey, async (req, res) => {
+    const { clientId, platform, event, data } = req.body;
+
+    if (!clientId || !platform) {
+        return res.status(400).json({ error: 'clientId and platform are required' });
+    }
+
+    const client = loadClientBySupabaseId(clientId);
+    if (!client) {
+        // Client may not be provisioned in workers yet — log and return 200 so
+        // Make.com doesn't retry endlessly
+        console.log(`[Integration] Client ${clientId} not found in workers — event dropped (${platform}/${event})`);
+        return res.json({ success: false, reason: 'client_not_provisioned' });
+    }
+
+    try {
+        const result = await integrationDispatcher.dispatchEvent(client, platform, event, data || {});
+        console.log(`[Integration] ${platform}/${event} → ${result.worker || 'none'} (${result.action})`);
+        return res.json({ success: true, ...result });
+    } catch (err) {
+        console.error(`[Integration] Dispatch error for ${platform}/${event}:`, err.message);
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 // ─── Operator Validation ──────────────────────────────────────────────────────
