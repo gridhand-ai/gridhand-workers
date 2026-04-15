@@ -7,6 +7,7 @@ const supabase = createClient(
 );
 const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
+// Returns { report: string, activityCount: number } — count reused by caller, no second query
 async function generateWeeklyReport(clientId, businessName) {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -18,7 +19,10 @@ async function generateWeeklyReport(clientId, businessName) {
     .order('created_at', { ascending: false });
 
   if (!activities?.length) {
-    return `${businessName} Weekly Report\n\nNo activity this week. Your workers are standing by.`;
+    return {
+      report: `${businessName} Weekly Report\n\nNo activity this week. Your workers are standing by.`,
+      activityCount: 0,
+    };
   }
 
   const workerCounts = {};
@@ -34,7 +38,10 @@ async function generateWeeklyReport(clientId, businessName) {
   });
   const busiestDay = Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0];
 
-  return `${businessName} — Weekly Report\n\n${activities.length} tasks completed\nTop worker: ${topWorker[0]} (${topWorker[1]} tasks)\nBusiest day: ${busiestDay[0]}\n\nYour AI team handled everything while you focused on your work.\n\n— GRIDHAND AI`;
+  return {
+    report: `${businessName} — Weekly Report\n\n${activities.length} tasks completed\nTop worker: ${topWorker[0]} (${topWorker[1]} tasks)\nBusiest day: ${busiestDay[0]}\n\nYour AI team handled everything while you focused on your work.\n\n— GRIDHAND AI`,
+    activityCount: activities.length,
+  };
 }
 
 module.exports = {
@@ -42,7 +49,7 @@ module.exports = {
   description: 'Sends weekly performance summary every Monday',
 
   async run(clientId, businessName, phoneNumber) {
-    const report = await generateWeeklyReport(clientId, businessName);
+    const { report, activityCount } = await generateWeeklyReport(clientId, businessName);
 
     await twilioClient.messages.create({
       body: report,
@@ -50,17 +57,11 @@ module.exports = {
       to: phoneNumber,
     });
 
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-    const { data: activities } = await supabase
-      .from('activity_log')
-      .select('worker_type')
-      .eq('client_id', clientId)
-      .gte('created_at', weekAgo);
-
+    // Activity count already came from generateWeeklyReport — no second query
     await supabase.from('activity_log').insert({
       client_id: clientId,
       worker_type: 'weekly-report',
-      description: `Weekly report sent: ${activities?.length || 0} tasks this week`,
+      description: `Weekly report sent: ${activityCount} tasks this week`,
       created_at: new Date().toISOString(),
     });
 

@@ -223,6 +223,17 @@ setInterval(() => {
     );
 }, 60000);
 
+// ─── SMS Deduplication Guard ──────────────────────────────────────────────────
+// Customers sometimes double-tap. The same phone → number combo within 30s
+// produces one AI response only. Prevents duplicate Twilio charges + reply spam.
+const _recentSms = new Map(); // key: `${from}→${to}:${body}`, value: timestamp
+setInterval(() => {
+    const cutoff = Date.now() - 30000;
+    for (const [k, ts] of _recentSms.entries()) {
+        if (ts < cutoff) _recentSms.delete(k);
+    }
+}, 60000);
+
 // ─── Public health endpoint (used by Deploy Watch) ────────────────────────────
 app.get('/health', (req, res) => {
     res.json({ ok: true, service: 'gridhand-workers', ts: Date.now() });
@@ -255,7 +266,12 @@ app.post('/sms', async (req, res) => {
     // Validate that the request genuinely came from Twilio
     const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
     const twilioSignature = req.headers['x-twilio-signature'];
-    if (twilioAuthToken && twilioSignature) {
+    if (!twilioAuthToken) {
+        // Loudly refuse all requests if the token is missing — never silently skip validation
+        console.error('[SMS] TWILIO_AUTH_TOKEN not set — rejecting all inbound SMS until configured');
+        return res.status(503).send('Service misconfigured');
+    }
+    if (twilioSignature) {
         const twilio = require('twilio');
         const webhookUrl = process.env.NEXT_PUBLIC_APP_URL
             ? `${process.env.NEXT_PUBLIC_APP_URL}/sms`
@@ -269,9 +285,18 @@ app.post('/sms', async (req, res) => {
 
     const incomingNumber = req.body.To;
     const customerNumber = req.body.From;
-    const message        = req.body.Body?.trim();
+    // Truncate at 1600 chars (10 SMS segments) — prevents AI runaway and Twilio billing surprises
+    const message = (req.body.Body?.trim() || '').slice(0, 1600);
 
     console.log(`[SMS] ${customerNumber} → ${incomingNumber}: "${message}"`);
+
+    // Deduplication: drop exact same message from same sender within 30s
+    const dedupKey = `${customerNumber}→${incomingNumber}:${message}`;
+    if (_recentSms.has(dedupKey)) {
+        console.log(`[SMS] Duplicate detected — dropping (already handled within 30s)`);
+        return res.set('Content-Type', 'text/xml').send('<Response></Response>');
+    }
+    _recentSms.set(dedupKey, Date.now());
 
     const client = loadClient(incomingNumber);
     if (!client) {
@@ -319,17 +344,21 @@ app.post('/sms', async (req, res) => {
     }
 
     // ── Step 5: Route to worker ────────────────────────────────────────────
+    // Twilio requires a response within 10s or it retries (causing duplicate replies + charges).
+    // Race the worker against an 8s deadline — deliver a graceful fallback if it loses.
     const workers = client.workers || [];
     let reply = '';
+    const WORKER_TIMEOUT_MS = 8000;
+    const timeoutReply = `Thanks for reaching out to ${client.business.name}! We're on it and will follow up shortly.`;
 
-    try {
+    const _workerRace = async () => {
         // After-hours overrides everything
         if (workers.includes('after-hours') && !afterHoursWorker.isBusinessOpen(client.business.hours)) {
-            reply = await afterHoursWorker.run({ client, message, customerNumber });
             campaignTracker.trackReceived(client.slug, 'after-hours');
+            return afterHoursWorker.run({ client, message, customerNumber });
         }
         // Route by detected intent
-        else if (intent?.suggestedWorker && workers.includes(intent.suggestedWorker)) {
+        if (intent?.suggestedWorker && workers.includes(intent.suggestedWorker)) {
             const workerMap = {
                 'receptionist':   receptionistWorker,
                 'booking':        bookingWorker,
@@ -344,21 +373,34 @@ app.post('/sms', async (req, res) => {
             };
             const w = workerMap[intent.suggestedWorker];
             if (w) {
-                reply = await w.run({ client, message, customerNumber });
                 campaignTracker.trackReceived(client.slug, intent.suggestedWorker);
+                return w.run({ client, message, customerNumber });
             }
         }
         // Fallback priority order
-        else if (workers.includes('receptionist')) {
-            reply = await receptionistWorker.run({ client, message, customerNumber });
+        if (workers.includes('receptionist')) {
             campaignTracker.trackReceived(client.slug, 'receptionist');
-        } else if (workers.includes('faq')) {
-            reply = await faqWorker.run({ client, message, customerNumber });
+            return receptionistWorker.run({ client, message, customerNumber });
+        }
+        if (workers.includes('faq')) {
             campaignTracker.trackReceived(client.slug, 'faq');
+            return faqWorker.run({ client, message, customerNumber });
+        }
+        return '';
+    };
+
+    try {
+        const timeout = new Promise(resolve => setTimeout(() => resolve('__timeout__'), WORKER_TIMEOUT_MS));
+        const result = await Promise.race([_workerRace(), timeout]);
+        if (result === '__timeout__') {
+            console.warn(`[SMS] Worker timed out after ${WORKER_TIMEOUT_MS}ms — sending fallback`);
+            reply = timeoutReply;
+        } else {
+            reply = result || '';
         }
     } catch (e) {
         console.log(`[SMS] Worker error: ${e.message}`);
-        reply = `Thanks for reaching out to ${client.business.name}! We'll get back to you shortly.`;
+        reply = timeoutReply;
         // Report to portal so MJ sees it in the admin error log and health alerts
         reportWorkerError(
             client.supabaseClientId || client.slug,
@@ -376,7 +418,7 @@ app.post('/sms', async (req, res) => {
             });
             // Extract FAQs from conversation (background)
             const memory = require('./workers/memory');
-            const history = memory.loadHistory(client.slug, customerNumber);
+            const history = await memory.loadHistory(client.slug, customerNumber);
             faqExtractor.extractFromConversation(history, client.slug, client.business.name);
         } catch (e) {
             console.log(`[SMS] Post-processing error: ${e.message}`);
