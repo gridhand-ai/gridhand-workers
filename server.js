@@ -271,16 +271,18 @@ app.post('/sms', async (req, res) => {
         console.error('[SMS] TWILIO_AUTH_TOKEN not set — rejecting all inbound SMS until configured');
         return res.status(503).send('Service misconfigured');
     }
-    if (twilioSignature) {
-        const twilio = require('twilio');
-        const webhookUrl = process.env.NEXT_PUBLIC_APP_URL
-            ? `${process.env.NEXT_PUBLIC_APP_URL}/sms`
-            : `https://${req.headers.host}/sms`;
-        const valid = twilio.validateRequest(twilioAuthToken, twilioSignature, webhookUrl, req.body);
-        if (!valid) {
-            console.warn('[SMS] Invalid Twilio signature — rejecting request');
-            return res.status(403).send('Forbidden');
-        }
+    if (!twilioSignature) {
+        console.warn('[SMS] Missing x-twilio-signature — rejecting unauthenticated request');
+        return res.status(403).send('Forbidden');
+    }
+    const twilio = require('twilio');
+    const webhookUrl = process.env.NEXT_PUBLIC_APP_URL
+        ? `${process.env.NEXT_PUBLIC_APP_URL}/sms`
+        : `https://${req.headers.host}/sms`;
+    const valid = twilio.validateRequest(twilioAuthToken, twilioSignature, webhookUrl, req.body);
+    if (!valid) {
+        console.warn('[SMS] Invalid Twilio signature — rejecting request');
+        return res.status(403).send('Forbidden');
     }
 
     const incomingNumber = req.body.To;
@@ -349,7 +351,7 @@ app.post('/sms', async (req, res) => {
     const workers = client.workers || [];
     let reply = '';
     const WORKER_TIMEOUT_MS = 8000;
-    const timeoutReply = `Thanks for reaching out to ${client.business.name}! We're on it and will follow up shortly.`;
+    const timeoutReply = `Thanks for reaching out to ${client.business?.name || 'us'}! We're on it and will follow up shortly.`;
 
     const _workerRace = async () => {
         // After-hours overrides everything
