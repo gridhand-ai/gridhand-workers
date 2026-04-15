@@ -28,7 +28,7 @@ async function send({ client, customerNumber, customerName, inquiryAbout, follow
         clientSlug:    client.slug,
         customerPhone: customerNumber,
         customerName:  customerName || null,
-        followupNumber,
+        followupNumber: followUpNumber,
         source:        inquiryAbout || null,
     }).catch(() => {});
 }
