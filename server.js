@@ -870,6 +870,15 @@ app.post('/provision', requireApiKey, async (req, res) => {
             atomicWriteFileSync(configPath, JSON.stringify(config, null, 2));
             console.log(`[Provision] Wrote config: ${configPath}`);
 
+            // 1b. Persist to Supabase so config survives Railway container restarts
+            if (config.supabaseClientId) {
+                supabaseAdmin.from('clients')
+                    .update({ worker_config: config })
+                    .eq('id', config.supabaseClientId)
+                    .then(() => console.log(`[Provision] Config saved to Supabase: ${config.supabaseClientId}`))
+                    .catch(e => console.warn(`[Provision] Supabase save failed (non-fatal): ${e.message}`));
+            }
+
             // 2. Update registry.json with the twilioNumber → slug mapping
             if (safeNumber) {
                 let registry = {};
@@ -966,6 +975,15 @@ app.post('/provision/update', requireApiKey, async (req, res) => {
             newRevision = config.revision;
             atomicWriteFileSync(configPath, JSON.stringify(config, null, 2));
 
+            // Also persist to Supabase (keep in sync with filesystem)
+            if (config.supabaseClientId) {
+                supabaseAdmin.from('clients')
+                    .update({ worker_config: config })
+                    .eq('id', config.supabaseClientId)
+                    .then(() => {})
+                    .catch(e => console.warn(`[Provision/Update] Supabase sync failed (non-fatal): ${e.message}`));
+            }
+
             // Update registry atomically
             let registry = {};
             try {
@@ -985,6 +1003,59 @@ app.post('/provision/update', requireApiKey, async (req, res) => {
         res.status(code).json({ error: code === 409 ? e.message : `Failed to update client: ${e.message}` });
     }
 });
+
+// ─── Startup Config Restore — pull worker configs from Supabase ──────────────
+// Railway containers start with an empty /app/clients directory on every deploy.
+// This syncs all previously provisioned configs back from Supabase before the
+// server begins accepting traffic, so workers always have their client data.
+async function restoreConfigsFromSupabase() {
+    const fs   = require('fs');
+    const path = require('path');
+    const clientsDir  = path.join(__dirname, 'clients');
+    const registryPath = path.join(clientsDir, 'registry.json');
+
+    try {
+        const { data: rows, error } = await supabaseAdmin
+            .from('clients')
+            .select('id, worker_config')
+            .not('worker_config', 'is', null);
+
+        if (error) {
+            console.warn('[Startup] Supabase config restore failed:', error.message);
+            return;
+        }
+        if (!rows || rows.length === 0) {
+            console.log('[Startup] No saved worker configs in Supabase.');
+            return;
+        }
+
+        let registry = {};
+        try {
+            if (fs.existsSync(registryPath)) registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+        } catch { /* start fresh */ }
+
+        let restored = 0;
+        for (const row of rows) {
+            const cfg = row.worker_config;
+            if (!cfg?.slug) continue;
+            const safeSlug   = cfg.slug.toLowerCase().replace(/[^a-z0-9-]/g, '-');
+            const configPath = path.join(clientsDir, `${safeSlug}.json`);
+            if (!fs.existsSync(configPath)) {
+                atomicWriteFileSync(configPath, JSON.stringify(cfg, null, 2));
+                console.log(`[Startup] Restored: clients/${safeSlug}.json`);
+                restored++;
+            }
+            if (cfg.twilioNumber) registry[cfg.twilioNumber] = safeSlug;
+        }
+
+        if (restored > 0) {
+            atomicWriteFileSync(registryPath, JSON.stringify(registry, null, 2));
+            console.log(`[Startup] Restored ${restored} client config(s) from Supabase.`);
+        }
+    } catch (err) {
+        console.warn('[Startup] Config restore error (non-fatal):', err.message);
+    }
+}
 
 // ─── Start Server ──────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
@@ -1049,8 +1120,11 @@ server.on('upgrade', (req, socket, head) => {
     }
 });
 
-server.listen(PORT, () => {
-    console.log(`GRIDHAND Workers running on port ${PORT}`);
-    console.log(`${15} workers | ${24} subagents | voice bridge active | fully operational`);
-    deployWatch.start();
+// Restore persisted client configs from Supabase before accepting traffic
+restoreConfigsFromSupabase().finally(() => {
+    server.listen(PORT, () => {
+        console.log(`GRIDHAND Workers running on port ${PORT}`);
+        console.log(`${15} workers | ${24} subagents | voice bridge active | fully operational`);
+        deployWatch.start();
+    });
 });
