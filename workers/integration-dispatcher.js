@@ -585,4 +585,4 @@ async function dispatchEvent(client, platform, eventType, data) {
     return { dispatched: false, worker: null, action: 'unhandled_event' };
 }
 
-module.exports = { dispatchEvent };
+module.exports = { dispatchEvent, extractPhone, PLATFORM_CATEGORY };

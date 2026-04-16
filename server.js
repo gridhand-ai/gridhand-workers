@@ -609,6 +609,100 @@ app.post('/events/integration', requireApiKey, async (req, res) => {
     }
 });
 
+// POST /test-dispatch
+// Dry-run integration test — runs the full dispatcher logic (client lookup,
+// phone extraction, worker routing) but NEVER fires real SMS or any action.
+// Used by the portal's integration-tester.ts to validate end-to-end routing.
+//
+// Body: { clientId, platform, event, dryRun: true }
+// Returns: { clientFound, phone, worker, action, tcpa, dryRun: true }
+
+app.post('/test-dispatch', requireApiKey, async (req, res) => {
+    const { clientId, platform, event: eventPayload, dryRun } = req.body;
+
+    if (!clientId || !platform) {
+        return res.status(400).json({ error: 'clientId and platform are required' });
+    }
+    if (!dryRun) {
+        return res.status(400).json({ error: 'This endpoint is dry-run only. Pass dryRun: true.' });
+    }
+
+    // 1. Find the client
+    const client = loadClientBySupabaseId(clientId);
+    if (!client) {
+        return res.json({
+            dryRun: true,
+            clientFound: false,
+            phone: null,
+            worker: null,
+            action: 'client_not_found',
+            detail: `No client config found for supabaseClientId=${clientId}`,
+        });
+    }
+
+    // 2. Run dispatcher logic without executing workers
+    try {
+        // Use the dispatcher's extractPhone and routing logic directly
+        const platformKey = (platform || '').toLowerCase().replace(/[\s-]/g, '_');
+        const data = eventPayload || {};
+
+        // Extract phone using the real dispatcher
+        const phone = integrationDispatcher.extractPhone(platformKey, data?.event || 'test', data);
+
+        // Determine which worker would handle this
+        const PLATFORM_CATEGORY = integrationDispatcher.PLATFORM_CATEGORY || {};
+        const category = PLATFORM_CATEGORY[platformKey] || 'default';
+
+        // Map category to worker name (mirrors dispatchEvent logic)
+        const CATEGORY_TO_WORKER = {
+            appointment: 'Review Requester',
+            payment: 'Review Requester',
+            ecommerce: 'SMS Worker',
+            crm: 'SMS Worker',
+            marketing: 'Re-engagement',
+            fieldservice: 'Review Requester',
+            restaurant: 'Review Requester',
+            leadgen: 'SMS Worker',
+            accounting: 'Review Requester',
+            helpdesk: 'SMS Worker',
+            social: 'SMS Worker',
+            review: 'Review Responder',
+        };
+        const worker = CATEGORY_TO_WORKER[category] || 'SMS Worker';
+
+        // Check TCPA hours (same check the real dispatcher uses)
+        const now = new Date();
+        const hour = now.getHours();
+        const tcpa = (hour >= 8 && hour < 21) ? 'allowed' : 'blocked_quiet_hours';
+
+        let action = 'would_send';
+        if (!phone) action = 'no_phone';
+        else if (tcpa !== 'allowed') action = 'tcpa_blocked';
+        else if (!client.assignedWorkers || client.assignedWorkers.length === 0) action = 'no_workers_assigned';
+
+        return res.json({
+            dryRun: true,
+            clientFound: true,
+            clientName: client.businessName || client.business_name,
+            phone: phone ? `${phone.slice(0, 4)}****${phone.slice(-2)}` : null,  // mask for logs
+            worker,
+            category,
+            platform: platformKey,
+            action,
+            tcpa,
+            assignedWorkers: client.assignedWorkers || [],
+        });
+
+    } catch (err) {
+        return res.status(500).json({
+            dryRun: true,
+            clientFound: true,
+            error: err.message,
+            action: 'dispatcher_threw',
+        });
+    }
+});
+
 // ─── Operator Validation ──────────────────────────────────────────────────────
 
 // GET /validate/:twilioNumber — check if a client config is ready to go live
