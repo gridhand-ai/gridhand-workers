@@ -16,6 +16,7 @@
 
 const WebSocket = require('ws')
 const { createClient } = require('@supabase/supabase-js')
+const Anthropic = require('@anthropic-ai/sdk')
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -295,12 +296,59 @@ async function handleVoiceStream(twilioWs, authClaim = null) {
     }
   }
 
+  async function buildCallNotes(transcriptLines, businessName) {
+    if (!transcriptLines || transcriptLines.length === 0) return null
+    try {
+      const convo = transcriptLines
+        .map(t => `${t.role === 'user' ? 'Caller' : 'Nova'}: ${t.text}`)
+        .join('\n')
+
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+      const res = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 400,
+        messages: [{
+          role: 'user',
+          content: `You are summarizing a phone call to ${businessName} handled by an AI receptionist named Nova.
+
+Transcript:
+${convo}
+
+Write a short call summary for the business owner. Use this exact format:
+
+INTENT: [one phrase — e.g. "Party booking inquiry", "Pricing question", "General info", "Complaint", "Membership question"]
+TOPICS: [comma-separated list of what was discussed]
+CALLER NAME: [name if mentioned, otherwise "Not provided"]
+RESOLVED: [Yes / Partially / No]
+FOLLOW-UP NEEDED: [Yes — describe what / No]
+NOTES: [1-2 sentences of anything else the owner should know]
+
+Be concise. Owner reads this on their phone.`
+        }]
+      })
+      return res.content[0]?.text || null
+    } catch (err) {
+      console.error('[VoiceBridge] Call notes generation failed:', err.message)
+      // Fallback to plain transcript if AI summary fails
+      return transcriptLines.map(t => `${t.role === 'user' ? 'Caller' : 'Nova'}: ${t.text}`).join('\n')
+    }
+  }
+
   async function logCall() {
     if (!callSid || callLogId) return
     callLogId = 'logging'  // set synchronously to block concurrent calls before any await
-    // NOTE: do NOT overwrite callLogId here — keep it as 'logging' until insert succeeds,
-    // so any concurrent logCall() calls that slip through before the first await are blocked.
-    const summary = transcript.map(t => `${t.role === 'user' ? 'Caller' : 'AI'}: ${t.text}`).join('\n')
+
+    // Generate structured call notes via Claude Haiku (fire-and-forget style, non-blocking for cleanup)
+    const { data: clientData } = await supabase
+      .from('clients')
+      .select('business_name')
+      .eq('id', clientId)
+      .single()
+      .catch(() => ({ data: null }))
+
+    const businessName = clientData?.business_name || 'the business'
+    const aiSummary = await buildCallNotes(transcript, businessName)
+
     try {
       await supabase.from('call_logs').insert({
         client_id:     clientId,
@@ -308,10 +356,10 @@ async function handleVoiceStream(twilioWs, authClaim = null) {
         call_sid:      callSid,
         status:        'ai_answered',
         transcript,
-        ai_summary:    summary || null,
+        ai_summary:    aiSummary || null,
       })
       callLogId = 'logged'
-      console.log('[VoiceBridge] Call logged for', caller)
+      console.log('[VoiceBridge] Call logged + notes generated for', caller)
     } catch (err) {
       callLogId = null  // reset so a retry attempt is possible on error
       console.error('[VoiceBridge] Failed to log call:', err.message)
