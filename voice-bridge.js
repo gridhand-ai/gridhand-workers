@@ -17,6 +17,7 @@
 const WebSocket = require('ws')
 const { createClient } = require('@supabase/supabase-js')
 const Anthropic = require('@anthropic-ai/sdk')
+const twilio = require('twilio')
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -306,7 +307,7 @@ async function handleVoiceStream(twilioWs, authClaim = null) {
       const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
       const res = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 400,
+        max_tokens: 500,
         messages: [{
           role: 'user',
           content: `You are summarizing a phone call to ${businessName} handled by an AI receptionist named Nova.
@@ -314,13 +315,16 @@ async function handleVoiceStream(twilioWs, authClaim = null) {
 Transcript:
 ${convo}
 
-Write a short call summary for the business owner. Use this exact format:
+Write a short call summary for the business owner. Use this EXACT format — no extra text:
 
-INTENT: [one phrase — e.g. "Party booking inquiry", "Pricing question", "General info", "Complaint", "Membership question"]
+INTENT: [one phrase — e.g. "Party booking inquiry", "Pricing question", "Left a message", "General info", "Complaint"]
 TOPICS: [comma-separated list of what was discussed]
 CALLER NAME: [name if mentioned, otherwise "Not provided"]
+CALLER NUMBER: [phone number from context if mentioned, otherwise "Not provided"]
 RESOLVED: [Yes / Partially / No]
 FOLLOW-UP NEEDED: [Yes — describe what / No]
+MESSAGE LEFT: [Yes / No]
+MESSAGE CONTENT: [exact message the caller wanted to leave, or "N/A" if none]
 NOTES: [1-2 sentences of anything else the owner should know]
 
 Be concise. Owner reads this on their phone.`
@@ -329,8 +333,67 @@ Be concise. Owner reads this on their phone.`
       return res.content[0]?.text || null
     } catch (err) {
       console.error('[VoiceBridge] Call notes generation failed:', err.message)
-      // Fallback to plain transcript if AI summary fails
       return transcriptLines.map(t => `${t.role === 'user' ? 'Caller' : 'Nova'}: ${t.text}`).join('\n')
+    }
+  }
+
+  function parseNotes(summary) {
+    if (!summary) return {}
+    const get = (field) => {
+      const match = summary.match(new RegExp(`${field}:\\s*(.+)`, 'i'))
+      return match ? match[1].trim() : null
+    }
+    return {
+      intent:          get('INTENT'),
+      callerName:      get('CALLER NAME'),
+      callerNumber:    get('CALLER NUMBER'),
+      messagLeft:      (get('MESSAGE LEFT') || '').toLowerCase() === 'yes',
+      messageContent:  get('MESSAGE CONTENT'),
+      followUpNeeded:  get('FOLLOW-UP NEEDED'),
+    }
+  }
+
+  async function notifyOwner({ clientData, callerNum, notes, summary }) {
+    const ownerCell = clientData?.owner_cell
+    const twilioNum = clientData?.twilio_number || process.env.TWILIO_FROM_NUMBER
+    const bizName   = clientData?.business_name || 'Your business'
+
+    if (!ownerCell || !twilioNum) {
+      console.log('[VoiceBridge] No owner_cell set — skipping SMS notification')
+      return
+    }
+
+    // Build SMS
+    let smsBody
+    if (notes.messagLeft && notes.messageContent && notes.messageContent !== 'N/A') {
+      const name = notes.callerName !== 'Not provided' ? notes.callerName : callerNum
+      smsBody = `📞 ${bizName} — Message from ${name}:\n\n"${notes.messageContent}"\n\nNumber: ${callerNum}\nFull log in your dashboard.`
+    } else {
+      const intent = notes.intent || 'Inquiry'
+      const name   = notes.callerName !== 'Not provided' ? notes.callerName : callerNum
+      smsBody = `📞 ${bizName} — Nova handled a call from ${name}.\n\nTopic: ${intent}\nFollow-up: ${notes.followUpNeeded || 'None'}\n\nFull log in your dashboard.`
+    }
+
+    try {
+      const tc = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN)
+      await tc.messages.create({ from: twilioNum, to: ownerCell, body: smsBody })
+      console.log(`[VoiceBridge] Owner notified via SMS: ${ownerCell}`)
+    } catch (err) {
+      console.error('[VoiceBridge] SMS notify failed:', err.message)
+    }
+
+    // Post to Commander dashboard
+    try {
+      const label = notes.messagLeft ? '📩 Message received via Nova' : '📞 Call handled by Nova'
+      await supabase.from('commander_messages').insert({
+        client_id: clientId,
+        role:      'assistant',
+        content:   `${label}\n\n${summary}`,
+        channel:   'voice',
+      })
+      console.log('[VoiceBridge] Commander message posted')
+    } catch (err) {
+      console.error('[VoiceBridge] Commander insert failed:', err.message)
     }
   }
 
@@ -338,15 +401,19 @@ Be concise. Owner reads this on their phone.`
     if (!callSid || callLogId) return
     callLogId = 'logging'  // set synchronously to block concurrent calls before any await
 
-    // Generate structured call notes via Claude Haiku (fire-and-forget style, non-blocking for cleanup)
     let clientData = null
     try {
-      const { data } = await supabase.from('clients').select('business_name').eq('id', clientId).single()
+      const { data } = await supabase
+        .from('clients')
+        .select('business_name, owner_cell, twilio_number')
+        .eq('id', clientId)
+        .single()
       clientData = data
     } catch {}
 
     const businessName = clientData?.business_name || 'the business'
-    const aiSummary = await buildCallNotes(transcript, businessName)
+    const aiSummary    = await buildCallNotes(transcript, businessName)
+    const notes        = parseNotes(aiSummary)
 
     try {
       await supabase.from('call_logs').insert({
@@ -358,11 +425,17 @@ Be concise. Owner reads this on their phone.`
         ai_summary:    aiSummary || null,
       })
       callLogId = 'logged'
-      console.log('[VoiceBridge] Call logged + notes generated for', caller)
+      console.log('[VoiceBridge] Call logged for', caller)
     } catch (err) {
-      callLogId = null  // reset so a retry attempt is possible on error
+      callLogId = null
       console.error('[VoiceBridge] Failed to log call:', err.message)
+      return
     }
+
+    // Notify owner — fire and forget, don't block cleanup
+    notifyOwner({ clientData, callerNum: caller, notes, summary: aiSummary }).catch(err =>
+      console.error('[VoiceBridge] notifyOwner failed:', err.message)
+    )
   }
 }
 
