@@ -2,6 +2,7 @@ const http = require('http');
 const crypto = require('crypto');
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
+const { sendCriticalAlert } = require('./lib/events');
 
 // Lightweight Supabase client for workers_paused checks
 const supabaseAdmin = createClient(
@@ -1167,4 +1168,20 @@ restoreConfigsFromSupabase().finally(() => {
         console.log(`${15} workers | ${24} subagents | voice bridge active | fully operational`);
         deployWatch.start();
     });
+});
+
+// ─── Top-level unhandled error hooks ─────────────────────────────────────────
+// These are last-resort safety nets. Railway restarts the process on crash,
+// but we alert MJ first so he knows it happened.
+process.on('uncaughtException', (err) => {
+    sendCriticalAlert('server:uncaughtException', err.message, {}).catch(() => {});
+    console.error('[FATAL] uncaughtException — process will exit:', err);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+    const msg = reason instanceof Error ? reason.message : String(reason);
+    sendCriticalAlert('server:unhandledRejection', msg, {}).catch(() => {});
+    console.error('[FATAL] unhandledRejection:', reason);
+    // Do not exit — unhandled rejections are usually recoverable
 });
