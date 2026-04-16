@@ -1,14 +1,14 @@
-const aiClient     = require('../lib/ai-client');
-const memoryModule = require('./memory');
+const base = require('./base');
 
+// FAQ worker — answers customer questions using client's FAQ data, services, and hours.
+// Routed here from receptionist when a question is detected.
+// Uses base.js for: task limits, retries, memory, industry enrichment, escalation, Make.com events.
 async function run({ client, message, customerNumber }) {
     const biz  = client.business;
-    const tone = client.settings?.global?.tone || 'friendly';
-    const toneInstruction = tone === 'professional'
-        ? 'Be professional and formal.'
-        : 'Be warm, friendly, and casual.';
+    const tone = base.getTone(client);
 
-    const systemPrompt = `You are an AI assistant for ${biz.name}, a ${biz.industry} business in ${biz.city}.
+    const systemPrompt = `You are the FAQ assistant for ${biz.name}, a ${biz.industry} business in ${biz.city}.
+You answer customer questions via text message. ${tone}
 
 <business>
 Name: ${biz.name}
@@ -19,48 +19,23 @@ Website: ${biz.website || 'N/A'}
 </business>
 
 <services>
-${biz.services.map(s => `${s.name}: ${s.price}`).join('\n')}
+${biz.services?.map(s => `${s.name}: ${s.price}`).join('\n') || 'N/A'}
 </services>
 
 <faqs>
-${biz.faqs.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n')}
+${biz.faqs?.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n') || 'N/A'}
 </faqs>
 
 <rules>
-- You are texting with a customer. Keep replies SHORT — 1-3 sentences max.
-- ${toneInstruction}
-- If you don't know the answer, say "Great question! Let me have someone from our team follow up with you shortly."
-- Never make up prices or information not listed above.
-- If they want to book an appointment, tell them to call ${biz.phone} or visit ${biz.website || 'our website'}.
-- Sign off with "${biz.name}" when ending conversations.
+- Keep replies SHORT — 1-3 sentences max. You are texting, not emailing.
+- Answer only from the information above. Never guess or make up details.
+- If you don't know the answer: "Great question! Let me have someone from our team follow up with you shortly."
+- Never invent prices or hours not listed above.
+- If they want to book: direct them to call ${biz.phone}${biz.website ? ` or visit ${biz.website}` : ''}.
+- If they want a human: "Happy to connect you with our team — they'll reach out to you shortly."
 </rules>`;
 
-    const history  = memoryModule.loadHistory(client.slug, customerNumber);
-    const messages = [
-        ...history.map(h => ({ role: h.role, content: h.content })),
-        { role: 'user', content: message },
-    ];
-
-    const modelString   = client.model || 'anthropic/claude-haiku-4-5-20251001';
-    const clientApiKeys = client.apiKeys || {};
-
-    try {
-        const reply = await aiClient.call({
-            modelString,
-            clientApiKeys,
-            systemPrompt,
-            messages,
-            maxTokens: 150,
-        });
-
-        memoryModule.saveMessage(client.slug, customerNumber, 'user', message);
-        memoryModule.saveMessage(client.slug, customerNumber, 'assistant', reply);
-        console.log(`[FAQ] (${aiClient.getModelLabel(modelString)}) Reply to ${customerNumber}: "${reply.slice(0, 60)}..."`);
-        return reply;
-    } catch (e) {
-        console.log(`[FAQ] AI error: ${e.message}`);
-        return `Thanks for reaching out to ${biz.name}! We'll get back to you shortly.`;
-    }
+    return base.run({ client, message, customerNumber, workerName: 'FAQ', systemPrompt, maxTokens: 200, skipHandoffs: true });
 }
 
 module.exports = { run };
