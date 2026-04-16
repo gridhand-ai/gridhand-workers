@@ -126,8 +126,38 @@ function extractPhone(platform, event, data) {
                 // Mailchimp merge fields
                 return data?.merges?.PHONE || data?.merges?.SMS || null;
 
+            case 'roller':
+            case 'mindbody':
+            case 'acuity':
+            case 'booksy':
+            case 'vagaro':
+            case 'zenoti':
+                // Appointment platforms: phone under customer or attendee
+                return data?.customer?.phone
+                    || data?.customer?.phone_number
+                    || data?.attendee?.phone
+                    || data?.phone
+                    || null;
+
+            case 'google':
+                // Google Business reviews: reviewer doesn't share phone — skip
+                return null;
+
+            case 'instagram':
+                // Instagram DMs: no phone in webhook payload
+                return null;
+
+            case 'homebase':
+                // Homebase: employee shifts, no customer phone
+                return null;
+
             default:
-                return data?.phone || data?.customerPhone || data?.customer_phone || null;
+                return data?.customer?.phone
+                    || data?.customer?.phone_number
+                    || data?.phone
+                    || data?.customerPhone
+                    || data?.customer_phone
+                    || null;
         }
     } catch {
         return null;
