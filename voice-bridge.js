@@ -106,8 +106,10 @@ async function handleVoiceStream(twilioWs, authClaim = null) {
       case 'media':
         if (!msg.media?.payload) break
         if (elReady && elWs?.readyState === WebSocket.OPEN) {
-          // Pass mulaw base64 directly — EL accepts mulaw 8kHz natively
-          elWs.send(JSON.stringify({ type: 'user_audio_chunk', user_audio_chunk: msg.media.payload }))
+          // EL user audio format: { user_audio_chunk: base64 } — NO type field.
+          // Including type: 'user_audio_chunk' makes EL treat it as a typed message
+          // and ignore the audio, causing silence timeout → conversation_end.
+          elWs.send(JSON.stringify({ user_audio_chunk: msg.media.payload }))
         } else {
           // Safety net — briefly buffer until EL WS opens
           if (audioBuffer.length < 200) audioBuffer.push(msg.media.payload)
@@ -193,17 +195,11 @@ async function handleVoiceStream(twilioWs, authClaim = null) {
 
   elWs.on('open', () => {
     console.log(`[VoiceBridge] ElevenLabs WS opened for ${client.business_name}`)
-    // Tell ElevenLabs we're sending mulaw 8kHz (Twilio's native format).
-    // Without this override the agent defaults to pcm_16000 and misreads the audio.
-    // Force mulaw 8kHz both ways — defense-in-depth even if agent config drifts.
-    // ASR: Twilio sends mulaw 8kHz; TTS: we need mulaw 8kHz back for Twilio to play.
-    elWs.send(JSON.stringify({
-      type: 'conversation_initiation_client_data',
-      conversation_config_override: {
-        asr: { user_input_audio_format: 'ulaw_8000' },
-        tts: { agent_output_audio_format: 'ulaw_8000' },
-      }
-    }))
+    // Do NOT send conversation_initiation_client_data with invalid fields.
+    // The agent is already configured with ulaw_8000 input/output in the EL dashboard.
+    // The signed URL already includes ?output_format=ulaw_8000 for TTS output.
+    // Sending unknown fields (e.g. asr.user_input_audio_format) causes EL to emit
+    // an internal error and close the WS right after the greeting plays.
     elReady = true
 
     // Drop pre-connection buffer — these are stale Twilio connection chunks captured
