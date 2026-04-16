@@ -205,11 +205,11 @@ async function handleVoiceStream(twilioWs, authClaim = null) {
     }))
     elReady = true
 
+    // Drop pre-connection buffer — these are stale Twilio connection chunks captured
+    // before EL was ready. Flushing them confuses EL's turn detection and causes
+    // conversation_end to fire immediately after the greeting. Discard them.
     if (audioBuffer.length > 0) {
-      console.log(`[VoiceBridge] Flushing ${audioBuffer.length} buffered audio chunks`)
-      for (const payload of audioBuffer) {
-        elWs.send(JSON.stringify({ type: 'user_audio_chunk', user_audio_chunk: payload }))
-      }
+      console.log(`[VoiceBridge] Dropping ${audioBuffer.length} pre-connection audio chunks (stale)`)
       audioBuffer = []
     }
   })
@@ -339,12 +339,11 @@ Be concise. Owner reads this on their phone.`
     callLogId = 'logging'  // set synchronously to block concurrent calls before any await
 
     // Generate structured call notes via Claude Haiku (fire-and-forget style, non-blocking for cleanup)
-    const { data: clientData } = await supabase
-      .from('clients')
-      .select('business_name')
-      .eq('id', clientId)
-      .single()
-      .catch(() => ({ data: null }))
+    let clientData = null
+    try {
+      const { data } = await supabase.from('clients').select('business_name').eq('id', clientId).single()
+      clientData = data
+    } catch {}
 
     const businessName = clientData?.business_name || 'the business'
     const aiSummary = await buildCallNotes(transcript, businessName)
