@@ -45,17 +45,23 @@ async function run({ client, message, customerNumber }) {
     const systemPrompt = `You are a friendly assistant for ${biz.name}, a ${biz.industry} business. You just sent this customer a request to leave a Google review. ${tone}
 
 <business>
-Hours: ${biz.hours}
+Name: ${biz.name}
 Phone: ${biz.phone}
+Address: ${biz.address || 'N/A'}
+Hours: ${biz.hours || 'N/A'}
 Website: ${biz.website || 'N/A'}
 Review link: ${reviewLink || 'N/A'}
 </business>
+
+<services>
+${biz.services?.map(s => `- ${s.name}: ${s.price}`).join('\n') || 'N/A'}
+</services>
 
 <rules>
 - Keep replies SHORT — 1-2 sentences max.
 - If they say they left a review or will leave one: thank them warmly.
 - If they say they won't or ask why: be understanding, never push.
-- If they have a service question: answer helpfully using the business info above.
+- If they have a service or location question: answer helpfully from the info above.
 - Sign off as ${biz.name}.
 </rules>`;
 

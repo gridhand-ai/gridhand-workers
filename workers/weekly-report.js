@@ -13,7 +13,7 @@ async function generateWeeklyReport(clientId, businessName) {
 
   const { data: activities } = await supabase
     .from('activity_log')
-    .select('worker_type, created_at, description')
+    .select('worker, action, result, created_at')
     .eq('client_id', clientId)
     .gte('created_at', weekAgo)
     .order('created_at', { ascending: false });
@@ -27,7 +27,7 @@ async function generateWeeklyReport(clientId, businessName) {
 
   const workerCounts = {};
   activities.forEach(a => {
-    workerCounts[a.worker_type] = (workerCounts[a.worker_type] || 0) + 1;
+    workerCounts[a.worker] = (workerCounts[a.worker] || 0) + 1;
   });
   const topWorker = Object.entries(workerCounts).sort((a, b) => b[1] - a[1])[0];
 
@@ -60,8 +60,9 @@ module.exports = {
     // Activity count already came from generateWeeklyReport — no second query
     await supabase.from('activity_log').insert({
       client_id: clientId,
-      worker_type: 'weekly-report',
-      description: `Weekly report sent: ${activityCount} tasks this week`,
+      worker: 'weekly-report',
+      action: 'task_completed',
+      result: `Weekly report sent: ${activityCount} tasks this week`,
       created_at: new Date().toISOString(),
     });
 

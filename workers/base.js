@@ -1,3 +1,4 @@
+const { createClient }  = require('@supabase/supabase-js');
 const aiClient          = require('../lib/ai-client');
 const memoryModule      = require('./memory');
 const { emit, withRetry, sendTelegramAlert } = require('../lib/events');
@@ -7,6 +8,29 @@ const { stateMachine }  = require('../lib/worker-state');
 const industryLearnings = require('../lib/industry-learnings');
 const clientPrefs       = require('../lib/client-prefs');
 const makeClient        = require('../lib/make-client');
+
+const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+// Search the client's knowledge base for relevant entries when a question is detected.
+// Injects a <knowledge> block into the system prompt — always non-fatal (try/catch).
+async function searchKnowledge(supabaseClientId, query) {
+    if (!supabaseClientId) return '';
+    try {
+        const { data } = await supabase.rpc('search_client_knowledge', {
+            client_id: supabaseClientId,
+            query,
+            limit: 3,
+        });
+        if (!data?.length) return '';
+        const entries = data.map(r => `${r.title}: ${r.content}`).join('\n\n');
+        return `\n\n<knowledge>\n${entries}\n</knowledge>`;
+    } catch {
+        return '';
+    }
+}
 
 const UPSET_TRIGGERS = [
     'speak to someone', 'talk to a person', 'real person', 'human', 'manager',
@@ -92,13 +116,14 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
     const clientApiKeys = client.apiKeys || {};
     const fallbackReply = `Thanks for reaching out to ${biz.name}! We'll get back to you shortly.`;
 
-    // Enrich system prompt with pooled industry learnings + client-specific preferences
-    // Fetched in parallel, appended to base prompt. Cached, silent on error.
-    const [industryCtx, prefsCtx] = await Promise.all([
+    // Enrich system prompt with industry learnings, client prefs, and knowledge base.
+    // All fetched in parallel. Knowledge search fires only on question-type messages.
+    const [industryCtx, prefsCtx, knowledgeCtx] = await Promise.all([
         industryLearnings.get(biz.industry),
         clientPrefs.get(client.clientId, global.tone),
+        isLikelyQuestion(message) ? searchKnowledge(client.supabaseClientId, message) : Promise.resolve(''),
     ]);
-    const enrichedPrompt = systemPrompt + industryCtx + prefsCtx;
+    const enrichedPrompt = systemPrompt + industryCtx + prefsCtx + knowledgeCtx;
 
     const reply = await withRetry(
         async () => {
