@@ -39,6 +39,12 @@ const EXPECTED_SCENARIOS = [
     { name: 'GRIDHAND — No-Show Re-Engagement',      critical: false },
     { name: 'GRIDHAND — Repair Order Ready',         critical: false },
     { name: 'GRIDHAND — Review Response Bot',        critical: false },
+
+    // ── Client-specific scenarios ─────────────────────────────────────────────
+    { name: 'GRIDHAND — Astros Playland & Cafe — Booking Events',   critical: true  },
+    { name: 'GRIDHAND — Astros Playland & Cafe — Gmail & Calendar', critical: false },
+    { name: 'GRIDHAND — Astros Playland & Cafe — Social Engagement', critical: false },
+    { name: 'GRIDHAND — Astros Playland & Cafe — Staff Scheduling',  critical: false },
 ]
 
 // ─── Make.com API helper ──────────────────────────────────────────────────────
@@ -67,28 +73,30 @@ async function fetchAllScenarios() {
     return data.scenarios || []
 }
 
-// ─── Re-activate a paused scenario ───────────────────────────────────────────
+// ─── Re-activate a paused/inactive scenario ──────────────────────────────────
 async function reactivateScenario(scenarioId, name) {
-    const { ok, data } = await makeAPI('PATCH', `/scenarios/${scenarioId}`, { isActive: true })
+    // Make API v2: activate via POST /scenarios/{id}/start (not PATCH isActive)
+    const { ok, data } = await makeAPI('POST', `/scenarios/${scenarioId}/start`)
     return { ok, detail: ok ? `Re-activated: ${name}` : `Failed to re-activate ${name}: ${data.message}` }
 }
 
-// ─── Clear DLQ for a scenario ────────────────────────────────────────────────
+// ─── Clear incomplete executions for a scenario ───────────────────────────────
 async function clearDLQ(scenarioId, name) {
-    // First, get the stuck executions
-    const { data: dlqData } = await makeAPI('GET', `/scenarios/${scenarioId}/dlq`)
-    const count = dlqData?.executions?.length || 0
+    // Make API v2: incomplete executions live at /dlqs?scenarioId=, not /scenarios/{id}/dlq
+    const { data: dlqData } = await makeAPI('GET', `/dlqs?scenarioId=${scenarioId}`)
+    const items = dlqData?.dlqs || []
+    const count = items.length
 
-    if (count === 0) return { cleared: 0, detail: 'DLQ already empty' }
+    if (count === 0) return { cleared: 0, detail: 'No incomplete executions' }
 
-    // Delete each stuck execution
+    // Delete each individually (bulk delete requires extra confirmation handshake)
     let cleared = 0
-    for (const exec of dlqData.executions || []) {
-        const { ok } = await makeAPI('DELETE', `/scenarios/${scenarioId}/dlq/${exec.id}`)
+    for (const item of items) {
+        const { ok } = await makeAPI('DELETE', `/dlqs/${item.id}`)
         if (ok) cleared++
     }
 
-    return { cleared, detail: `Cleared ${cleared}/${count} stuck executions from ${name}` }
+    return { cleared, detail: `Cleared ${cleared}/${count} incomplete executions from ${name}` }
 }
 
 // ─── Check all scenarios ──────────────────────────────────────────────────────
