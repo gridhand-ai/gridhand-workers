@@ -68,6 +68,11 @@ const onboardingWorker      = require('./workers/onboarding');
 //
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 
+// Agents — intelligent multi-action coordinators
+const reputationAgent   = require('./agents/reputation-agent');
+const retentionAgent    = require('./agents/retention-agent');
+const leadNurtureAgent  = require('./agents/lead-nurture-agent');
+
 // Subagents — Intelligence
 const sentimentAnalyzer  = require('./subagents/intelligence/sentiment-analyzer');
 const intentClassifier   = require('./subagents/intelligence/intent-classifier');
@@ -244,6 +249,11 @@ app.get('/health', (req, res) => {
 app.get('/', requireApiKey, (req, res) => {
     res.json({
         status: 'GRIDHAND Workers online',
+        agents: [
+            'reputation-agent',  // review requests, responses, velocity monitor
+            'retention-agent',   // win-back, loyalty, birthday, churn detection
+            'lead-nurture-agent', // qualify, score, multi-step follow-up sequence
+        ],
         workers: [
             'faq', 'receptionist', 'booking', 'intake', 'after-hours', 'waitlist',
             'review-requester', 'reminder', 'reactivation', 'lead-followup',
@@ -570,6 +580,135 @@ app.post('/trigger/onboarding', requireApiKey, async (req, res) => {
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
 });
+
+// ─── Intelligent Agent Routes ────────────────────────────────────────────────
+//
+// POST /agents/reputation  — Reputation Agent (review requests, responses, velocity monitor)
+// POST /agents/retention   — Retention Agent (win-back, loyalty, birthday, churn)
+// POST /agents/lead-nurture — Lead Nurture Agent (qualify, score, sequence)
+//
+// Body: { clientId, event, ...eventParams }
+// Auth: GRIDHAND_API_KEY or WORKERS_API_SECRET bearer token
+
+// ── Reputation Agent ──────────────────────────────────────────────────────────
+app.post('/agents/reputation', requireApiKey, async (req, res) => {
+    const { clientId, event, customerPhone, customerName, serviceName } = req.body;
+    if (!clientId || !event) return res.status(400).json({ error: 'clientId and event are required' });
+
+    try {
+        const result = await reputationAgent.run(clientId, {
+            event,
+            customerPhone,
+            customerName,
+            serviceName,
+        });
+        res.json({ success: true, event, result: result || {} });
+    } catch (e) {
+        console.error(`[ReputationAgent] Route error: ${e.message}`);
+        reportWorkerError(clientId, 'ReputationAgent', e.message, { event });
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Retention Agent ───────────────────────────────────────────────────────────
+app.post('/agents/retention', requireApiKey, async (req, res) => {
+    const { clientId, event, customerPhone, customerName, serviceName, dob } = req.body;
+    if (!clientId || !event) return res.status(400).json({ error: 'clientId and event are required' });
+
+    try {
+        const result = await retentionAgent.run(clientId, {
+            event,
+            customerPhone,
+            customerName,
+            serviceName,
+            dob,
+        }, loadClient);
+        res.json({ success: true, event, result: result || {} });
+    } catch (e) {
+        console.error(`[RetentionAgent] Route error: ${e.message}`);
+        reportWorkerError(clientId, 'RetentionAgent', e.message, { event });
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Lead Nurture Agent ────────────────────────────────────────────────────────
+app.post('/agents/lead-nurture', requireApiKey, async (req, res) => {
+    const { clientId, event, customerPhone, customerName, inquiryAbout, source, message } = req.body;
+    if (!clientId || !event) return res.status(400).json({ error: 'clientId and event are required' });
+
+    try {
+        const result = await leadNurtureAgent.run(clientId, {
+            event,
+            customerPhone,
+            customerName,
+            inquiryAbout,
+            source,
+            message,
+        }, loadClient);
+        res.json({ success: true, event, result: result || {} });
+    } catch (e) {
+        console.error(`[LeadNurtureAgent] Route error: ${e.message}`);
+        reportWorkerError(clientId, 'LeadNurtureAgent', e.message, { event });
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ─── Reputation pending requests runner (every 30 min) ───────────────────────
+// Checks for any review requests that have passed their 3-hour delay and fires them.
+setInterval(() => {
+    reputationAgent.runPendingRequests(loadClient).catch(e =>
+        console.log(`[ReputationAgent] Pending runner error: ${e.message}`)
+    );
+}, 30 * 60 * 1000);
+
+// ─── Retention daily cron (9am check, every hour) ────────────────────────────
+// Each client has a timezone — check every hour if any client's local time is 9am.
+setInterval(async () => {
+    const nowUTC = new Date();
+    try {
+        const { data: clients } = await supabaseAdmin
+            .from('clients')
+            .select('id, timezone, workers_paused')
+            .eq('workers_paused', false);
+
+        for (const client of (clients || [])) {
+            const tz = client.timezone || 'America/Chicago';
+            try {
+                const localHour = parseInt(
+                    new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hour12: false }).format(nowUTC),
+                    10
+                );
+                // Only run at 9am local time (within this hourly window)
+                if (localHour === 9) {
+                    retentionAgent.runForClient(client.id, loadClient).catch(e =>
+                        console.log(`[RetentionAgent] Client ${client.id} error: ${e.message}`)
+                    );
+                }
+            } catch (_) {}
+        }
+    } catch (e) {
+        console.log(`[RetentionAgent] Cron query error: ${e.message}`);
+    }
+}, 60 * 60 * 1000);
+
+// ─── Lead nurture follow-up runner (every 30 min) ────────────────────────────
+// Checks for warm/cold leads that need their next scheduled follow-up.
+setInterval(async () => {
+    try {
+        const { data: clients } = await supabaseAdmin
+            .from('clients')
+            .select('id')
+            .eq('workers_paused', false);
+
+        for (const client of (clients || [])) {
+            leadNurtureAgent.runFollowupsForClient(client.id, loadClient).catch(e =>
+                console.log(`[LeadNurtureAgent] Client ${client.id} error: ${e.message}`)
+            );
+        }
+    } catch (e) {
+        console.log(`[LeadNurtureAgent] Follow-up runner error: ${e.message}`);
+    }
+}, 30 * 60 * 1000);
 
 // ─── Integration Event Dispatcher ────────────────────────────────────────────
 //

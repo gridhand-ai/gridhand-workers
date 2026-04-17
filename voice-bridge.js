@@ -18,6 +18,7 @@ const WebSocket = require('ws')
 const { createClient } = require('@supabase/supabase-js')
 const Anthropic = require('@anthropic-ai/sdk')
 const twilio = require('twilio')
+const { sendCriticalAlert } = require('./lib/events')
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -186,6 +187,7 @@ async function handleVoiceStream(twilioWs, authClaim = null) {
     elSignedUrl = sigData.signed_url + '&output_format=ulaw_8000'
   } catch (err) {
     console.error('[VoiceBridge] Failed to get ElevenLabs signed URL:', err.message)
+    sendCriticalAlert('voice-bridge:elevenlabs_connection_failed', err.message, { clientId }).catch(() => {})
     twilioWs.close()
     return
   }
