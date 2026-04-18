@@ -72,6 +72,10 @@ const onboardingWorker      = require('./workers/onboarding');
 const reputationAgent   = require('./agents/reputation-agent');
 const retentionAgent    = require('./agents/retention-agent');
 const leadNurtureAgent  = require('./agents/lead-nurture-agent');
+const credentialMonitor = require('./agents/credential-monitor');
+
+// Redis client (Upstash — persistent dedup across Railway cold starts)
+const { getRedis } = require('./lib/redis-client');
 
 // Subagents — Intelligence
 const sentimentAnalyzer  = require('./subagents/intelligence/sentiment-analyzer');
@@ -232,13 +236,51 @@ setInterval(() => {
 // ─── SMS Deduplication Guard ──────────────────────────────────────────────────
 // Customers sometimes double-tap. The same phone → number combo within 30s
 // produces one AI response only. Prevents duplicate Twilio charges + reply spam.
-const _recentSms = new Map(); // key: `${from}→${to}:${body}`, value: timestamp
+//
+// Primary: Upstash Redis (SETNX with 30s TTL) — survives Railway cold starts.
+// Fallback: in-memory Map when UPSTASH_REDIS_REST_URL is not configured.
+const _recentSms = new Map(); // fallback only
 setInterval(() => {
     const cutoff = Date.now() - 30000;
     for (const [k, ts] of _recentSms.entries()) {
         if (ts < cutoff) _recentSms.delete(k);
     }
 }, 60000);
+
+/**
+ * SMS dedup check. Returns true if this message is a duplicate (should be dropped).
+ * Uses Redis when available, falls back to in-memory Map.
+ * @param {string} from  - customer phone (E.164)
+ * @param {string} to    - worker phone  (E.164)
+ * @param {string} body  - message body (first 30 chars used as key)
+ */
+async function isSmsDedup(from, to, body) {
+    const key    = `sms_dedup:${from}:${to}:${body.slice(0, 30)}`;
+    const redis  = getRedis();
+
+    if (redis) {
+        try {
+            // nx: true → only set if not exists; ex: 30 → TTL in seconds
+            // Returns 'OK' when newly set, null when key already existed
+            const result = await redis.set(key, '1', { ex: 30, nx: true });
+            return result === null; // null → key existed → duplicate
+        } catch (e) {
+            // Redis error — fall through to in-memory fallback silently
+            console.warn('[SMS] Redis dedup error, falling back to in-memory:', e.message);
+        }
+    }
+
+    // In-memory fallback
+    const mapKey = `${from}→${to}:${body}`;
+    if (_recentSms.has(mapKey)) return true;
+    _recentSms.set(mapKey, Date.now());
+    return false;
+}
+
+// ─── Credential Monitor (every 6 hours) ──────────────────────────────────────
+setInterval(() => credentialMonitor.run().catch(e => console.error('[CredMonitor]', e.message)), 6 * 60 * 60 * 1000);
+// Also run once on startup after 30s (gives server time to fully initialize)
+setTimeout(() => credentialMonitor.run().catch(e => console.error('[CredMonitor]', e.message)), 30000);
 
 // ─── Public health endpoint (used by Deploy Watch) ────────────────────────────
 app.get('/health', (req, res) => {
@@ -304,12 +346,11 @@ app.post('/sms', async (req, res) => {
     console.log(`[SMS] ${customerNumber} → ${incomingNumber}: "${message}"`);
 
     // Deduplication: drop exact same message from same sender within 30s
-    const dedupKey = `${customerNumber}→${incomingNumber}:${message}`;
-    if (_recentSms.has(dedupKey)) {
+    // Uses Upstash Redis when configured, falls back to in-memory Map.
+    if (await isSmsDedup(customerNumber, incomingNumber, message)) {
         console.log(`[SMS] Duplicate detected — dropping (already handled within 30s)`);
         return res.set('Content-Type', 'text/xml').send('<Response></Response>');
     }
-    _recentSms.set(dedupKey, Date.now());
 
     const client = loadClient(incomingNumber);
     if (!client) {
@@ -649,6 +690,19 @@ app.post('/agents/lead-nurture', requireApiKey, async (req, res) => {
     } catch (e) {
         console.error(`[LeadNurtureAgent] Route error: ${e.message}`);
         reportWorkerError(clientId, 'LeadNurtureAgent', e.message, { event });
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ── Credential Monitor (manual trigger) ──────────────────────────────────────
+// Runs automatically every 6h via setInterval above.
+// This route lets MJ trigger a manual check from the portal or CLI.
+app.post('/agents/credential-monitor', requireApiKey, async (req, res) => {
+    try {
+        const results = await credentialMonitor.run();
+        res.json({ success: true, ...results });
+    } catch (e) {
+        console.error('[CredMonitor] Route error:', e.message);
         res.status(500).json({ error: e.message });
     }
 });
