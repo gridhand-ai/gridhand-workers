@@ -208,7 +208,7 @@ Text: ${reviewText}
 </rules>`;
 
     const reply = await aiClient.call({
-        modelString: 'anthropic/claude-haiku-4-5-20251001',
+        modelString: 'groq/llama-3.3-70b-versatile',
         clientApiKeys: {},
         systemPrompt,
         messages: [{ role: 'user', content: 'Draft the review response.' }],

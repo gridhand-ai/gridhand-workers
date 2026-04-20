@@ -14,10 +14,16 @@
 //      - Failure → flag as critical, send alert
 //   3. If expiring within 7 days + no refresh_token → SMS MJ via NOTIFY_PHONES
 //
+// Infrastructure checks (run once per daily invocation):
+//   4. Twilio account balance — alert if < $5
+//   5. ElevenLabs character quota — alert if < 10% remaining
+//   6. Groq API key — test call to confirm key is valid
+//   7. Daily Telegram summary — "all clear" or list of issues
+//
 // Never throws — all errors are caught and logged. Server stays alive.
 
 const { createClient } = require('@supabase/supabase-js');
-const { sendCriticalAlert } = require('../lib/events');
+const { sendCriticalAlert, sendTelegramAlert } = require('../lib/events');
 const { sendSMS } = require('../lib/twilio-client');
 
 const supabase = createClient(
@@ -25,8 +31,14 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || ''
 );
 
-const WARN_WINDOW_MS  = 7 * 24 * 60 * 60 * 1000; // 7 days
+const WARN_WINDOW_MS   = 7 * 24 * 60 * 60 * 1000; // 7 days
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+
+// Minimum Twilio balance (USD) before we alert
+const TWILIO_MIN_BALANCE_USD = 5.00;
+
+// Minimum ElevenLabs quota remaining (fraction, 0–1) before we alert
+const EL_MIN_QUOTA_FRACTION  = 0.10;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -117,6 +129,140 @@ async function attemptRefresh(integration) {
     }
 
     throw new Error(`Auto-refresh not supported for platform: ${integration.platform}`);
+}
+
+// ─── Infrastructure checks ────────────────────────────────────────────────────
+
+/**
+ * Check Twilio account balance. Returns an issue string or null if healthy.
+ */
+async function checkTwilioBalance() {
+    const sid   = process.env.TWILIO_ACCOUNT_SID;
+    const token = process.env.TWILIO_AUTH_TOKEN;
+
+    if (!sid || !token) {
+        console.warn('[CredMonitor] TWILIO_ACCOUNT_SID or TWILIO_AUTH_TOKEN not set — skipping balance check');
+        return null;
+    }
+
+    try {
+        const res = await fetch(
+            `https://api.twilio.com/2010-04-01/Accounts/${sid}.json`,
+            {
+                headers: {
+                    Authorization: `Basic ${Buffer.from(`${sid}:${token}`).toString('base64')}`,
+                },
+            }
+        );
+
+        if (!res.ok) {
+            console.error(`[CredMonitor] Twilio balance check HTTP ${res.status}`);
+            return `Twilio API returned HTTP ${res.status} — cannot verify balance`;
+        }
+
+        const data = await res.json();
+        const balance = parseFloat(data.balance);
+
+        console.log(`[CredMonitor] Twilio balance: $${balance}`);
+
+        if (isNaN(balance)) {
+            return 'Twilio: could not parse account balance';
+        }
+
+        if (balance < TWILIO_MIN_BALANCE_USD) {
+            return `Twilio balance critically low: $${balance.toFixed(2)} (threshold: $${TWILIO_MIN_BALANCE_USD})`;
+        }
+
+        return null; // healthy
+    } catch (e) {
+        console.error('[CredMonitor] Twilio balance check failed:', e.message);
+        return `Twilio balance check error: ${e.message}`;
+    }
+}
+
+/**
+ * Check ElevenLabs character quota. Returns an issue string or null if healthy.
+ */
+async function checkElevenLabsQuota() {
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+
+    if (!apiKey) {
+        console.warn('[CredMonitor] ELEVENLABS_API_KEY not set — skipping EL quota check');
+        return null;
+    }
+
+    try {
+        const res = await fetch('https://api.elevenlabs.io/v1/user/subscription', {
+            headers: { 'xi-api-key': apiKey },
+        });
+
+        if (!res.ok) {
+            console.error(`[CredMonitor] ElevenLabs quota check HTTP ${res.status}`);
+            return `ElevenLabs API returned HTTP ${res.status}`;
+        }
+
+        const data = await res.json();
+        const used  = data.character_count ?? 0;
+        const limit = data.character_limit ?? 0;
+
+        if (limit === 0) {
+            console.warn('[CredMonitor] ElevenLabs: could not determine character limit');
+            return null;
+        }
+
+        const remaining = limit - used;
+        const fraction  = remaining / limit;
+
+        console.log(`[CredMonitor] ElevenLabs quota: ${used}/${limit} used (${(fraction * 100).toFixed(1)}% remaining)`);
+
+        if (fraction < EL_MIN_QUOTA_FRACTION) {
+            return `ElevenLabs quota low: ${remaining.toLocaleString()} chars remaining (${(fraction * 100).toFixed(1)}% of ${limit.toLocaleString()})`;
+        }
+
+        return null; // healthy
+    } catch (e) {
+        console.error('[CredMonitor] ElevenLabs quota check failed:', e.message);
+        return `ElevenLabs quota check error: ${e.message}`;
+    }
+}
+
+/**
+ * Verify Groq API key is valid via a minimal completions call.
+ * Returns an issue string or null if healthy.
+ */
+async function checkGroqApiKey() {
+    const apiKey = process.env.GROQ_API_KEY;
+
+    if (!apiKey) {
+        console.warn('[CredMonitor] GROQ_API_KEY not set — skipping Groq check');
+        return null;
+    }
+
+    try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type':  'application/json',
+                'Authorization': `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+                model: 'llama-3.3-70b-versatile',
+                messages: [{ role: 'user', content: 'ping' }],
+                max_tokens: 1,
+            }),
+        });
+
+        if (res.status === 401 || res.status === 403) {
+            return `Groq API key is invalid or revoked (HTTP ${res.status})`;
+        }
+
+        // 429 rate-limit or 200 both confirm the key is valid
+        console.log(`[CredMonitor] Groq API key valid (HTTP ${res.status})`);
+        return null; // healthy
+    } catch (e) {
+        console.error('[CredMonitor] Groq key check failed:', e.message);
+        return `Groq key check network error: ${e.message}`;
+    }
 }
 
 // ─── Core run function ────────────────────────────────────────────────────────
@@ -221,6 +367,64 @@ async function run() {
         }
     }
 
+    // ─── Infrastructure checks ─────────────────────────────────────────────────
+    const infraIssues = [];
+
+    const twilioIssue = await checkTwilioBalance();
+    if (twilioIssue) {
+        infraIssues.push(twilioIssue);
+        results.failed++;
+    }
+
+    const elIssue = await checkElevenLabsQuota();
+    if (elIssue) {
+        infraIssues.push(elIssue);
+        results.failed++;
+    }
+
+    const groqIssue = await checkGroqApiKey();
+    if (groqIssue) {
+        infraIssues.push(groqIssue);
+        await sendCriticalAlert('credential-monitor', groqIssue);
+    }
+
+    // ─── Daily Telegram summary ────────────────────────────────────────────────
+    const oauthIssues = results.failed - infraIssues.length; // rough count before we added infra
+    const totalIssues = infraIssues.length + results.errors.length + (results.failed - infraIssues.length);
+
+    const allClear = totalIssues === 0 && results.warned === 0;
+
+    let summaryMsg;
+    if (allClear) {
+        summaryMsg =
+            `✅ *Credential check: all clear*\n` +
+            `Checked ${results.checked} OAuth token(s), Twilio balance, ElevenLabs quota, and Groq key.\n` +
+            `Time: ${new Date().toISOString()}`;
+    } else {
+        const lines = ['⚠️ *Credential check — issues found:*'];
+
+        if (results.warned > 0) {
+            lines.push(`• ${results.warned} OAuth token(s) expiring soon`);
+        }
+        if (results.refreshed > 0) {
+            lines.push(`• ${results.refreshed} token(s) auto-refreshed`);
+        }
+        if (results.failed - infraIssues.length > 0) {
+            lines.push(`• ${results.failed - infraIssues.length} OAuth token(s) expired or refresh failed`);
+        }
+        for (const issue of infraIssues) {
+            lines.push(`• ${issue}`);
+        }
+        for (const err of results.errors) {
+            lines.push(`• Unexpected error on ${err.platform}: ${err.error}`);
+        }
+
+        lines.push(`\nTime: ${new Date().toISOString()}`);
+        summaryMsg = lines.join('\n');
+    }
+
+    await sendTelegramAlert(summaryMsg);
+
     const elapsed = Date.now() - startedAt;
     console.log(
         `[CredMonitor] Done in ${elapsed}ms — checked: ${results.checked}, healthy: ${results.healthy}, ` +
@@ -230,4 +434,5 @@ async function run() {
     return results;
 }
 
-module.exports = { run };
+// Export both names: run (used by existing server.js) and runCredentialMonitor (new canonical name)
+module.exports = { run, runCredentialMonitor: run };

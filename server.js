@@ -1059,6 +1059,55 @@ app.get('/queue/:twilioNumber', requireApiKey, (req, res) => {
     res.json({ stats, dueNow: due });
 });
 
+// ─── Inbound Voice Webhook ────────────────────────────────────────────────────
+// Twilio calls this when someone dials the client's number.
+// Returns TwiML that opens a Media Stream WebSocket → voice-bridge.js → ElevenLabs.
+app.post('/voice/:slug', async (req, res) => {
+    const twilio = require('twilio');
+    const { VoiceResponse } = twilio.twiml;
+
+    const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioSignature = req.headers['x-twilio-signature'];
+
+    if (!twilioAuthToken || !twilioSignature) {
+        console.warn('[Voice] Missing auth token or signature — rejecting');
+        return res.status(403).send('Forbidden');
+    }
+
+    const webhookUrl = `${process.env.NEXT_PUBLIC_WORKERS_URL || `https://${req.headers.host}`}/voice/${req.params.slug}`;
+    const valid = twilio.validateRequest(twilioAuthToken, twilioSignature, webhookUrl, req.body);
+    if (!valid) {
+        console.warn('[Voice] Invalid Twilio signature — rejecting');
+        return res.status(403).send('Forbidden');
+    }
+
+    const slug     = req.params.slug;
+    const caller   = req.body.From || '';
+    const client   = loadClientBySlug(slug);
+
+    if (!client?.supabaseClientId) {
+        console.warn(`[Voice] No client found for slug "${slug}"`);
+        const twiml = new VoiceResponse();
+        twiml.say('Sorry, this number is not currently in service.');
+        return res.set('Content-Type', 'text/xml').send(twiml.toString());
+    }
+
+    // Build WebSocket URL — wss:// from the workers host
+    const workersHost = (process.env.NEXT_PUBLIC_WORKERS_URL || `https://${req.headers.host}`)
+        .replace(/^https?:\/\//, '')
+        .replace(/\/$/, '')
+    const streamUrl = `wss://${workersHost}/voice-stream`
+
+    const twiml = new VoiceResponse();
+    const connect = twiml.connect();
+    const stream  = connect.stream({ url: streamUrl });
+    stream.parameter({ name: 'clientId', value: client.supabaseClientId });
+    stream.parameter({ name: 'caller',   value: encodeURIComponent(caller) });
+
+    console.log(`[Voice] Routing call from ${caller} → ${slug} (clientId=${client.supabaseClientId})`)
+    res.set('Content-Type', 'text/xml').send(twiml.toString());
+});
+
 // ─── Client Auto-Provisioning ─────────────────────────────────────────────────
 // POST /provision — create a new client config from the portal on signup
 // Body: { slug, businessName, clientId?, twilioNumber?, industry?, city?, phone?, hours?, services?, workers? }
