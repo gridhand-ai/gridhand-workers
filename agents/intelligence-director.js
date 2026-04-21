@@ -1,0 +1,173 @@
+'use strict'
+// ── OG GRIDHAND AGENT — TIER 2 ────────────────────────────────────────────────
+// IntelligenceDirector — Coordinates all monitoring & intelligence agents.
+// Synthesizes system health, client signals, and operational patterns into
+// a strategic brief for the Commander.
+//
+// Division: intelligence
+// Reports to: gridhand-commander
+// Runs: every 60 minutes
+// Scout → Opus pattern: Groq reads everything, Opus synthesizes the brief
+// ──────────────────────────────────────────────────────────────────────────────
+
+const { createClient } = require('@supabase/supabase-js')
+const { call }         = require('../lib/ai-client')
+const { scout }        = require('../lib/scout')
+
+const dailyDigest       = require('./daily-digest')
+const credentialMonitor = require('./credential-monitor')
+const workerGuardian    = require('./worker-guardian')
+const reputationAgent   = require('./reputation-agent')
+const retentionAgent    = require('./retention-agent')
+const leadNurtureAgent  = require('./lead-nurture-agent')
+const n8nEngine         = require('./n8n-scenario-engine')
+
+const AGENT_ID   = 'intelligence-director'
+const DIVISION   = 'intelligence'
+const REPORTS_TO = 'gridhand-commander'
+const OPUS_MODEL = 'claude-opus-4-7'
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+}
+
+async function run(clients = null, situation = null) {
+  console.log(`[${AGENT_ID.toUpperCase()}] Starting run`)
+  const supabase   = getSupabase()
+  const clientList = clients || await getActiveClients(supabase)
+  const now        = Date.now()
+
+  // ── Run all intelligence agents in parallel ──────────────────────────────
+  console.log(`[${AGENT_ID.toUpperCase()}] Running intelligence agents in parallel...`)
+  const [
+    guardianResult,
+    credentialResult,
+    reputationResult,
+    retentionResult,
+    leadNurtureResult,
+  ] = await Promise.allSettled([
+    workerGuardian.run  ? workerGuardian.run({ quiet: true })         : Promise.resolve(null),
+    credentialMonitor.run ? credentialMonitor.run()                   : Promise.resolve(null),
+    reputationAgent.run ? reputationAgent.run(clientList)             : Promise.resolve(null),
+    retentionAgent.run  ? retentionAgent.run(clientList)              : Promise.resolve(null),
+    leadNurtureAgent.run ? leadNurtureAgent.run(clientList)           : Promise.resolve(null),
+  ])
+
+  const agentOutputs = {
+    workerGuardian:  guardianResult.status    === 'fulfilled' ? guardianResult.value    : { error: guardianResult.reason?.message },
+    credentials:     credentialResult.status  === 'fulfilled' ? credentialResult.value  : { error: credentialResult.reason?.message },
+    reputation:      reputationResult.status  === 'fulfilled' ? reputationResult.value  : { error: reputationResult.reason?.message },
+    retention:       retentionResult.status   === 'fulfilled' ? retentionResult.value   : { error: retentionResult.reason?.message },
+    leadNurture:     leadNurtureResult.status === 'fulfilled' ? leadNurtureResult.value : { error: leadNurtureResult.reason?.message },
+  }
+
+  // Pull recent system signals from Supabase
+  const systemSignals = await getSystemSignals(supabase, now)
+
+  // ── SCOUT: Groq reads all agent outputs + system signals ─────────────────
+  console.log(`[${AGENT_ID.toUpperCase()}] Scout synthesizing intelligence...`)
+  let intelligenceBrief = null
+  try {
+    intelligenceBrief = await scout({
+      task: 'Synthesize all intelligence agent outputs into a strategic brief for the Commander. Identify system health issues, client risk patterns, operational anomalies, and opportunities.',
+      sources: [
+        { label: 'agent_outputs',   content: agentOutputs },
+        { label: 'system_signals',  content: systemSignals },
+        { label: 'active_clients',  content: clientList.map(c => ({ id: c.id, name: c.business_name, plan: c.plan, industry: c.industry })) },
+      ],
+      maxTokens: 4000,
+    })
+  } catch (err) {
+    console.warn(`[${AGENT_ID}] Scout failed:`, err.message)
+  }
+
+  // ── OPUS: Strategic synthesis ─────────────────────────────────────────────
+  let strategicReport = null
+  if (intelligenceBrief) {
+    try {
+      const opusResponse = await call({
+        modelString: OPUS_MODEL,
+        systemPrompt: `You are the IntelligenceDirector for GRIDHAND AI. You synthesize operational intelligence and provide strategic assessments to the Commander.
+Output valid JSON with:
+- system_health: "GREEN" | "YELLOW" | "RED"
+- critical_alerts: array of urgent issues requiring immediate action
+- client_risks: array of {clientId, risk, severity} for at-risk clients
+- opportunities: array of strings — patterns or moments to act on
+- recommended_actions: array of specific actions for other directors
+- confidence: 0-100`,
+        messages: [{ role: 'user', content: `INTELLIGENCE BRIEF:\n\n${intelligenceBrief}\n\nProvide strategic assessment as JSON only.` }],
+        maxTokens: 800,
+      })
+      const match = opusResponse?.match(/\{[\s\S]*\}/)
+      if (match) strategicReport = JSON.parse(match[0])
+    } catch (err) {
+      console.warn(`[${AGENT_ID}] Opus synthesis failed:`, err.message)
+    }
+  }
+
+  const summary = strategicReport || {
+    system_health: 'UNKNOWN',
+    critical_alerts: [],
+    client_risks: [],
+    opportunities: [],
+    recommended_actions: [],
+  }
+
+  const actionsCount = (summary.critical_alerts?.length || 0) + (summary.recommended_actions?.length || 0)
+
+  console.log(`[${AGENT_ID.toUpperCase()}] Complete — health: ${summary.system_health}, ${actionsCount} actions flagged`)
+
+  return report([{
+    agentId:  AGENT_ID,
+    clientId: 'system',
+    timestamp: now,
+    status:   actionsCount > 0 ? 'action_taken' : 'no_action',
+    summary:  `Intelligence: ${summary.system_health} health, ${summary.critical_alerts?.length || 0} critical alert(s), ${summary.client_risks?.length || 0} client risk(s)`,
+    data:     summary,
+    requiresDirectorAttention: summary.system_health === 'RED' || (summary.critical_alerts?.length || 0) > 0,
+  }])
+}
+
+async function getSystemSignals(supabase, now) {
+  const signals = {}
+  const oneHourAgo = new Date(now - 60 * 60 * 1000).toISOString()
+  const oneDayAgo  = new Date(now - 24 * 60 * 60 * 1000).toISOString()
+
+  try {
+    const [errorsRes, activityRes, runsRes] = await Promise.allSettled([
+      supabase.from('worker_errors').select('worker_name, error_message, created_at').gte('created_at', oneHourAgo).limit(20),
+      supabase.from('activity_log').select('client_id, worker_name, created_at').gte('created_at', oneDayAgo).limit(100),
+      supabase.from('agent_runs').select('agent_id, status, summary, ran_at').gte('ran_at', oneDayAgo).limit(50),
+    ])
+    signals.recent_errors   = errorsRes.status   === 'fulfilled' ? errorsRes.value.data   || [] : []
+    signals.recent_activity = activityRes.status === 'fulfilled' ? activityRes.value.data || [] : []
+    signals.recent_runs     = runsRes.status     === 'fulfilled' ? runsRes.value.data     || [] : []
+  } catch (err) {
+    console.warn(`[${AGENT_ID}] System signal fetch failed:`, err.message)
+  }
+  return signals
+}
+
+async function report(outcomes) {
+  const actionsCount = outcomes.reduce((s, o) => s + (o.actionsCount || (o.status === 'action_taken' ? 1 : 0)), 0)
+  return {
+    agentId:    AGENT_ID,
+    division:   DIVISION,
+    reportsTo:  REPORTS_TO,
+    timestamp:  Date.now(),
+    actionsCount,
+    escalations: outcomes.filter(o => o.requiresDirectorAttention),
+    outcomes,
+  }
+}
+
+async function getActiveClients(supabase) {
+  const { data, error } = await supabase.from('clients').select('*').eq('is_active', true)
+  if (error) { console.error(`[${AGENT_ID}] Client load failed:`, error.message); return [] }
+  return data || []
+}
+
+module.exports = { run, report, AGENT_ID, DIVISION, REPORTS_TO, schedule: '0 * * * *', tier: 2 }

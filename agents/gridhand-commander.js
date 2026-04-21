@@ -18,10 +18,11 @@ const { sendSMS }      = require('../lib/twilio-client')
 const { call }         = require('../lib/ai-client')
 const { scout }        = require('../lib/scout')
 
-const acquisitionDirector = require('./acquisition-director')
-const revenueDirector     = require('./revenue-director')
-const experienceDirector  = require('./experience-director')
-const brandDirector       = require('./brand-director')
+const acquisitionDirector   = require('./acquisition-director')
+const revenueDirector       = require('./revenue-director')
+const experienceDirector    = require('./experience-director')
+const brandDirector         = require('./brand-director')
+const intelligenceDirector  = require('./intelligence-director')
 
 const OPUS_MODEL = 'claude-opus-4-7'
 
@@ -125,12 +126,13 @@ Output a JSON object with:
     } catch { /* use standard routing */ }
   }
 
-  // Always run all 4 directors — Opus guidance adds priority context
+  // Run all 5 directors — Opus guidance adds priority context
   const directorsToRun = {
-    'acquisition-director': acquisitionDirector,
-    'revenue-director':     revenueDirector,
-    'experience-director':  experienceDirector,
-    'brand-director':       brandDirector,
+    'acquisition-director':  acquisitionDirector,
+    'revenue-director':      revenueDirector,
+    'experience-director':   experienceDirector,
+    'brand-director':        brandDirector,
+    'intelligence-director': intelligenceDirector,
   }
 
   // Build situation context per director, enriched with Opus insights
