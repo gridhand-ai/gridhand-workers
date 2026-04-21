@@ -9,6 +9,7 @@
 const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
 const { sendSMS } = require('../../lib/twilio-client')
+const { validateSMS } = require('../../lib/message-gate')
 
 const AGENT_ID  = 'campaign-conductor'
 const DIVISION  = 'brand'
@@ -85,6 +86,12 @@ async function processClient(client) {
       if (daysUntil >= 7) {
         const brief = await generateCampaignBrief(client, event, daysUntil)
         if (!brief) continue
+
+        const gateResult = validateSMS(brief, { businessName: client.business_name })
+        if (!gateResult.valid) {
+          console.warn(`[${AGENT_ID}] message-gate blocked campaign brief SMS: ${gateResult.issues.join('; ')}`)
+          continue
+        }
 
         await sendSMS({
           from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,

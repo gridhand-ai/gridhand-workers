@@ -25,7 +25,11 @@ const n8nEngine         = require('./n8n-scenario-engine')
 const AGENT_ID   = 'intelligence-director'
 const DIVISION   = 'intelligence'
 const REPORTS_TO = 'gridhand-commander'
-const OPUS_MODEL = 'claude-opus-4-7'
+const OPUS_MODEL = 'groq/llama-3.3-70b-versatile'
+
+// Module-level cache of the latest strategic assessment — populated by run()
+// getBrief() returns it so the Commander can inject it into director runs
+let _latestBrief = null
 
 function getSupabase() {
   return createClient(
@@ -99,7 +103,7 @@ Output valid JSON with:
 - recommended_actions: array of specific actions for other directors
 - confidence: 0-100`,
         messages: [{ role: 'user', content: `INTELLIGENCE BRIEF:\n\n${intelligenceBrief}\n\nProvide strategic assessment as JSON only.` }],
-        maxTokens: 800,
+        maxTokens: 1000,
       })
       const match = opusResponse?.match(/\{[\s\S]*\}/)
       if (match) strategicReport = JSON.parse(match[0])
@@ -114,6 +118,19 @@ Output valid JSON with:
     client_risks: [],
     opportunities: [],
     recommended_actions: [],
+  }
+
+  // Cache the brief so Commander can call getBrief() to inject into director runs
+  if (strategicReport) {
+    _latestBrief = {
+      system_health:       summary.system_health,
+      critical_alerts:     summary.critical_alerts || [],
+      client_risks:        summary.client_risks    || [],
+      opportunities:       summary.opportunities   || [],
+      recommended_actions: summary.recommended_actions || [],
+      confidence:          summary.confidence      || null,
+      generated_at:        new Date().toISOString(),
+    }
   }
 
   const actionsCount = (summary.critical_alerts?.length || 0) + (summary.recommended_actions?.length || 0)
@@ -170,4 +187,57 @@ async function getActiveClients(supabase) {
   return data || []
 }
 
-module.exports = { run, report, AGENT_ID, DIVISION, REPORTS_TO, schedule: '0 * * * *', tier: 2 }
+// ── getBrief: returns the latest strategic assessment as a formatted string ───
+// Called by gridhand-commander before dispatching directors, so each director
+// receives the Intelligence brief as a commanderBrief context injection.
+function getBrief() {
+  if (!_latestBrief) return null
+  const { system_health, critical_alerts, client_risks, opportunities, recommended_actions, generated_at } = _latestBrief
+  const lines = [
+    `INTELLIGENCE BRIEF (${generated_at}) — System Health: ${system_health}`,
+  ]
+  if (critical_alerts?.length) {
+    lines.push(`Critical alerts: ${critical_alerts.slice(0, 3).join('; ')}`)
+  }
+  if (client_risks?.length) {
+    lines.push(`Client risks: ${client_risks.slice(0, 3).map(r => `${r.clientId || r} (${r.severity || 'medium'})`).join(', ')}`)
+  }
+  if (opportunities?.length) {
+    lines.push(`Opportunities: ${opportunities.slice(0, 2).join('; ')}`)
+  }
+  if (recommended_actions?.length) {
+    lines.push(`Recommended actions: ${recommended_actions.slice(0, 3).join('; ')}`)
+  }
+  return lines.join('\n')
+}
+
+module.exports = { run, report, getBrief, AGENT_ID, DIVISION, REPORTS_TO, schedule: '0 * * * *', tier: 2 }
+
+// ── MISSION FILE CONSOLIDATION (weekly) ──────────────────────────────────────
+// Reads ~/.claude/GRIDHAND_MISSION.md, removes duplicates, consolidates similar
+// entries, keeps it sharp. Runs as part of the weekly intelligence cycle.
+async function consolidateMissionFile() {
+  const fs = require('fs')
+  const path = require('path')
+  const missionPath = path.join(process.env.HOME || '/root', '.claude/GRIDHAND_MISSION.md')
+
+  if (!fs.existsSync(missionPath)) return
+
+  const content = fs.readFileSync(missionPath, 'utf8')
+  const lines = content.split('\n')
+
+  // Deduplicate lines within sections (keep unique, preserve structure)
+  const seen = new Set()
+  const deduped = lines.filter(line => {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('---') || trimmed.startsWith('*') || trimmed.startsWith('-')) return true
+    if (seen.has(trimmed)) return false
+    seen.add(trimmed)
+    return true
+  })
+
+  fs.writeFileSync(missionPath, deduped.join('\n'))
+  console.log(`[INTELLIGENCE-DIRECTOR] Mission file consolidated: ${lines.length} → ${deduped.length} lines`)
+}
+
+module.exports.consolidateMissionFile = consolidateMissionFile

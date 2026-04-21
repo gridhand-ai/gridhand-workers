@@ -126,13 +126,34 @@ Output a JSON object with:
     } catch { /* use standard routing */ }
   }
 
-  // Run all 5 directors — Opus guidance adds priority context
-  const directorsToRun = {
-    'acquisition-director':  acquisitionDirector,
-    'revenue-director':      revenueDirector,
-    'experience-director':   experienceDirector,
-    'brand-director':        brandDirector,
-    'intelligence-director': intelligenceDirector,
+  // ── Run Intelligence Director first — its brief feeds into the other four ──
+  // This gives each director cross-division context before they dispatch specialists.
+  let intelReport = null
+  try {
+    intelReport = await intelligenceDirector.run(
+      clientList,
+      situations.filter(s => SITUATION_ROUTING[s.type] === 'intelligence-director'),
+    )
+    await receive(intelReport)
+    console.log(`[${AGENT_ID.toUpperCase()}] Intelligence Director complete — extracting brief`)
+  } catch (intelErr) {
+    console.error(`[${AGENT_ID}] Intelligence Director failed: ${intelErr.message}`)
+    intelReport = {
+      agentId:    'intelligence-director',
+      division:   'intelligence',
+      reportsTo:  AGENT_ID,
+      timestamp:  Date.now(),
+      actionsCount: 0,
+      escalations: [],
+      outcomes:   [{ status: 'error', summary: `Director failed: ${intelErr.message}`, requiresDirectorAttention: true }],
+      error:      intelErr.message,
+    }
+  }
+
+  // Pull the intelligence brief — null if Intel Director failed or hasn't run yet
+  const intelligenceBrief = intelligenceDirector.getBrief ? intelligenceDirector.getBrief() : null
+  if (intelligenceBrief) {
+    console.log(`[${AGENT_ID.toUpperCase()}] Intelligence brief ready — injecting into director runs`)
   }
 
   // Build situation context per director, enriched with Opus insights
@@ -142,20 +163,29 @@ Output a JSON object with:
     prioritized:   parsedGuidance.priority_directors || [],
   } : {}
 
-  // Run all directors in parallel
+  // The four operational directors that receive the intelligence brief
+  const operationalDirectors = {
+    'acquisition-director': acquisitionDirector,
+    'revenue-director':     revenueDirector,
+    'experience-director':  experienceDirector,
+    'brand-director':       brandDirector,
+  }
+
+  // Run the four operational directors in parallel, injecting the intel brief as commanderBrief
   const directorResults = await Promise.allSettled(
-    Object.entries(directorsToRun).map(([id, director]) =>
+    Object.entries(operationalDirectors).map(([id, director]) =>
       director.run(
         clientList,
         situations.filter(s => SITUATION_ROUTING[s.type] === id),
-        opusContext,
+        intelligenceBrief, // commanderBrief — third param added to all four directors
       )
     )
   )
 
   // Collect and process director reports — always get a valid object, never silent fail
-  const directorReports = []
-  const directorNames   = Object.keys(directorsToRun)
+  // Start with the intel report already collected above
+  const directorReports = [intelReport]
+  const directorNames   = Object.keys(operationalDirectors)
   for (let i = 0; i < directorResults.length; i++) {
     const result = directorResults[i]
     const name   = directorNames[i]

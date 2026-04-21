@@ -9,6 +9,7 @@
 const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
 const { sendSMS } = require('../../lib/twilio-client')
+const { validateSMS } = require('../../lib/message-gate')
 
 const AGENT_ID  = 'brand-sentinel'
 const DIVISION  = 'brand'
@@ -92,17 +93,22 @@ async function processClient(client) {
   // Send briefing to client if they have a phone
   const ownerPhone = client.owner_cell
   if (briefing && ownerPhone) {
-    try {
-      await sendSMS({
-        from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
-        to: ownerPhone,
-        body: briefing,
-        clientApiKeys: {},
-        clientSlug: client.email,
-        clientTimezone: 'America/Chicago',
-      })
-    } catch (err) {
-      console.error(`[${AGENT_ID}] Briefing SMS failed:`, err.message)
+    const gateResult = validateSMS(briefing, { businessName: client.business_name })
+    if (!gateResult.valid) {
+      console.warn(`[${AGENT_ID}] message-gate blocked weekly briefing SMS: ${gateResult.issues.join('; ')}`)
+    } else {
+      try {
+        await sendSMS({
+          from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
+          to: ownerPhone,
+          body: gateResult.text,
+          clientApiKeys: {},
+          clientSlug: client.email,
+          clientTimezone: 'America/Chicago',
+        })
+      } catch (err) {
+        console.error(`[${AGENT_ID}] Briefing SMS failed:`, err.message)
+      }
     }
   }
 

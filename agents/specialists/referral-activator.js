@@ -9,6 +9,7 @@
 const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
 const { sendSMS } = require('../../lib/twilio-client')
+const { validateSMS } = require('../../lib/message-gate')
 
 const AGENT_ID  = 'referral-activator'
 const DIVISION  = 'acquisition'
@@ -82,6 +83,12 @@ async function processClient(client) {
     try {
       const message = await generateReferralAsk(client, event)
       if (!message) continue
+
+      const gateResult = validateSMS(message, { businessName: client.business_name })
+      if (!gateResult.valid) {
+        console.warn(`[${AGENT_ID}] message-gate blocked SMS: ${gateResult.issues.join('; ')}`)
+        continue
+      }
 
       await sendSMS({
         from: client.twilio_number,

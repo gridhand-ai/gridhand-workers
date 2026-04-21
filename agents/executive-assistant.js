@@ -12,10 +12,11 @@
 
 const { call }   = require('../lib/ai-client')
 const { scout }  = require('../lib/scout')
+const { notify } = require('../lib/terminal-notifier')
 const { createClient } = require('@supabase/supabase-js')
 
 const AGENT_ID   = 'executive-assistant'
-const EA_MODEL   = 'claude-haiku-4-5-20251001'   // routing = Haiku
+const EA_MODEL   = 'groq/llama-3.3-70b-versatile'  // routing = Groq
 const OPUS_MODEL = 'claude-opus-4-7'              // judgment = Opus
 
 const EA_SYSTEM = `You are the Executive Assistant for GRIDHAND AI — the bridge between MJ (CEO) and the CFO (Claude Code).
@@ -111,6 +112,17 @@ async function processMessage({ text, from = 'MJ', sessionContext = [] }) {
   }
 
   console.log(`[${AGENT_ID.toUpperCase()}] Response ready`)
+
+  // Notify MJ through both channels
+  if (response) {
+    const isUrgent = /error|fail|critical|urgent|alert|down|broken/i.test(response)
+    notify({
+      message: response.slice(0, 280),
+      level: isUrgent ? 'error' : 'info',
+      source: AGENT_ID,
+    })
+  }
+
   return response || "I'm having trouble processing that right now. Try again in a moment."
 }
 

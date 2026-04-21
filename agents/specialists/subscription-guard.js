@@ -9,6 +9,7 @@
 const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
 const { sendSMS } = require('../../lib/twilio-client')
+const { validateSMS } = require('../../lib/message-gate')
 
 const AGENT_ID  = 'subscription-guard'
 const DIVISION  = 'revenue'
@@ -60,16 +61,21 @@ async function processClient(client) {
       if (!alreadyWarned) {
         const msg = await generateMessage(client, 'card_expiry', { daysUntilExpiry: Math.floor(daysUntilExpiry) })
         if (msg && client.owner_cell) {
-          await sendSMS({
-            from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
-            to: client.owner_cell,
-            body: msg,
-            clientApiKeys: {},
-            clientSlug: client.email,
-            clientTimezone: 'America/Chicago',
-          })
-          await setGuardState(supabase, client.id, 'card_expiry_warned', true)
-          actions.push('card_expiry_warning_sent')
+          const gateResult = validateSMS(msg, { businessName: client.business_name })
+          if (!gateResult.valid) {
+            console.warn(`[${AGENT_ID}] message-gate blocked card_expiry SMS: ${gateResult.issues.join('; ')}`)
+          } else {
+            await sendSMS({
+              from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
+              to: client.owner_cell,
+              body: gateResult.text,
+              clientApiKeys: {},
+              clientSlug: client.email,
+              clientTimezone: 'America/Chicago',
+            })
+            await setGuardState(supabase, client.id, 'card_expiry_warned', true)
+            actions.push('card_expiry_warning_sent')
+          }
         }
       }
     }
@@ -81,17 +87,22 @@ async function processClient(client) {
     if (!alreadyContacted) {
       const msg = await generateMessage(client, 'payment_failed', {})
       if (msg && client.owner_cell) {
-        await sendSMS({
-          from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
-          to: client.owner_cell,
-          body: msg,
-          clientApiKeys: {},
-          clientSlug: client.email,
-          clientTimezone: 'America/Chicago',
-        })
-        await setGuardState(supabase, client.id, 'payment_failure_contacted', true)
-        actions.push('payment_failure_recovery_sent')
-        requiresAttention = true
+        const gateResult = validateSMS(msg, { businessName: client.business_name })
+        if (!gateResult.valid) {
+          console.warn(`[${AGENT_ID}] message-gate blocked payment_failed SMS: ${gateResult.issues.join('; ')}`)
+        } else {
+          await sendSMS({
+            from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
+            to: client.owner_cell,
+            body: gateResult.text,
+            clientApiKeys: {},
+            clientSlug: client.email,
+            clientTimezone: 'America/Chicago',
+          })
+          await setGuardState(supabase, client.id, 'payment_failure_contacted', true)
+          actions.push('payment_failure_recovery_sent')
+          requiresAttention = true
+        }
       }
     }
   }
@@ -104,16 +115,21 @@ async function processClient(client) {
       if (!alreadyWarned) {
         const msg = await generateMessage(client, 'trial_ending', { daysLeft: Math.floor(daysUntilTrialEnd) })
         if (msg && client.owner_cell) {
-          await sendSMS({
-            from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
-            to: client.owner_cell,
-            body: msg,
-            clientApiKeys: {},
-            clientSlug: client.email,
-            clientTimezone: 'America/Chicago',
-          })
-          await setGuardState(supabase, client.id, 'trial_end_warned', true)
-          actions.push('trial_ending_warning_sent')
+          const gateResult = validateSMS(msg, { businessName: client.business_name })
+          if (!gateResult.valid) {
+            console.warn(`[${AGENT_ID}] message-gate blocked trial_ending SMS: ${gateResult.issues.join('; ')}`)
+          } else {
+            await sendSMS({
+              from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
+              to: client.owner_cell,
+              body: gateResult.text,
+              clientApiKeys: {},
+              clientSlug: client.email,
+              clientTimezone: 'America/Chicago',
+            })
+            await setGuardState(supabase, client.id, 'trial_end_warned', true)
+            actions.push('trial_ending_warning_sent')
+          }
         }
       }
     }

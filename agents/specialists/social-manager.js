@@ -8,6 +8,7 @@
 
 const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
+const { validateSMS } = require('../../lib/message-gate')
 
 const AGENT_ID  = 'social-manager'
 const DIVISION  = 'brand'
@@ -82,8 +83,14 @@ async function processClient(client) {
       const draft = await generateDraftResponse(client, msg)
       if (!draft) continue
 
+      const gateResult = validateSMS(draft, { businessName: client.business_name })
+      if (!gateResult.valid) {
+        console.warn(`[${AGENT_ID}] message-gate blocked social draft: ${gateResult.issues.join('; ')}`)
+        continue
+      }
+
       await supabase.from('social_inbox').update({
-        draft_response: draft,
+        draft_response: gateResult.text,
         drafted_at: new Date().toISOString(),
         handled_at: new Date().toISOString(),
         flagged_for_review: false,

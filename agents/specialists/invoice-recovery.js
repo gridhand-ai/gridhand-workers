@@ -9,6 +9,7 @@
 const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
 const { sendSMS } = require('../../lib/twilio-client')
+const { validateSMS } = require('../../lib/message-gate')
 
 const AGENT_ID  = 'invoice-recovery'
 const DIVISION  = 'revenue'
@@ -86,6 +87,15 @@ async function processClient(client) {
     try {
       const message = await generateChaseMessage(client, invoice, tone, daysOverdue)
       if (!message) continue
+
+      const gateResult = validateSMS(message, {
+        businessName: client.business_name,
+        amount: invoice.amount ? String(invoice.amount) : undefined,
+      })
+      if (!gateResult.valid) {
+        console.warn(`[${AGENT_ID}] message-gate blocked SMS: ${gateResult.issues.join('; ')}`)
+        continue
+      }
 
       await sendSMS({
         from: client.twilio_number,
