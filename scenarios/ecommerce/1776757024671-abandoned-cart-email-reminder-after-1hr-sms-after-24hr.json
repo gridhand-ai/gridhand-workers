@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] E-commerce Agent - Abandoned cart → email reminder after 1hr → SMS after 24hr",
+  "nodes": [
+    {
+      "id": "rfklp9d13547aryr",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-ecommerce-1776757024671",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "153sn6wy4nu0by1t"
+    },
+    {
+      "id": "czrkgbzusz7kskku",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   E-commerce Agent\n// Scenario: Abandoned cart → email reminder after 1hr → SMS after 24hr\n// Desc:     When a customer leaves items in their online shopping cart at a retail store like Trendy Fashion Boutique, a workflow is triggered that sends a reminder email to the customer through Mailchimp after one hour, prompting them to complete their purchase. If the customer still hasn\\'t checked out after 24 hours, the workflow automatically sends a personalized SMS reminder through Twilio, urging them to finalize their purchase and offering a limited-time discount to incentivize completion. By doing so, the business owner can recover potentially lost sales and increase revenue, with the automated workflow helping to re-engage customers and reduce cart abandonment rates.\n// Created:  2026-04-21T07:37:04.671Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Abandoned cart → email reminder after 1hr → SMS after 24hr\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'ecommerce',\n  scenario: 'Abandoned cart → email reminder after 1hr → SMS after 24hr',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "xbkwk5q26n68m7yg",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "ecommerce",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "ecommerce",
+      "domainName": "E-commerce Agent",
+      "scenario": "Abandoned cart → email reminder after 1hr → SMS after 24hr",
+      "description": "When a customer leaves items in their online shopping cart at a retail store like Trendy Fashion Boutique, a workflow is triggered that sends a reminder email to the customer through Mailchimp after one hour, prompting them to complete their purchase. If the customer still hasn't checked out after 24 hours, the workflow automatically sends a personalized SMS reminder through Twilio, urging them to finalize their purchase and offering a limited-time discount to incentivize completion. By doing so, the business owner can recover potentially lost sales and increase revenue, with the automated workflow helping to re-engage customers and reduce cart abandonment rates.",
+      "generatedAt": "2026-04-21T07:37:04.671Z"
+    }
+  }
+}

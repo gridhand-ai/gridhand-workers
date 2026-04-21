@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Reporting Agent - Weekly: pull tasks from Airtable → generate summary → email ",
+  "nodes": [
+    {
+      "id": "2ifen08hdyhrhtms",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-reporting-1776757019463",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "z0vwjh67jxj5ohn1"
+    },
+    {
+      "id": "im228fytr1xx9pxt",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Reporting Agent\n// Scenario: Weekly: pull tasks from Airtable → generate summary → email client\n// Desc:     Every Sunday evening at 8pm, GRIDHAND\\'s automation workflow kicks in, pulling all tasks from the past week out of Airtable and generating a concise summary of completed and pending tasks, which is then emailed to the business owner, allowing them to review progress and plan for the upcoming week ahead of Monday morning. This automated summary saves the owner several hours of manual effort each week, freeing them up to focus on high-priority tasks and client relationships. By receiving this weekly summary, the business owner can quickly identify areas that need attention and make data-driven decisions to drive growth and efficiency in their small business.\n// Created:  2026-04-21T07:36:59.463Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Weekly: pull tasks from Airtable → generate summary → email client\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'reporting',\n  scenario: 'Weekly: pull tasks from Airtable → generate summary → email client',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "x8c9gfsz9i55eo2b",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "reporting",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "reporting",
+      "domainName": "Reporting Agent",
+      "scenario": "Weekly: pull tasks from Airtable → generate summary → email client",
+      "description": "Every Sunday evening at 8pm, GRIDHAND's automation workflow kicks in, pulling all tasks from the past week out of Airtable and generating a concise summary of completed and pending tasks, which is then emailed to the business owner, allowing them to review progress and plan for the upcoming week ahead of Monday morning. This automated summary saves the owner several hours of manual effort each week, freeing them up to focus on high-priority tasks and client relationships. By receiving this weekly summary, the business owner can quickly identify areas that need attention and make data-driven decisions to drive growth and efficiency in their small business.",
+      "generatedAt": "2026-04-21T07:36:59.463Z"
+    }
+  }
+}

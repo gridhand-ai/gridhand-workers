@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] SMS Campaign Agent - Trigger: unpaid invoice 7 days → escalating SMS reminders",
+  "nodes": [
+    {
+      "id": "045fkt2ywiik74zj",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-sms-campaigns-1776756992015",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "od75dsywohpz99ik"
+    },
+    {
+      "id": "ubipxz0l37b0dj3e",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   SMS Campaign Agent\n// Scenario: Trigger: unpaid invoice 7 days → escalating SMS reminders\n// Desc:     When an unpaid invoice reaches 7 days overdue, GRIDHAND\\'s automation workflow is triggered, sending a series of escalating SMS reminders to the customer via Twilio, starting with a friendly notification on day 7, followed by a more urgent message on day 10, and a final notice on day 14, all while updating the customer\\'s record in QuickBooks and notifying the business owner via email. This automated reminder process saves the business owner time and reduces the likelihood of late payments, allowing them to focus on serving their customers and growing their business. By streamlining the invoicing process, the business owner can expect to see an improvement in cash flow and a reduction in outstanding balances, with GRIDHAND handling the tedious follow-up tasks.\n// Created:  2026-04-21T07:36:32.015Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Trigger: unpaid invoice 7 days → escalating SMS reminders\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'sms-campaigns',\n  scenario: 'Trigger: unpaid invoice 7 days → escalating SMS reminders',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "hq28f82r3oauh7xs",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "sms-campaigns",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "sms-campaigns",
+      "domainName": "SMS Campaign Agent",
+      "scenario": "Trigger: unpaid invoice 7 days → escalating SMS reminders",
+      "description": "When an unpaid invoice reaches 7 days overdue, GRIDHAND's automation workflow is triggered, sending a series of escalating SMS reminders to the customer via Twilio, starting with a friendly notification on day 7, followed by a more urgent message on day 10, and a final notice on day 14, all while updating the customer's record in QuickBooks and notifying the business owner via email. This automated reminder process saves the business owner time and reduces the likelihood of late payments, allowing them to focus on serving their customers and growing their business. By streamlining the invoicing process, the business owner can expect to see an improvement in cash flow and a reduction in outstanding balances, with GRIDHAND handling the tedious follow-up tasks.",
+      "generatedAt": "2026-04-21T07:36:32.015Z"
+    }
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Reporting Agent - Monthly: review count + rating average → send performance re",
+  "nodes": [
+    {
+      "id": "mj21idwo0dikskim",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-reporting-1776757020918",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "kl2s5omg9y9ok43d"
+    },
+    {
+      "id": "g0atcy9dyhkn5bti",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Reporting Agent\n// Scenario: Monthly: review count + rating average → send performance report\n// Desc:     At the start of each month, GRIDHAND automatically compiles a performance report for the business owner by aggregating review counts and rating averages from platforms like Yelp and Google Reviews, then sends a concise summary to the owner\\'s email via Gmail, highlighting areas of improvement and successes, allowing for data-driven decisions to enhance customer satisfaction and ultimately drive sales. This workflow is triggered on the first day of every month at 8am, ensuring the owner has a timely and comprehensive overview of their business\\'s online reputation. By receiving this monthly report, the business owner can swiftly identify trends, adjust marketing strategies, and boost their overall online presence to attract more customers.\n// Created:  2026-04-21T07:37:00.918Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Monthly: review count + rating average → send performance report\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'reporting',\n  scenario: 'Monthly: review count + rating average → send performance report',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "l3usbefri5pgx3jg",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "reporting",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "reporting",
+      "domainName": "Reporting Agent",
+      "scenario": "Monthly: review count + rating average → send performance report",
+      "description": "At the start of each month, GRIDHAND automatically compiles a performance report for the business owner by aggregating review counts and rating averages from platforms like Yelp and Google Reviews, then sends a concise summary to the owner's email via Gmail, highlighting areas of improvement and successes, allowing for data-driven decisions to enhance customer satisfaction and ultimately drive sales. This workflow is triggered on the first day of every month at 8am, ensuring the owner has a timely and comprehensive overview of their business's online reputation. By receiving this monthly report, the business owner can swiftly identify trends, adjust marketing strategies, and boost their overall online presence to attract more customers.",
+      "generatedAt": "2026-04-21T07:37:00.918Z"
+    }
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Seasonal Campaign Agent - New Year: Jan 1 → goal-setting offer → check-in Jan 15",
+  "nodes": [
+    {
+      "id": "9yj896vtfld6g8me",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-seasonal-campaigns-1776757034476",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "ybeiw1ryq72h0981"
+    },
+    {
+      "id": "4rvkg0njwbsfof0s",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Seasonal Campaign Agent\n// Scenario: New Year: Jan 1 → goal-setting offer → check-in Jan 15\n// Desc:     On January 1st, GRIDHAND\\'s automation workflow is triggered, sending a personalized email to all gym members with a goal-setting offer, complete with a special promotion for personal training sessions and a downloadable fitness plan template. Over the next two weeks, members who engage with the email are automatically added to a follow-up sequence, culminating in a check-in email on January 15th that tracks their progress and provides motivational content to help them stay on track. By leveraging this automated workflow, the gym owner can increase member engagement and retention, driving revenue growth through targeted promotions and support, all while freeing up staff time to focus on high-touch, high-value services.\n// Created:  2026-04-21T07:37:14.476Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: New Year: Jan 1 → goal-setting offer → check-in Jan 15\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'seasonal-campaigns',\n  scenario: 'New Year: Jan 1 → goal-setting offer → check-in Jan 15',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "l2imt6jd7jxgqoz2",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "seasonal-campaigns",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "seasonal-campaigns",
+      "domainName": "Seasonal Campaign Agent",
+      "scenario": "New Year: Jan 1 → goal-setting offer → check-in Jan 15",
+      "description": "On January 1st, GRIDHAND's automation workflow is triggered, sending a personalized email to all gym members with a goal-setting offer, complete with a special promotion for personal training sessions and a downloadable fitness plan template. Over the next two weeks, members who engage with the email are automatically added to a follow-up sequence, culminating in a check-in email on January 15th that tracks their progress and provides motivational content to help them stay on track. By leveraging this automated workflow, the gym owner can increase member engagement and retention, driving revenue growth through targeted promotions and support, all while freeing up staff time to focus on high-touch, high-value services.",
+      "generatedAt": "2026-04-21T07:37:14.476Z"
+    }
+  }
+}

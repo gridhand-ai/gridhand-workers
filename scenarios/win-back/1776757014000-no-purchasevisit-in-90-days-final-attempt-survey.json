@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Win-Back Agent - No purchase/visit in 90 days → final attempt + survey",
+  "nodes": [
+    {
+      "id": "vbnsbx2bpfdeo3th",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-win-back-1776757014000",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "9kv2mdg8hlycjzpx"
+    },
+    {
+      "id": "qwi496t4djkdz215",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Win-Back Agent\n// Scenario: No purchase/visit in 90 days → final attempt + survey\n// Desc:     When a customer hasn\\'t made a purchase or visited a business, such as a gym, in 90 days, GRIDHAND\\'s automation workflow is triggered to send a final attempt email via Mailchimp at 8am on the 91st day, containing a personalized message and a link to a survey on Google Forms to gather feedback on their experience. This email is the last in a series of targeted communications, and the survey responses are then synced with the business\\'s CRM system, allowing the owner to analyze the results and identify areas for improvement. By leveraging this automation, the gym owner can re-engage dormant customers, gather valuable insights to inform marketing strategies, and potentially win back lost business, all without manual intervention.\n// Created:  2026-04-21T07:36:54.000Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: No purchase/visit in 90 days → final attempt + survey\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'win-back',\n  scenario: 'No purchase/visit in 90 days → final attempt + survey',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "p9ugms9gcda8dyjn",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "win-back",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "win-back",
+      "domainName": "Win-Back Agent",
+      "scenario": "No purchase/visit in 90 days → final attempt + survey",
+      "description": "When a customer hasn't made a purchase or visited a business, such as a gym, in 90 days, GRIDHAND's automation workflow is triggered to send a final attempt email via Mailchimp at 8am on the 91st day, containing a personalized message and a link to a survey on Google Forms to gather feedback on their experience. This email is the last in a series of targeted communications, and the survey responses are then synced with the business's CRM system, allowing the owner to analyze the results and identify areas for improvement. By leveraging this automation, the gym owner can re-engage dormant customers, gather valuable insights to inform marketing strategies, and potentially win back lost business, all without manual intervention.",
+      "generatedAt": "2026-04-21T07:36:54.000Z"
+    }
+  }
+}

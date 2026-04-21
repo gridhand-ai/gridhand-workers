@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Lead Capture Agent - Google Form submit → Airtable row → email follow-up",
+  "nodes": [
+    {
+      "id": "h6y5roenh35wwd4f",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-lead-capture-1776756983912",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "4qvs5oqwh5obfog6"
+    },
+    {
+      "id": "qet8kmjom60d5d61",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Lead Capture Agent\n// Scenario: Google Form submit → Airtable row → email follow-up\n// Desc:     When a customer submits a contact form on a small business\\'s website using Google Forms, it automatically triggers a workflow that creates a new row in the business\\'s Airtable database, storing the customer\\'s inquiry details. Immediately after, an email follow-up is sent to the customer via Gmail, thanking them for their inquiry and providing an estimated response time, all while the business owner receives a notification email to review and respond to the inquiry in a timely manner. By automating this process, the business owner can ensure prompt and personalized follow-ups with potential customers, ultimately leading to increased conversion rates and improved customer satisfaction.\n// Created:  2026-04-21T07:36:23.912Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Google Form submit → Airtable row → email follow-up\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'lead-capture',\n  scenario: 'Google Form submit → Airtable row → email follow-up',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "f39qz34fkx278wuw",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "lead-capture",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "lead-capture",
+      "domainName": "Lead Capture Agent",
+      "scenario": "Google Form submit → Airtable row → email follow-up",
+      "description": "When a customer submits a contact form on a small business's website using Google Forms, it automatically triggers a workflow that creates a new row in the business's Airtable database, storing the customer's inquiry details. Immediately after, an email follow-up is sent to the customer via Gmail, thanking them for their inquiry and providing an estimated response time, all while the business owner receives a notification email to review and respond to the inquiry in a timely manner. By automating this process, the business owner can ensure prompt and personalized follow-ups with potential customers, ultimately leading to increased conversion rates and improved customer satisfaction.",
+      "generatedAt": "2026-04-21T07:36:23.912Z"
+    }
+  }
+}

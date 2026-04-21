@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Internal Ops Agent - Weekly team report → compile from all tools → send to owner",
+  "nodes": [
+    {
+      "id": "mxnz3zcyfzujqw61",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-internal-ops-1776757030255",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "752u44y5jg5lx1i8"
+    },
+    {
+      "id": "vug0111222jfohcy",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Internal Ops Agent\n// Scenario: Weekly team report → compile from all tools → send to owner\n// Desc:     Every Sunday evening at 6 PM, GRIDHAND\\'s automation workflow is triggered to compile a weekly team report, aggregating key performance data from apps like Square for sales, Google Calendar for schedules, and FreshBooks for invoicing, which are then organized into a concise summary. This summary is sent via email to the business owner, providing a clear overview of the past week\\'s activity, including total revenue, appointment volume, and outstanding payments, allowing them to make informed decisions for the upcoming week. By automating this weekly report, the business owner saves several hours of manual data collection and analysis, enabling them to focus on strategic growth and improvement.\n// Created:  2026-04-21T07:37:10.255Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Weekly team report → compile from all tools → send to owner\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'internal-ops',\n  scenario: 'Weekly team report → compile from all tools → send to owner',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "9701rpn0v8mstm17",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "internal-ops",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "internal-ops",
+      "domainName": "Internal Ops Agent",
+      "scenario": "Weekly team report → compile from all tools → send to owner",
+      "description": "Every Sunday evening at 6 PM, GRIDHAND's automation workflow is triggered to compile a weekly team report, aggregating key performance data from apps like Square for sales, Google Calendar for schedules, and FreshBooks for invoicing, which are then organized into a concise summary. This summary is sent via email to the business owner, providing a clear overview of the past week's activity, including total revenue, appointment volume, and outstanding payments, allowing them to make informed decisions for the upcoming week. By automating this weekly report, the business owner saves several hours of manual data collection and analysis, enabling them to focus on strategic growth and improvement.",
+      "generatedAt": "2026-04-21T07:37:10.255Z"
+    }
+  }
+}

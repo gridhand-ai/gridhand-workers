@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Internal Ops Agent - License/certification expiring → 30 day warning → assign ren",
+  "nodes": [
+    {
+      "id": "s1ezlbvb2wwf7f86",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-internal-ops-1776757031560",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "2ijnvy7q0jhen215"
+    },
+    {
+      "id": "sgb2ogma1vp8q51x",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Internal Ops Agent\n// Scenario: License/certification expiring → 30 day warning → assign renewal task\n// Desc:     When a barber\\'s professional license is approaching expiration, 30 days prior to the deadline, GRIDHAND\\'s automation workflow is triggered, sending a notification to the shop owner\\'s email and creating a task in their calendar to renew the license, ensuring timely completion of the renewal process and avoiding any potential disruption to their business. As the task is assigned, the system also sends a reminder to the owner to gather all necessary documents and fees, streamlining the renewal process. By automating this critical reminder, the barber shop owner can focus on serving customers, confident that their licenses are up to date and their business remains compliant with regulatory requirements.\n// Created:  2026-04-21T07:37:11.560Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: License/certification expiring → 30 day warning → assign renewal task\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'internal-ops',\n  scenario: 'License/certification expiring → 30 day warning → assign renewal task',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "e67g40wxvh9fgos7",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "internal-ops",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "internal-ops",
+      "domainName": "Internal Ops Agent",
+      "scenario": "License/certification expiring → 30 day warning → assign renewal task",
+      "description": "When a barber's professional license is approaching expiration, 30 days prior to the deadline, GRIDHAND's automation workflow is triggered, sending a notification to the shop owner's email and creating a task in their calendar to renew the license, ensuring timely completion of the renewal process and avoiding any potential disruption to their business. As the task is assigned, the system also sends a reminder to the owner to gather all necessary documents and fees, streamlining the renewal process. By automating this critical reminder, the barber shop owner can focus on serving customers, confident that their licenses are up to date and their business remains compliant with regulatory requirements.",
+      "generatedAt": "2026-04-21T07:37:11.561Z"
+    }
+  }
+}

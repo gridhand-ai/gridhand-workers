@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] CRM Sync Agent - Deal stage change → update all connected systems",
+  "nodes": [
+    {
+      "id": "b8j3b3a9s5f8bf9f",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-crm-sync-1776757008757",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "kxart4b0wx5cq1hs"
+    },
+    {
+      "id": "7jsy1jvky0t05593",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   CRM Sync Agent\n// Scenario: Deal stage change → update all connected systems\n// Desc:     When a deal stage is updated in the customer relationship management system, such as when a potential client moves from \"lead\" to \"customer\" in HubSpot, the workflow is triggered to update all connected systems, including the accounting software QuickBooks and the email marketing platform Mailchimp, to reflect the change, ensuring that the business owner\\'s financial records and marketing campaigns are always up-to-date and synchronized. This automated process saves the business owner time and reduces errors, allowing them to focus on high-value activities like closing deals and serving customers. By integrating these systems, the business owner can also gain a more complete view of their sales funnel and customer interactions, enabling data-driven decisions to drive growth and revenue.\n// Created:  2026-04-21T07:36:48.757Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Deal stage change → update all connected systems\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'crm-sync',\n  scenario: 'Deal stage change → update all connected systems',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "bowydrjopfjzb5sa",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "crm-sync",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "crm-sync",
+      "domainName": "CRM Sync Agent",
+      "scenario": "Deal stage change → update all connected systems",
+      "description": "When a deal stage is updated in the customer relationship management system, such as when a potential client moves from \"lead\" to \"customer\" in HubSpot, the workflow is triggered to update all connected systems, including the accounting software QuickBooks and the email marketing platform Mailchimp, to reflect the change, ensuring that the business owner's financial records and marketing campaigns are always up-to-date and synchronized. This automated process saves the business owner time and reduces errors, allowing them to focus on high-value activities like closing deals and serving customers. By integrating these systems, the business owner can also gain a more complete view of their sales funnel and customer interactions, enabling data-driven decisions to drive growth and revenue.",
+      "generatedAt": "2026-04-21T07:36:48.757Z"
+    }
+  }
+}

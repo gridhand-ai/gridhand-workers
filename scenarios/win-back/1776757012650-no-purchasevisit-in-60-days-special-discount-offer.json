@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Win-Back Agent - No purchase/visit in 60 days → special discount offer",
+  "nodes": [
+    {
+      "id": "a59nnlx7ht1szsmu",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-win-back-1776757012650",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "hylu6pwzd5qcdru6"
+    },
+    {
+      "id": "ixblug943ihl2fdc",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Win-Back Agent\n// Scenario: No purchase/visit in 60 days → special discount offer\n// Desc:     When a customer hasn\\'t made a purchase or visited the business in 60 days, GRIDHAND\\'s automation workflow is triggered, sending a personalized email via Mailchimp at 10am on the 61st day with a special 15% discount offer on their next service, prompting them to book an appointment or make a purchase within the next two weeks. This email is customized with the customer\\'s name and their favorite services, increasing the likelihood of re-engagement and driving revenue for the business. By reactivating dormant customers, the business owner can boost sales and retention, ultimately leading to increased customer loyalty and a stronger bottom line.\n// Created:  2026-04-21T07:36:52.650Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: No purchase/visit in 60 days → special discount offer\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'win-back',\n  scenario: 'No purchase/visit in 60 days → special discount offer',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "tsfc98d9oz5sfaib",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "win-back",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "win-back",
+      "domainName": "Win-Back Agent",
+      "scenario": "No purchase/visit in 60 days → special discount offer",
+      "description": "When a customer hasn't made a purchase or visited the business in 60 days, GRIDHAND's automation workflow is triggered, sending a personalized email via Mailchimp at 10am on the 61st day with a special 15% discount offer on their next service, prompting them to book an appointment or make a purchase within the next two weeks. This email is customized with the customer's name and their favorite services, increasing the likelihood of re-engagement and driving revenue for the business. By reactivating dormant customers, the business owner can boost sales and retention, ultimately leading to increased customer loyalty and a stronger bottom line.",
+      "generatedAt": "2026-04-21T07:36:52.650Z"
+    }
+  }
+}

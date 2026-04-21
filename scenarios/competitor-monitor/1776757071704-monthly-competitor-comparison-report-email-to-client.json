@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Competitor Monitor Agent - Monthly: competitor comparison report → email to client",
+  "nodes": [
+    {
+      "id": "txnltekrtdjfuwta",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-competitor-monitor-1776757071704",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "6cwqmssilqivbddl"
+    },
+    {
+      "id": "7wivqssataoii1lg",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Competitor Monitor Agent\n// Scenario: Monthly: competitor comparison report → email to client\n// Desc:     Every month, on the first day at 8am, a workflow is triggered that automatically compiles a competitor comparison report for Smith\\'s Auto Repair, a local car repair shop, by aggregating data from online review sites like Yelp and Google Reviews, as well as social media platforms, and then emails the report to the owner, John Smith, via Gmail, providing him with valuable insights into how his business stacks up against the competition in terms of pricing, customer satisfaction, and overall reputation. This report enables John to make data-driven decisions to adjust his marketing strategy, pricing, and services to stay ahead of the competition and attract more customers. By receiving this monthly report, John can promptly identify areas for improvement and capitalize on new opportunities, ultimately driving more sales and revenue for his business.\n// Created:  2026-04-21T07:37:51.704Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Monthly: competitor comparison report → email to client\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'competitor-monitor',\n  scenario: 'Monthly: competitor comparison report → email to client',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "vdmy9lc9tuv3j357",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "competitor-monitor",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "competitor-monitor",
+      "domainName": "Competitor Monitor Agent",
+      "scenario": "Monthly: competitor comparison report → email to client",
+      "description": "Every month, on the first day at 8am, a workflow is triggered that automatically compiles a competitor comparison report for Smith's Auto Repair, a local car repair shop, by aggregating data from online review sites like Yelp and Google Reviews, as well as social media platforms, and then emails the report to the owner, John Smith, via Gmail, providing him with valuable insights into how his business stacks up against the competition in terms of pricing, customer satisfaction, and overall reputation. This report enables John to make data-driven decisions to adjust his marketing strategy, pricing, and services to stay ahead of the competition and attract more customers. By receiving this monthly report, John can promptly identify areas for improvement and capitalize on new opportunities, ultimately driving more sales and revenue for his business.",
+      "generatedAt": "2026-04-21T07:37:51.704Z"
+    }
+  }
+}

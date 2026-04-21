@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Win-Back Agent - No purchase/visit in 30 days → personalized win-back SMS",
+  "nodes": [
+    {
+      "id": "ryxxjhny6jm1oow4",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-win-back-1776757011376",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "3abm8mwkyisbzxw4"
+    },
+    {
+      "id": "2djc85c567g9n1rv",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Win-Back Agent\n// Scenario: No purchase/visit in 30 days → personalized win-back SMS\n// Desc:     When a customer hasn\\'t made a purchase or visited a business, such as a barbershop, in 30 days, GRIDHAND\\'s automation workflow is triggered to send a personalized win-back SMS via the shop\\'s existing SMS marketing app, offering a limited-time discount on their next haircut, which is tailored to the customer\\'s previous services and preferences. This SMS is sent at 10am on the 31st day, allowing the customer to plan a visit at their convenience, and includes a direct link to book an appointment online. By re-engaging with inactive customers in a timely and personalized manner, the barbershop owner can increase the chances of winning back lost business and boosting revenue.\n// Created:  2026-04-21T07:36:51.376Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: No purchase/visit in 30 days → personalized win-back SMS\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'win-back',\n  scenario: 'No purchase/visit in 30 days → personalized win-back SMS',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "gp14ehon1fgnhjla",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "win-back",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "win-back",
+      "domainName": "Win-Back Agent",
+      "scenario": "No purchase/visit in 30 days → personalized win-back SMS",
+      "description": "When a customer hasn't made a purchase or visited a business, such as a barbershop, in 30 days, GRIDHAND's automation workflow is triggered to send a personalized win-back SMS via the shop's existing SMS marketing app, offering a limited-time discount on their next haircut, which is tailored to the customer's previous services and preferences. This SMS is sent at 10am on the 31st day, allowing the customer to plan a visit at their convenience, and includes a direct link to book an appointment online. By re-engaging with inactive customers in a timely and personalized manner, the barbershop owner can increase the chances of winning back lost business and boosting revenue.",
+      "generatedAt": "2026-04-21T07:36:51.376Z"
+    }
+  }
+}

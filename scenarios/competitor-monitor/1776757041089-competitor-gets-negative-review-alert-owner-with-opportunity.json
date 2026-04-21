@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Competitor Monitor Agent - Competitor gets negative review → alert owner with opportuni",
+  "nodes": [
+    {
+      "id": "oqju5pydzlztvlhf",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-competitor-monitor-1776757041089",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "918ici7iyr61lv34"
+    },
+    {
+      "id": "zks6w5g4uq3tsr39",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Competitor Monitor Agent\n// Scenario: Competitor gets negative review → alert owner with opportunity\n// Desc:     When a competitor\\'s business receives a negative review on platforms like Yelp or Google Reviews, the GRIDHAND automation workflow is triggered to immediately alert the owner of the opportunity to win over dissatisfied customers. The system sends a timely notification to the owner\\'s smartphone via the GRIDHAND mobile app, providing details of the negative review and the competitor\\'s business, allowing the owner to craft a targeted response or promotion to attract these potential customers to their own business. By receiving these alerts, the business owner can capitalize on their competitor\\'s mistakes and increase their own customer base, ultimately driving sales and revenue growth for their business.\n// Created:  2026-04-21T07:37:21.089Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Competitor gets negative review → alert owner with opportunity\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'competitor-monitor',\n  scenario: 'Competitor gets negative review → alert owner with opportunity',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "yp5gvt150tpto5cq",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "competitor-monitor",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "competitor-monitor",
+      "domainName": "Competitor Monitor Agent",
+      "scenario": "Competitor gets negative review → alert owner with opportunity",
+      "description": "When a competitor's business receives a negative review on platforms like Yelp or Google Reviews, the GRIDHAND automation workflow is triggered to immediately alert the owner of the opportunity to win over dissatisfied customers. The system sends a timely notification to the owner's smartphone via the GRIDHAND mobile app, providing details of the negative review and the competitor's business, allowing the owner to craft a targeted response or promotion to attract these potential customers to their own business. By receiving these alerts, the business owner can capitalize on their competitor's mistakes and increase their own customer base, ultimately driving sales and revenue growth for their business.",
+      "generatedAt": "2026-04-21T07:37:21.089Z"
+    }
+  }
+}

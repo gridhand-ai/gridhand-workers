@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Payment Chaser Agent - Invoice created → due in 3 days → reminder SMS",
+  "nodes": [
+    {
+      "id": "tnduos0ecygeh9j5",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-payment-chaser-1776756998606",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "8a7a64fqtbmo1nng"
+    },
+    {
+      "id": "i9b5tjh4bd0bdbmu",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Payment Chaser Agent\n// Scenario: Invoice created → due in 3 days → reminder SMS\n// Desc:     When an invoice is created in your accounting system, such as QuickBooks, and it\\'s due for payment in three days, GRIDHAND\\'s automation workflow is triggered, sending a reminder SMS to your customer via a integrated messaging service like Twilio, with a personalized message that includes the invoice amount and due date. This reminder is sent at 8am on the day the invoice becomes overdue, ensuring your customer is aware of the pending payment and can take immediate action to settle their account. By automating this process, you can reduce late payments and improve cash flow for your business, freeing up more time to focus on serving your customers and growing your revenue.\n// Created:  2026-04-21T07:36:38.606Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Invoice created → due in 3 days → reminder SMS\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'payment-chaser',\n  scenario: 'Invoice created → due in 3 days → reminder SMS',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "puepvvgqwpr1kbqe",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "payment-chaser",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "payment-chaser",
+      "domainName": "Payment Chaser Agent",
+      "scenario": "Invoice created → due in 3 days → reminder SMS",
+      "description": "When an invoice is created in your accounting system, such as QuickBooks, and it's due for payment in three days, GRIDHAND's automation workflow is triggered, sending a reminder SMS to your customer via a integrated messaging service like Twilio, with a personalized message that includes the invoice amount and due date. This reminder is sent at 8am on the day the invoice becomes overdue, ensuring your customer is aware of the pending payment and can take immediate action to settle their account. By automating this process, you can reduce late payments and improve cash flow for your business, freeing up more time to focus on serving your customers and growing your revenue.",
+      "generatedAt": "2026-04-21T07:36:38.606Z"
+    }
+  }
+}

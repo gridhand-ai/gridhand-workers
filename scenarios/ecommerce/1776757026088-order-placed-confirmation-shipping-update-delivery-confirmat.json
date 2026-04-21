@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] E-commerce Agent - Order placed → confirmation → shipping update → delivery con",
+  "nodes": [
+    {
+      "id": "y22eqxfmursfhu1x",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-ecommerce-1776757026088",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "nps9piyglzsanw5f"
+    },
+    {
+      "id": "lzcu37z9brbu7hz9",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   E-commerce Agent\n// Scenario: Order placed → confirmation → shipping update → delivery confirmation\n// Desc:     When a customer places an order on their online store, integrated with Shopify, GRIDHAND\\'s automation workflow is triggered, sending a confirmation email to the customer via Mailchimp within minutes, followed by a shipping update email with tracking information as soon as the order is fulfilled, and finally a delivery confirmation email once the package is marked as delivered, all of which helps reduce customer inquiries and improves overall customer satisfaction for the retail store owner. This streamlined process saves the business owner time and reduces errors, allowing them to focus on managing their store and serving customers. By automating these routine communications, the business owner can also gain valuable insights into customer engagement and order fulfillment metrics, enabling data-driven decisions to drive growth and revenue.\n// Created:  2026-04-21T07:37:06.088Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Order placed → confirmation → shipping update → delivery confirmation\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'ecommerce',\n  scenario: 'Order placed → confirmation → shipping update → delivery confirmation',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "e53uwrrl9oqw9ibf",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "ecommerce",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "ecommerce",
+      "domainName": "E-commerce Agent",
+      "scenario": "Order placed → confirmation → shipping update → delivery confirmation",
+      "description": "When a customer places an order on their online store, integrated with Shopify, GRIDHAND's automation workflow is triggered, sending a confirmation email to the customer via Mailchimp within minutes, followed by a shipping update email with tracking information as soon as the order is fulfilled, and finally a delivery confirmation email once the package is marked as delivered, all of which helps reduce customer inquiries and improves overall customer satisfaction for the retail store owner. This streamlined process saves the business owner time and reduces errors, allowing them to focus on managing their store and serving customers. By automating these routine communications, the business owner can also gain valuable insights into customer engagement and order fulfillment metrics, enabling data-driven decisions to drive growth and revenue.",
+      "generatedAt": "2026-04-21T07:37:06.088Z"
+    }
+  }
+}

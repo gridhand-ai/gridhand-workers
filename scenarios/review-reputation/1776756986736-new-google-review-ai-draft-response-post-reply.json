@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Review Reputation Agent - New Google Review → AI draft response → post reply",
+  "nodes": [
+    {
+      "id": "l0d6doxszzanurxp",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-review-reputation-1776756986736",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "bq0mq66ehv3gfa2f"
+    },
+    {
+      "id": "ygfub7dn7efvb9ke",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Review Reputation Agent\n// Scenario: New Google Review → AI draft response → post reply\n// Desc:     When a new Google Review is posted for Joe\\'s Auto Repair, a GRIDHAND workflow is triggered to help the owner, Joe, respond promptly and professionally. The workflow uses AI to draft a personalized response based on the review\\'s content and sentiment, which is then reviewed and posted as a reply to the customer within 30 minutes, ensuring that positive reviewers feel appreciated and negative ones feel heard, ultimately boosting Joe\\'s online reputation and attracting more customers to his shop. By automating this process, Joe can focus on running his business while maintaining a strong online presence and building trust with his community.\n// Created:  2026-04-21T07:36:26.736Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: New Google Review → AI draft response → post reply\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'review-reputation',\n  scenario: 'New Google Review → AI draft response → post reply',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "skv9j8rrus375jvg",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "review-reputation",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "review-reputation",
+      "domainName": "Review Reputation Agent",
+      "scenario": "New Google Review → AI draft response → post reply",
+      "description": "When a new Google Review is posted for Joe's Auto Repair, a GRIDHAND workflow is triggered to help the owner, Joe, respond promptly and professionally. The workflow uses AI to draft a personalized response based on the review's content and sentiment, which is then reviewed and posted as a reply to the customer within 30 minutes, ensuring that positive reviewers feel appreciated and negative ones feel heard, ultimately boosting Joe's online reputation and attracting more customers to his shop. By automating this process, Joe can focus on running his business while maintaining a strong online presence and building trust with his community.",
+      "generatedAt": "2026-04-21T07:36:26.736Z"
+    }
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Payment Chaser Agent - Invoice overdue 1 day → polite SMS reminder",
+  "nodes": [
+    {
+      "id": "y46twditz9ccejc6",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-payment-chaser-1776756999847",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "4474bidrxlkp930h"
+    },
+    {
+      "id": "t5ijntuds55zklpa",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Payment Chaser Agent\n// Scenario: Invoice overdue 1 day → polite SMS reminder\n// Desc:     When an invoice becomes one day overdue, GRIDHAND automatically triggers a workflow that sends a polite SMS reminder to the customer through the business\\'s existing messaging app, such as Twilio, at 10am to gently nudge them about the pending payment. This reminder is personalized with the customer\\'s name and invoice details, and is designed to be friendly yet clear about the need for prompt payment. By automating this process, the business owner can reduce the time spent on following up with late payments and improve cash flow, with GRIDHAND tracking the response and updating the invoice status accordingly.\n// Created:  2026-04-21T07:36:39.847Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Invoice overdue 1 day → polite SMS reminder\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'payment-chaser',\n  scenario: 'Invoice overdue 1 day → polite SMS reminder',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "hta2gzil3qgegzo5",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "payment-chaser",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "payment-chaser",
+      "domainName": "Payment Chaser Agent",
+      "scenario": "Invoice overdue 1 day → polite SMS reminder",
+      "description": "When an invoice becomes one day overdue, GRIDHAND automatically triggers a workflow that sends a polite SMS reminder to the customer through the business's existing messaging app, such as Twilio, at 10am to gently nudge them about the pending payment. This reminder is personalized with the customer's name and invoice details, and is designed to be friendly yet clear about the need for prompt payment. By automating this process, the business owner can reduce the time spent on following up with late payments and improve cash flow, with GRIDHAND tracking the response and updating the invoice status accordingly.",
+      "generatedAt": "2026-04-21T07:36:39.847Z"
+    }
+  }
+}

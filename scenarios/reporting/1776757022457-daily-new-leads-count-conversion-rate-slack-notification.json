@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Reporting Agent - Daily: new leads count + conversion rate → Slack notificatio",
+  "nodes": [
+    {
+      "id": "l66rd2pppxg34ksd",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-reporting-1776757022457",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "ditblyu22eeltq6j"
+    },
+    {
+      "id": "t4f9vyyudensy8ie",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Reporting Agent\n// Scenario: Daily: new leads count + conversion rate → Slack notification\n// Desc:     Every morning at 8am, GRIDHAND automatically checks the previous day\\'s leads and conversion rates from your online scheduling tool and CRM, and sends a personalized notification to your Slack channel, providing a clear overview of how many new leads came in and how many were successfully converted into customers, allowing you to quickly assess the effectiveness of your marketing efforts and make data-driven decisions to improve your sales strategy. This daily snapshot helps you stay on top of your business\\'s performance and make adjustments in real-time, such as adjusting your social media ads or follow-up protocols, to optimize your conversion rates and drive more sales. By receiving this timely and actionable insight, you can refine your approach and stay focused on driving growth and revenue for your business.\n// Created:  2026-04-21T07:37:02.457Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Daily: new leads count + conversion rate → Slack notification\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'reporting',\n  scenario: 'Daily: new leads count + conversion rate → Slack notification',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "l77t7yi5xqowkv15",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "reporting",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "reporting",
+      "domainName": "Reporting Agent",
+      "scenario": "Daily: new leads count + conversion rate → Slack notification",
+      "description": "Every morning at 8am, GRIDHAND automatically checks the previous day's leads and conversion rates from your online scheduling tool and CRM, and sends a personalized notification to your Slack channel, providing a clear overview of how many new leads came in and how many were successfully converted into customers, allowing you to quickly assess the effectiveness of your marketing efforts and make data-driven decisions to improve your sales strategy. This daily snapshot helps you stay on top of your business's performance and make adjustments in real-time, such as adjusting your social media ads or follow-up protocols, to optimize your conversion rates and drive more sales. By receiving this timely and actionable insight, you can refine your approach and stay focused on driving growth and revenue for your business.",
+      "generatedAt": "2026-04-21T07:37:02.457Z"
+    }
+  }
+}

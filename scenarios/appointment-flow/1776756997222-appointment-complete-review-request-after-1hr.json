@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Appointment Flow Agent - Appointment complete → review request after 1hr",
+  "nodes": [
+    {
+      "id": "rpiatdix26kwxeao",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-appointment-flow-1776756997222",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "6nz3zhcop7se02ac"
+    },
+    {
+      "id": "1fapj7fm7zmcvdxu",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Appointment Flow Agent\n// Scenario: Appointment complete → review request after 1hr\n// Desc:     When an appointment is marked as complete in the scheduling app, a workflow is triggered that waits for 1 hour before sending a personalized review request to the customer via email and text message, using the customer\\'s name and the service they received, all automated through GRIDHAND\\'s integration with the shop\\'s existing calendar and customer relationship management system. This workflow ensures that the request is sent at a time when the customer\\'s experience is still fresh in their mind, increasing the likelihood of a positive review, and helps the business owner by automatically collecting feedback and boosting their online reputation. By streamlining this process, the business owner can focus on providing excellent service, while GRIDHAND handles the follow-up, resulting in more online reviews and increased visibility for their shop.\n// Created:  2026-04-21T07:36:37.222Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Appointment complete → review request after 1hr\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'appointment-flow',\n  scenario: 'Appointment complete → review request after 1hr',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "yguzcv5ttmhjqmel",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "appointment-flow",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "appointment-flow",
+      "domainName": "Appointment Flow Agent",
+      "scenario": "Appointment complete → review request after 1hr",
+      "description": "When an appointment is marked as complete in the scheduling app, a workflow is triggered that waits for 1 hour before sending a personalized review request to the customer via email and text message, using the customer's name and the service they received, all automated through GRIDHAND's integration with the shop's existing calendar and customer relationship management system. This workflow ensures that the request is sent at a time when the customer's experience is still fresh in their mind, increasing the likelihood of a positive review, and helps the business owner by automatically collecting feedback and boosting their online reputation. By streamlining this process, the business owner can focus on providing excellent service, while GRIDHAND handles the follow-up, resulting in more online reviews and increased visibility for their shop.",
+      "generatedAt": "2026-04-21T07:36:37.222Z"
+    }
+  }
+}

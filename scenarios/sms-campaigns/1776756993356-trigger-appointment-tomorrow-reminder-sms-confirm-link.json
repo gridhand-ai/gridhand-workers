@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] SMS Campaign Agent - Trigger: appointment tomorrow → reminder SMS + confirm link",
+  "nodes": [
+    {
+      "id": "u5qgmx7hh47p3o8v",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-sms-campaigns-1776756993356",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "hu73bis5d9hyi365"
+    },
+    {
+      "id": "yr6skfinlnn71lhd",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   SMS Campaign Agent\n// Scenario: Trigger: appointment tomorrow → reminder SMS + confirm link\n// Desc:     When an appointment is scheduled for the next day in your calendar app, such as Google Calendar, GRIDHAND\\'s automation workflow kicks in, triggering a reminder SMS to be sent to the client at 8am the morning before the appointment, including a personalized confirm link to reduce no-shows. This automated SMS, sent via Twilio, not only reminds the client of their upcoming appointment but also allows them to easily confirm or reschedule, saving your business time and revenue by minimizing last-minute cancellations. By streamlining appointment reminders and confirmations, your small business can improve customer satisfaction and reduce missed appointments, resulting in increased revenue and a more efficient scheduling process.\n// Created:  2026-04-21T07:36:33.356Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Trigger: appointment tomorrow → reminder SMS + confirm link\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'sms-campaigns',\n  scenario: 'Trigger: appointment tomorrow → reminder SMS + confirm link',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "z3j3us0kimfydxo0",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "sms-campaigns",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "sms-campaigns",
+      "domainName": "SMS Campaign Agent",
+      "scenario": "Trigger: appointment tomorrow → reminder SMS + confirm link",
+      "description": "When an appointment is scheduled for the next day in your calendar app, such as Google Calendar, GRIDHAND's automation workflow kicks in, triggering a reminder SMS to be sent to the client at 8am the morning before the appointment, including a personalized confirm link to reduce no-shows. This automated SMS, sent via Twilio, not only reminds the client of their upcoming appointment but also allows them to easily confirm or reschedule, saving your business time and revenue by minimizing last-minute cancellations. By streamlining appointment reminders and confirmations, your small business can improve customer satisfaction and reduce missed appointments, resulting in increased revenue and a more efficient scheduling process.",
+      "generatedAt": "2026-04-21T07:36:33.356Z"
+    }
+  }
+}

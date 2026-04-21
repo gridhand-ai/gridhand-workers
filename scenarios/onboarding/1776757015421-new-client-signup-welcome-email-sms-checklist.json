@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Onboarding Agent - New client signup → welcome email + SMS + checklist",
+  "nodes": [
+    {
+      "id": "njr648x7h4jrbvsm",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-onboarding-1776757015421",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "qklyu010o2iv3tv9"
+    },
+    {
+      "id": "y6eqykt5nb8hkko1",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Onboarding Agent\n// Scenario: New client signup → welcome email + SMS + checklist\n// Desc:     When a new client signs up for services at Platinum Fitness, a GRIDHAND workflow is triggered that sends a personalized welcome email via Mailchimp, an introductory SMS text message via Twilio, and a digital onboarding checklist shared through Google Drive, all within 10 minutes of completing the online registration form. This workflow provides a seamless and unified introduction to the gym\\'s services, ensuring that every new client receives essential information, including membership details, class schedules, and facility access instructions, while also setting the stage for a comprehensive onboarding experience. By automating these initial touchpoints, Platinum Fitness can focus on delivering exceptional member experiences, increasing retention rates, and driving referrals, all while projecting a professional and organized image from the very start.\n// Created:  2026-04-21T07:36:55.421Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: New client signup → welcome email + SMS + checklist\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'onboarding',\n  scenario: 'New client signup → welcome email + SMS + checklist',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "e7jh6a5fhjvcdbu7",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "onboarding",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "onboarding",
+      "domainName": "Onboarding Agent",
+      "scenario": "New client signup → welcome email + SMS + checklist",
+      "description": "When a new client signs up for services at Platinum Fitness, a GRIDHAND workflow is triggered that sends a personalized welcome email via Mailchimp, an introductory SMS text message via Twilio, and a digital onboarding checklist shared through Google Drive, all within 10 minutes of completing the online registration form. This workflow provides a seamless and unified introduction to the gym's services, ensuring that every new client receives essential information, including membership details, class schedules, and facility access instructions, while also setting the stage for a comprehensive onboarding experience. By automating these initial touchpoints, Platinum Fitness can focus on delivering exceptional member experiences, increasing retention rates, and driving referrals, all while projecting a professional and organized image from the very start.",
+      "generatedAt": "2026-04-21T07:36:55.421Z"
+    }
+  }
+}

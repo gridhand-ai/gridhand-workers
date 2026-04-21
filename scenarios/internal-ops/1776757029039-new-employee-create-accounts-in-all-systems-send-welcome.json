@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Internal Ops Agent - New employee → create accounts in all systems → send welcome",
+  "nodes": [
+    {
+      "id": "vez8nya6ksjgavgl",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-internal-ops-1776757029039",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "fonnh5gire3r4xbg"
+    },
+    {
+      "id": "i79ls6n5asy60f4j",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Internal Ops Agent\n// Scenario: New employee → create accounts in all systems → send welcome\n// Desc:     When a new employee is added to the company\\'s payroll system, such as QuickBooks, on the first day of the month, our automation workflow is triggered to create accounts for the new hire in all relevant systems, including Gmail for email, Zoom for meetings, and Shopify for point-of-sale access, streamlining the onboarding process. This automated process takes place within 24 hours, ensuring the new employee has all necessary access and tools to start work immediately, and sends a personalized welcome email with login credentials and important company information to get them started. By having all accounts created and welcome messages sent automatically, the business owner can focus on training and integration, while the new employee can hit the ground running, resulting in increased productivity and a smoother onboarding experience.\n// Created:  2026-04-21T07:37:09.039Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: New employee → create accounts in all systems → send welcome\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'internal-ops',\n  scenario: 'New employee → create accounts in all systems → send welcome',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "uqcj75f27ec81k0i",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "internal-ops",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "internal-ops",
+      "domainName": "Internal Ops Agent",
+      "scenario": "New employee → create accounts in all systems → send welcome",
+      "description": "When a new employee is added to the company's payroll system, such as QuickBooks, on the first day of the month, our automation workflow is triggered to create accounts for the new hire in all relevant systems, including Gmail for email, Zoom for meetings, and Shopify for point-of-sale access, streamlining the onboarding process. This automated process takes place within 24 hours, ensuring the new employee has all necessary access and tools to start work immediately, and sends a personalized welcome email with login credentials and important company information to get them started. By having all accounts created and welcome messages sent automatically, the business owner can focus on training and integration, while the new employee can hit the ground running, resulting in increased productivity and a smoother onboarding experience.",
+      "generatedAt": "2026-04-21T07:37:09.039Z"
+    }
+  }
+}

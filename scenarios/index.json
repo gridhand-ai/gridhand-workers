@@ -1,0 +1,664 @@
+{
+  "generated": [
+    {
+      "domainId": "lead-capture",
+      "domainName": "Lead Capture Agent",
+      "seed": "Facebook Lead Ad → HubSpot contact → Twilio SMS welcome",
+      "slug": "facebook-lead-ad-hubspot-contact-twilio-sms-welcome",
+      "description": "When a customer fills out a Facebook Lead Ad for a free consultation at a local gym, the lead information is automatically synced to HubSpot as a new contact, triggering a workflow that sends a personalized Twilio SMS welcome message within minutes, thanking them for their interest and inviting them to schedule an appointment, allowing the gym owner to quickly follow up and convert the lead into a paying member. This automated process saves the gym owner time and increases the likelihood of converting leads, as it ensures a prompt and engaging response to potential customers. By streamlining the lead response process, the gym owner can focus on providing excellent service and growing their business, rather than manually sending welcome messages to new leads.",
+      "filename": "1776756982562-facebook-lead-ad-hubspot-contact-twilio-sms-welcome.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/lead-capture/1776756982562-facebook-lead-ad-hubspot-contact-twilio-sms-welcome.json",
+      "generatedAt": "2026-04-21T07:36:22.562Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "lead-capture",
+      "domainName": "Lead Capture Agent",
+      "seed": "Google Form submit → Airtable row → email follow-up",
+      "slug": "google-form-submit-airtable-row-email-follow-up",
+      "description": "When a customer submits a contact form on a small business's website using Google Forms, it automatically triggers a workflow that creates a new row in the business's Airtable database, storing the customer's inquiry details. Immediately after, an email follow-up is sent to the customer via Gmail, thanking them for their inquiry and providing an estimated response time, all while the business owner receives a notification email to review and respond to the inquiry in a timely manner. By automating this process, the business owner can ensure prompt and personalized follow-ups with potential customers, ultimately leading to increased conversion rates and improved customer satisfaction.",
+      "filename": "1776756983912-google-form-submit-airtable-row-email-follow-up.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/lead-capture/1776756983912-google-form-submit-airtable-row-email-follow-up.json",
+      "generatedAt": "2026-04-21T07:36:23.912Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "lead-capture",
+      "domainName": "Lead Capture Agent",
+      "seed": "Typeform complete → Pipedrive deal → assign to sales rep",
+      "slug": "typeform-complete-pipedrive-deal-assign-to-sales-rep",
+      "description": "When a potential customer completes a Typeform questionnaire on a small business's website, such as a real estate agency, GRIDHAND automatically triggers a workflow that creates a new deal in Pipedrive, filling in relevant details like customer name, contact information, and property preferences. This new deal is then instantly assigned to a designated sales representative, who receives a notification email with all the pertinent details, enabling them to swiftly follow up and convert the lead into a client within hours of the initial inquiry. By streamlining this process, the business owner can ensure that no potential sales opportunity slips through the cracks and that their team can respond promptly to capitalize on new leads.",
+      "filename": "1776756985193-typeform-complete-pipedrive-deal-assign-to-sales-rep.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/lead-capture/1776756985193-typeform-complete-pipedrive-deal-assign-to-sales-rep.json",
+      "generatedAt": "2026-04-21T07:36:25.193Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "review-reputation",
+      "domainName": "Review Reputation Agent",
+      "seed": "New Google Review → AI draft response → post reply",
+      "slug": "new-google-review-ai-draft-response-post-reply",
+      "description": "When a new Google Review is posted for Joe's Auto Repair, a GRIDHAND workflow is triggered to help the owner, Joe, respond promptly and professionally. The workflow uses AI to draft a personalized response based on the review's content and sentiment, which is then reviewed and posted as a reply to the customer within 30 minutes, ensuring that positive reviewers feel appreciated and negative ones feel heard, ultimately boosting Joe's online reputation and attracting more customers to his shop. By automating this process, Joe can focus on running his business while maintaining a strong online presence and building trust with his community.",
+      "filename": "1776756986736-new-google-review-ai-draft-response-post-reply.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/review-reputation/1776756986736-new-google-review-ai-draft-response-post-reply.json",
+      "generatedAt": "2026-04-21T07:36:26.736Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "review-reputation",
+      "domainName": "Review Reputation Agent",
+      "seed": "Negative review alert → notify owner → track resolution",
+      "slug": "negative-review-alert-notify-owner-track-resolution",
+      "description": "When a customer leaves a negative review on Yelp or Google Reviews after business hours, the GRIDHAND system triggers a workflow that immediately notifies the owner via SMS and email, allowing them to address the issue promptly the next morning. The system then tracks the owner's response and resolution efforts, sending reminders and updates to ensure the issue is fully resolved within 24 hours, and finally, it requests the customer to revise their review if the issue was satisfactorily resolved, ultimately helping to protect the business's online reputation and improve customer satisfaction. By streamlining this process, the business owner can minimize the negative impact of bad reviews and maintain a strong online presence.",
+      "filename": "1776756987945-negative-review-alert-notify-owner-track-resolution.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/review-reputation/1776756987945-negative-review-alert-notify-owner-track-resolution.json",
+      "generatedAt": "2026-04-21T07:36:27.945Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "review-reputation",
+      "domainName": "Review Reputation Agent",
+      "seed": "Review score drops below 4.0 → alert + action plan",
+      "slug": "review-score-drops-below-40-alert-action-plan",
+      "description": "When a small business's review score on Google My Business or Yelp drops below 4.0, GRIDHAND's automation workflow is triggered, sending an immediate alert to the business owner's Slack channel or email inbox, followed by a step-by-step action plan that includes responding to negative reviews on the review platform within 2 hours, requesting feedback from recent customers through a SurveyMonkey survey, and scheduling a staff meeting on Google Calendar to discuss service improvements. By taking swift action, the business owner can mitigate the impact of negative reviews, identify areas for improvement, and protect their online reputation. This timely intervention can help recover the business's review score and maintain customer trust, ultimately driving more sales and growth for the business.",
+      "filename": "1776756989359-review-score-drops-below-40-alert-action-plan.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/review-reputation/1776756989359-review-score-drops-below-40-alert-action-plan.json",
+      "generatedAt": "2026-04-21T07:36:29.359Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "sms-campaigns",
+      "domainName": "SMS Campaign Agent",
+      "seed": "Trigger: new contact → welcome SMS series (day 1, 3, 7)",
+      "slug": "trigger-new-contact-welcome-sms-series-day-1-3-7",
+      "description": "When a new customer walks into your barbershop and provides their phone number to book an appointment, GRIDHAND's automation kicks in, triggering a welcome SMS series that sends a personalized greeting on day one, a special promotion on day three, and a loyalty reward on day seven, all through the GRIDHAND platform integrated with your existing scheduling app. This workflow runs seamlessly in the background, ensuring that each new contact receives a warm and engaging introduction to your business, encouraging them to book their first appointment and become a regular customer. By automating this welcome series, you can increase customer loyalty and drive repeat business, all without lifting a finger, and focus on what matters most - providing exceptional service to your clients.",
+      "filename": "1776756990677-trigger-new-contact-welcome-sms-series-day-1-3-7.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/sms-campaigns/1776756990677-trigger-new-contact-welcome-sms-series-day-1-3-7.json",
+      "generatedAt": "2026-04-21T07:36:30.677Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "sms-campaigns",
+      "domainName": "SMS Campaign Agent",
+      "seed": "Trigger: unpaid invoice 7 days → escalating SMS reminders",
+      "slug": "trigger-unpaid-invoice-7-days-escalating-sms-reminders",
+      "description": "When an unpaid invoice reaches 7 days overdue, GRIDHAND's automation workflow is triggered, sending a series of escalating SMS reminders to the customer via Twilio, starting with a friendly notification on day 7, followed by a more urgent message on day 10, and a final notice on day 14, all while updating the customer's record in QuickBooks and notifying the business owner via email. This automated reminder process saves the business owner time and reduces the likelihood of late payments, allowing them to focus on serving their customers and growing their business. By streamlining the invoicing process, the business owner can expect to see an improvement in cash flow and a reduction in outstanding balances, with GRIDHAND handling the tedious follow-up tasks.",
+      "filename": "1776756992015-trigger-unpaid-invoice-7-days-escalating-sms-reminders.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/sms-campaigns/1776756992015-trigger-unpaid-invoice-7-days-escalating-sms-reminders.json",
+      "generatedAt": "2026-04-21T07:36:32.015Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "sms-campaigns",
+      "domainName": "SMS Campaign Agent",
+      "seed": "Trigger: appointment tomorrow → reminder SMS + confirm link",
+      "slug": "trigger-appointment-tomorrow-reminder-sms-confirm-link",
+      "description": "When an appointment is scheduled for the next day in your calendar app, such as Google Calendar, GRIDHAND's automation workflow kicks in, triggering a reminder SMS to be sent to the client at 8am the morning before the appointment, including a personalized confirm link to reduce no-shows. This automated SMS, sent via Twilio, not only reminds the client of their upcoming appointment but also allows them to easily confirm or reschedule, saving your business time and revenue by minimizing last-minute cancellations. By streamlining appointment reminders and confirmations, your small business can improve customer satisfaction and reduce missed appointments, resulting in increased revenue and a more efficient scheduling process.",
+      "filename": "1776756993356-trigger-appointment-tomorrow-reminder-sms-confirm-link.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/sms-campaigns/1776756993356-trigger-appointment-tomorrow-reminder-sms-confirm-link.json",
+      "generatedAt": "2026-04-21T07:36:33.356Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "appointment-flow",
+      "domainName": "Appointment Flow Agent",
+      "seed": "Calendly booked → add to CRM → confirmation SMS → 24hr reminder → 2hr reminder",
+      "slug": "calendly-booked-add-to-crm-confirmation-sms-24hr-reminder-2h",
+      "description": "When a customer books an appointment through Calendly, the workflow is triggered, automatically adding the customer's information to the business's CRM system, such as HubSpot, and sending a confirmation SMS to the customer through Twilio, ensuring they receive instant notification of their scheduled appointment. Over the next 24 hours, the workflow sends a reminder SMS to the customer, and then another reminder just 2 hours before the appointment, both designed to reduce no-shows and keep customers engaged, ultimately resulting in a more streamlined and reliable scheduling process for the business owner. By automating these tasks, the business owner can focus on providing excellent service, knowing that appointments are being managed efficiently and customers are being kept informed every step of the way.",
+      "filename": "1776756994656-calendly-booked-add-to-crm-confirmation-sms-24hr-reminder-2h.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/appointment-flow/1776756994656-calendly-booked-add-to-crm-confirmation-sms-24hr-reminder-2h.json",
+      "generatedAt": "2026-04-21T07:36:34.656Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "appointment-flow",
+      "domainName": "Appointment Flow Agent",
+      "seed": "No-show detected → reschedule SMS → offer discount",
+      "slug": "no-show-detected-reschedule-sms-offer-discount",
+      "description": "When a customer fails to show up for a scheduled appointment at Joe's Barbershop, GRIDHAND's automation is triggered, sending a personalized SMS to the customer within 30 minutes, inviting them to reschedule their appointment and offering a 10% discount on their next visit. This workflow is made possible by integrating GRIDHAND with Joe's existing scheduling app, allowing for seamless communication and follow-up. By automating this process, Joe's Barbershop can reduce lost revenue and increase customer retention, with the goal of rescheduling at least 20% of no-shows within a week of the initial missed appointment.",
+      "filename": "1776756995885-no-show-detected-reschedule-sms-offer-discount.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/appointment-flow/1776756995885-no-show-detected-reschedule-sms-offer-discount.json",
+      "generatedAt": "2026-04-21T07:36:35.885Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "appointment-flow",
+      "domainName": "Appointment Flow Agent",
+      "seed": "Appointment complete → review request after 1hr",
+      "slug": "appointment-complete-review-request-after-1hr",
+      "description": "When an appointment is marked as complete in the scheduling app, a workflow is triggered that waits for 1 hour before sending a personalized review request to the customer via email and text message, using the customer's name and the service they received, all automated through GRIDHAND's integration with the shop's existing calendar and customer relationship management system. This workflow ensures that the request is sent at a time when the customer's experience is still fresh in their mind, increasing the likelihood of a positive review, and helps the business owner by automatically collecting feedback and boosting their online reputation. By streamlining this process, the business owner can focus on providing excellent service, while GRIDHAND handles the follow-up, resulting in more online reviews and increased visibility for their shop.",
+      "filename": "1776756997222-appointment-complete-review-request-after-1hr.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/appointment-flow/1776756997222-appointment-complete-review-request-after-1hr.json",
+      "generatedAt": "2026-04-21T07:36:37.222Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "payment-chaser",
+      "domainName": "Payment Chaser Agent",
+      "seed": "Invoice created → due in 3 days → reminder SMS",
+      "slug": "invoice-created-due-in-3-days-reminder-sms",
+      "description": "When an invoice is created in your accounting system, such as QuickBooks, and it's due for payment in three days, GRIDHAND's automation workflow is triggered, sending a reminder SMS to your customer via a integrated messaging service like Twilio, with a personalized message that includes the invoice amount and due date. This reminder is sent at 8am on the day the invoice becomes overdue, ensuring your customer is aware of the pending payment and can take immediate action to settle their account. By automating this process, you can reduce late payments and improve cash flow for your business, freeing up more time to focus on serving your customers and growing your revenue.",
+      "filename": "1776756998606-invoice-created-due-in-3-days-reminder-sms.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/payment-chaser/1776756998606-invoice-created-due-in-3-days-reminder-sms.json",
+      "generatedAt": "2026-04-21T07:36:38.606Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "payment-chaser",
+      "domainName": "Payment Chaser Agent",
+      "seed": "Invoice overdue 1 day → polite SMS reminder",
+      "slug": "invoice-overdue-1-day-polite-sms-reminder",
+      "description": "When an invoice becomes one day overdue, GRIDHAND automatically triggers a workflow that sends a polite SMS reminder to the customer through the business's existing messaging app, such as Twilio, at 10am to gently nudge them about the pending payment. This reminder is personalized with the customer's name and invoice details, and is designed to be friendly yet clear about the need for prompt payment. By automating this process, the business owner can reduce the time spent on following up with late payments and improve cash flow, with GRIDHAND tracking the response and updating the invoice status accordingly.",
+      "filename": "1776756999847-invoice-overdue-1-day-polite-sms-reminder.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/payment-chaser/1776756999847-invoice-overdue-1-day-polite-sms-reminder.json",
+      "generatedAt": "2026-04-21T07:36:39.847Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "payment-chaser",
+      "domainName": "Payment Chaser Agent",
+      "seed": "Invoice overdue 7 days → firm SMS + email",
+      "slug": "invoice-overdue-7-days-firm-sms-email",
+      "description": "When an invoice remains unpaid for 7 days, GRIDHAND's automation kicks in, triggering a firm but polite SMS message to the customer's phone number on file via the Twilio app, as well as a complementary email sent through Mailchimp, both of which are customized with the business's branding and include a link to pay the outstanding balance online. This dual-notification approach ensures that customers are reminded of their overdue payment in multiple ways, increasing the likelihood of prompt settlement. By automating this follow-up process, the business owner can reduce the time spent on accounts receivable and minimize the risk of late payments, resulting in a significant improvement to their cash flow and overall financial health.",
+      "filename": "1776757001417-invoice-overdue-7-days-firm-sms-email.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/payment-chaser/1776757001417-invoice-overdue-7-days-firm-sms-email.json",
+      "generatedAt": "2026-04-21T07:36:41.417Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "social-publishing",
+      "domainName": "Social Publishing Agent",
+      "seed": "New blog post → rewrite for Twitter + LinkedIn + Facebook → schedule",
+      "slug": "new-blog-post-rewrite-for-twitter-linkedin-facebook-schedule",
+      "description": "When a new blog post is published on a Sunday morning, GRIDHAND's automation workflow kicks in, rewriting the post into shorter, social media-friendly updates for Twitter, LinkedIn, and Facebook, and then schedules these posts to go live at optimal engagement times, such as Tuesday and Thursday afternoons, allowing the business owner to effortlessly expand their reach and drive traffic back to their website. By streamlining this process, the owner of a small retail store, for example, can save hours of manual posting time each week and instead focus on serving customers and growing their business. As a result, the store's social media presence becomes more consistent and engaging, attracting new customers and fostering a loyal community around their brand.",
+      "filename": "1776757002988-new-blog-post-rewrite-for-twitter-linkedin-facebook-schedule.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/social-publishing/1776757002988-new-blog-post-rewrite-for-twitter-linkedin-facebook-schedule.json",
+      "generatedAt": "2026-04-21T07:36:42.988Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "social-publishing",
+      "domainName": "Social Publishing Agent",
+      "seed": "Weekly content calendar → auto-post Monday–Friday",
+      "slug": "weekly-content-calendar-auto-post-mondayfriday",
+      "description": "Every Sunday evening, GRIDHAND's automation workflow is triggered to review the upcoming week's content calendar for a local barbershop, selecting a new social media post to auto-publish on Facebook, Instagram, and Twitter each morning at 8am, Monday through Friday. The workflow seamlessly connects to the barbershop's Hootsuite account, ensuring consistent and engaging content is shared with customers, such as promotions, styling tips, and behind-the-scenes glimpses, all designed to drive foot traffic and bookings throughout the week. By automating their social media posting, the barbershop owner saves several hours each week and increases their online presence, attracting new customers and keeping existing ones informed and entertained.",
+      "filename": "1776757004562-weekly-content-calendar-auto-post-mondayfriday.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/social-publishing/1776757004562-weekly-content-calendar-auto-post-mondayfriday.json",
+      "generatedAt": "2026-04-21T07:36:44.562Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "social-publishing",
+      "domainName": "Social Publishing Agent",
+      "seed": "Customer testimonial → format for each platform → publish",
+      "slug": "customer-testimonial-format-for-each-platform-publish",
+      "description": "When a customer leaves a 5-star review on the auto repair shop's website, GRIDHAND's automation workflow is triggered, which then formats the testimonial into optimized posts for Facebook, Instagram, and Twitter, complete with relevant hashtags and eye-catching images. Over the next three days, these formatted testimonials are automatically published to each platform at peak engagement times, such as Tuesday afternoon on Facebook and Thursday morning on Instagram, to maximize visibility and attract new customers. By streamlining the process of sharing customer testimonials across social media, the shop owner can increase online reputation and drive more sales, without having to spend hours each week manually creating and scheduling posts.",
+      "filename": "1776757005973-customer-testimonial-format-for-each-platform-publish.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/social-publishing/1776757005973-customer-testimonial-format-for-each-platform-publish.json",
+      "generatedAt": "2026-04-21T07:36:45.973Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "crm-sync",
+      "domainName": "CRM Sync Agent",
+      "seed": "New contact in HubSpot → sync to Airtable + Mailchimp",
+      "slug": "new-contact-in-hubspot-sync-to-airtable-mailchimp",
+      "description": "When a new contact is added to HubSpot, the workflow is triggered, automatically syncing the contact's information to Airtable, where it is organized and updated in real-time, and also to Mailchimp, where the contact is added to a designated email list. This seamless integration occurs instantly, ensuring that the business owner's customer database is consistently up-to-date across all platforms, saving time and effort. As a result, the business owner can focus on nurturing leads and creating targeted marketing campaigns, knowing that their contact lists are always current and accurate, leading to more effective outreach and engagement with customers.",
+      "filename": "1776757007257-new-contact-in-hubspot-sync-to-airtable-mailchimp.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/crm-sync/1776757007257-new-contact-in-hubspot-sync-to-airtable-mailchimp.json",
+      "generatedAt": "2026-04-21T07:36:47.257Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "crm-sync",
+      "domainName": "CRM Sync Agent",
+      "seed": "Deal stage change → update all connected systems",
+      "slug": "deal-stage-change-update-all-connected-systems",
+      "description": "When a deal stage is updated in the customer relationship management system, such as when a potential client moves from \"lead\" to \"customer\" in HubSpot, the workflow is triggered to update all connected systems, including the accounting software QuickBooks and the email marketing platform Mailchimp, to reflect the change, ensuring that the business owner's financial records and marketing campaigns are always up-to-date and synchronized. This automated process saves the business owner time and reduces errors, allowing them to focus on high-value activities like closing deals and serving customers. By integrating these systems, the business owner can also gain a more complete view of their sales funnel and customer interactions, enabling data-driven decisions to drive growth and revenue.",
+      "filename": "1776757008757-deal-stage-change-update-all-connected-systems.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/crm-sync/1776757008757-deal-stage-change-update-all-connected-systems.json",
+      "generatedAt": "2026-04-21T07:36:48.757Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "crm-sync",
+      "domainName": "CRM Sync Agent",
+      "seed": "Email reply detected → update CRM last contact date",
+      "slug": "email-reply-detected-update-crm-last-contact-date",
+      "description": "When an email reply is detected from a customer, GRIDHAND's automation workflow is triggered, which updates the last contact date in the business's CRM system, such as HubSpot, to reflect the current date and time, ensuring that the customer's interaction history is always up-to-date. This workflow runs daily at 8am, allowing the business owner to see the latest customer engagement when they start their day, and enabling them to prioritize follow-ups and personalize marketing efforts. By automating this process, the business owner can save time and focus on high-value activities, while also improving the accuracy of their customer relationship management and enhancing overall customer satisfaction.",
+      "filename": "1776757009947-email-reply-detected-update-crm-last-contact-date.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/crm-sync/1776757009947-email-reply-detected-update-crm-last-contact-date.json",
+      "generatedAt": "2026-04-21T07:36:49.947Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "win-back",
+      "domainName": "Win-Back Agent",
+      "seed": "No purchase/visit in 30 days → personalized win-back SMS",
+      "slug": "no-purchasevisit-in-30-days-personalized-win-back-sms",
+      "description": "When a customer hasn't made a purchase or visited a business, such as a barbershop, in 30 days, GRIDHAND's automation workflow is triggered to send a personalized win-back SMS via the shop's existing SMS marketing app, offering a limited-time discount on their next haircut, which is tailored to the customer's previous services and preferences. This SMS is sent at 10am on the 31st day, allowing the customer to plan a visit at their convenience, and includes a direct link to book an appointment online. By re-engaging with inactive customers in a timely and personalized manner, the barbershop owner can increase the chances of winning back lost business and boosting revenue.",
+      "filename": "1776757011376-no-purchasevisit-in-30-days-personalized-win-back-sms.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/win-back/1776757011376-no-purchasevisit-in-30-days-personalized-win-back-sms.json",
+      "generatedAt": "2026-04-21T07:36:51.376Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "win-back",
+      "domainName": "Win-Back Agent",
+      "seed": "No purchase/visit in 60 days → special discount offer",
+      "slug": "no-purchasevisit-in-60-days-special-discount-offer",
+      "description": "When a customer hasn't made a purchase or visited the business in 60 days, GRIDHAND's automation workflow is triggered, sending a personalized email via Mailchimp at 10am on the 61st day with a special 15% discount offer on their next service, prompting them to book an appointment or make a purchase within the next two weeks. This email is customized with the customer's name and their favorite services, increasing the likelihood of re-engagement and driving revenue for the business. By reactivating dormant customers, the business owner can boost sales and retention, ultimately leading to increased customer loyalty and a stronger bottom line.",
+      "filename": "1776757012650-no-purchasevisit-in-60-days-special-discount-offer.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/win-back/1776757012650-no-purchasevisit-in-60-days-special-discount-offer.json",
+      "generatedAt": "2026-04-21T07:36:52.650Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "win-back",
+      "domainName": "Win-Back Agent",
+      "seed": "No purchase/visit in 90 days → final attempt + survey",
+      "slug": "no-purchasevisit-in-90-days-final-attempt-survey",
+      "description": "When a customer hasn't made a purchase or visited a business, such as a gym, in 90 days, GRIDHAND's automation workflow is triggered to send a final attempt email via Mailchimp at 8am on the 91st day, containing a personalized message and a link to a survey on Google Forms to gather feedback on their experience. This email is the last in a series of targeted communications, and the survey responses are then synced with the business's CRM system, allowing the owner to analyze the results and identify areas for improvement. By leveraging this automation, the gym owner can re-engage dormant customers, gather valuable insights to inform marketing strategies, and potentially win back lost business, all without manual intervention.",
+      "filename": "1776757014000-no-purchasevisit-in-90-days-final-attempt-survey.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/win-back/1776757014000-no-purchasevisit-in-90-days-final-attempt-survey.json",
+      "generatedAt": "2026-04-21T07:36:54.000Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "onboarding",
+      "domainName": "Onboarding Agent",
+      "seed": "New client signup → welcome email + SMS + checklist",
+      "slug": "new-client-signup-welcome-email-sms-checklist",
+      "description": "When a new client signs up for services at Platinum Fitness, a GRIDHAND workflow is triggered that sends a personalized welcome email via Mailchimp, an introductory SMS text message via Twilio, and a digital onboarding checklist shared through Google Drive, all within 10 minutes of completing the online registration form. This workflow provides a seamless and unified introduction to the gym's services, ensuring that every new client receives essential information, including membership details, class schedules, and facility access instructions, while also setting the stage for a comprehensive onboarding experience. By automating these initial touchpoints, Platinum Fitness can focus on delivering exceptional member experiences, increasing retention rates, and driving referrals, all while projecting a professional and organized image from the very start.",
+      "filename": "1776757015421-new-client-signup-welcome-email-sms-checklist.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/onboarding/1776757015421-new-client-signup-welcome-email-sms-checklist.json",
+      "generatedAt": "2026-04-21T07:36:55.421Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "onboarding",
+      "domainName": "Onboarding Agent",
+      "seed": "Day 1 → intro call scheduled automatically",
+      "slug": "day-1-intro-call-scheduled-automatically",
+      "description": "When a new customer books an appointment at Joe's Auto Repair shop, GRIDHAND automatically schedules an introductory call for the next day at 10am, sending a confirmation email to both the customer and the shop owner through integrated calendars like Google Calendar or Microsoft Outlook. This workflow triggers a sequence of personalized communications, starting with the intro call, which the shop owner can use to discuss the customer's vehicle needs and build a relationship, ultimately increasing the chances of converting the booking into a paid service and fostering long-term customer loyalty. By streamlining this initial outreach, Joe's Auto Repair can ensure a consistent and welcoming experience for all new customers, setting the tone for a successful and profitable interaction.",
+      "filename": "1776757016777-day-1-intro-call-scheduled-automatically.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/onboarding/1776757016777-day-1-intro-call-scheduled-automatically.json",
+      "generatedAt": "2026-04-21T07:36:56.777Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "onboarding",
+      "domainName": "Onboarding Agent",
+      "seed": "Day 3 → check-in SMS asking about experience",
+      "slug": "day-3-check-in-sms-asking-about-experience",
+      "description": "When a customer visits a business, such as a barbershop, and makes a purchase, our automation workflow is triggered to send a follow-up SMS on the third day after their visit, checking in to ask about their experience and gather feedback. This SMS, sent via a integrated messaging app like Twilio, is timed to arrive at 2 PM, a quiet period for most small businesses, allowing the owner to quickly review and respond to any customer concerns, and is designed to help the business owner identify areas for improvement and build customer loyalty. By leveraging this automated check-in, the business owner can increase customer retention and encourage positive online reviews, ultimately driving more sales and growth for their barbershop.",
+      "filename": "1776757018194-day-3-check-in-sms-asking-about-experience.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/onboarding/1776757018194-day-3-check-in-sms-asking-about-experience.json",
+      "generatedAt": "2026-04-21T07:36:58.194Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "reporting",
+      "domainName": "Reporting Agent",
+      "seed": "Weekly: pull tasks from Airtable → generate summary → email client",
+      "slug": "weekly-pull-tasks-from-airtable-generate-summary-email-clien",
+      "description": "Every Sunday evening at 8pm, GRIDHAND's automation workflow kicks in, pulling all tasks from the past week out of Airtable and generating a concise summary of completed and pending tasks, which is then emailed to the business owner, allowing them to review progress and plan for the upcoming week ahead of Monday morning. This automated summary saves the owner several hours of manual effort each week, freeing them up to focus on high-priority tasks and client relationships. By receiving this weekly summary, the business owner can quickly identify areas that need attention and make data-driven decisions to drive growth and efficiency in their small business.",
+      "filename": "1776757019463-weekly-pull-tasks-from-airtable-generate-summary-email-clien.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/reporting/1776757019463-weekly-pull-tasks-from-airtable-generate-summary-email-clien.json",
+      "generatedAt": "2026-04-21T07:36:59.463Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "reporting",
+      "domainName": "Reporting Agent",
+      "seed": "Monthly: review count + rating average → send performance report",
+      "slug": "monthly-review-count-rating-average-send-performance-report",
+      "description": "At the start of each month, GRIDHAND automatically compiles a performance report for the business owner by aggregating review counts and rating averages from platforms like Yelp and Google Reviews, then sends a concise summary to the owner's email via Gmail, highlighting areas of improvement and successes, allowing for data-driven decisions to enhance customer satisfaction and ultimately drive sales. This workflow is triggered on the first day of every month at 8am, ensuring the owner has a timely and comprehensive overview of their business's online reputation. By receiving this monthly report, the business owner can swiftly identify trends, adjust marketing strategies, and boost their overall online presence to attract more customers.",
+      "filename": "1776757020918-monthly-review-count-rating-average-send-performance-report.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/reporting/1776757020918-monthly-review-count-rating-average-send-performance-report.json",
+      "generatedAt": "2026-04-21T07:37:00.918Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "reporting",
+      "domainName": "Reporting Agent",
+      "seed": "Daily: new leads count + conversion rate → Slack notification",
+      "slug": "daily-new-leads-count-conversion-rate-slack-notification",
+      "description": "Every morning at 8am, GRIDHAND automatically checks the previous day's leads and conversion rates from your online scheduling tool and CRM, and sends a personalized notification to your Slack channel, providing a clear overview of how many new leads came in and how many were successfully converted into customers, allowing you to quickly assess the effectiveness of your marketing efforts and make data-driven decisions to improve your sales strategy. This daily snapshot helps you stay on top of your business's performance and make adjustments in real-time, such as adjusting your social media ads or follow-up protocols, to optimize your conversion rates and drive more sales. By receiving this timely and actionable insight, you can refine your approach and stay focused on driving growth and revenue for your business.",
+      "filename": "1776757022457-daily-new-leads-count-conversion-rate-slack-notification.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/reporting/1776757022457-daily-new-leads-count-conversion-rate-slack-notification.json",
+      "generatedAt": "2026-04-21T07:37:02.457Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "ecommerce",
+      "domainName": "E-commerce Agent",
+      "seed": "Abandoned cart → email reminder after 1hr → SMS after 24hr",
+      "slug": "abandoned-cart-email-reminder-after-1hr-sms-after-24hr",
+      "description": "When a customer leaves items in their online shopping cart at a retail store like Trendy Fashion Boutique, a workflow is triggered that sends a reminder email to the customer through Mailchimp after one hour, prompting them to complete their purchase. If the customer still hasn't checked out after 24 hours, the workflow automatically sends a personalized SMS reminder through Twilio, urging them to finalize their purchase and offering a limited-time discount to incentivize completion. By doing so, the business owner can recover potentially lost sales and increase revenue, with the automated workflow helping to re-engage customers and reduce cart abandonment rates.",
+      "filename": "1776757024671-abandoned-cart-email-reminder-after-1hr-sms-after-24hr.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/ecommerce/1776757024671-abandoned-cart-email-reminder-after-1hr-sms-after-24hr.json",
+      "generatedAt": "2026-04-21T07:37:04.671Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "ecommerce",
+      "domainName": "E-commerce Agent",
+      "seed": "Order placed → confirmation → shipping update → delivery confirmation",
+      "slug": "order-placed-confirmation-shipping-update-delivery-confirmat",
+      "description": "When a customer places an order on their online store, integrated with Shopify, GRIDHAND's automation workflow is triggered, sending a confirmation email to the customer via Mailchimp within minutes, followed by a shipping update email with tracking information as soon as the order is fulfilled, and finally a delivery confirmation email once the package is marked as delivered, all of which helps reduce customer inquiries and improves overall customer satisfaction for the retail store owner. This streamlined process saves the business owner time and reduces errors, allowing them to focus on managing their store and serving customers. By automating these routine communications, the business owner can also gain valuable insights into customer engagement and order fulfillment metrics, enabling data-driven decisions to drive growth and revenue.",
+      "filename": "1776757026088-order-placed-confirmation-shipping-update-delivery-confirmat.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/ecommerce/1776757026088-order-placed-confirmation-shipping-update-delivery-confirmat.json",
+      "generatedAt": "2026-04-21T07:37:06.088Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "ecommerce",
+      "domainName": "E-commerce Agent",
+      "seed": "Post-purchase day 7 → review request",
+      "slug": "post-purchase-day-7-review-request",
+      "description": "When a customer makes a purchase at Joe's Barber Shop, a workflow is triggered seven days later, sending a personalized review request to the customer via email through the GRIDHAND system, which is integrated with Joe's online scheduling app, allowing the shop to track customer interactions and feedback. The email, sent at 10am on the seventh day, includes a link to the shop's Google My Business page, making it easy for the customer to leave a review, and also includes a brief message thanking the customer for their business and inviting them to share their experience. By automating this review request, Joe's Barber Shop is able to consistently collect valuable feedback and build a strong online reputation, attracting new customers and driving growth for the business.",
+      "filename": "1776757027633-post-purchase-day-7-review-request.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/ecommerce/1776757027633-post-purchase-day-7-review-request.json",
+      "generatedAt": "2026-04-21T07:37:07.633Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "internal-ops",
+      "domainName": "Internal Ops Agent",
+      "seed": "New employee → create accounts in all systems → send welcome",
+      "slug": "new-employee-create-accounts-in-all-systems-send-welcome",
+      "description": "When a new employee is added to the company's payroll system, such as QuickBooks, on the first day of the month, our automation workflow is triggered to create accounts for the new hire in all relevant systems, including Gmail for email, Zoom for meetings, and Shopify for point-of-sale access, streamlining the onboarding process. This automated process takes place within 24 hours, ensuring the new employee has all necessary access and tools to start work immediately, and sends a personalized welcome email with login credentials and important company information to get them started. By having all accounts created and welcome messages sent automatically, the business owner can focus on training and integration, while the new employee can hit the ground running, resulting in increased productivity and a smoother onboarding experience.",
+      "filename": "1776757029039-new-employee-create-accounts-in-all-systems-send-welcome.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/internal-ops/1776757029039-new-employee-create-accounts-in-all-systems-send-welcome.json",
+      "generatedAt": "2026-04-21T07:37:09.039Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "internal-ops",
+      "domainName": "Internal Ops Agent",
+      "seed": "Weekly team report → compile from all tools → send to owner",
+      "slug": "weekly-team-report-compile-from-all-tools-send-to-owner",
+      "description": "Every Sunday evening at 6 PM, GRIDHAND's automation workflow is triggered to compile a weekly team report, aggregating key performance data from apps like Square for sales, Google Calendar for schedules, and FreshBooks for invoicing, which are then organized into a concise summary. This summary is sent via email to the business owner, providing a clear overview of the past week's activity, including total revenue, appointment volume, and outstanding payments, allowing them to make informed decisions for the upcoming week. By automating this weekly report, the business owner saves several hours of manual data collection and analysis, enabling them to focus on strategic growth and improvement.",
+      "filename": "1776757030255-weekly-team-report-compile-from-all-tools-send-to-owner.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/internal-ops/1776757030255-weekly-team-report-compile-from-all-tools-send-to-owner.json",
+      "generatedAt": "2026-04-21T07:37:10.255Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "internal-ops",
+      "domainName": "Internal Ops Agent",
+      "seed": "License/certification expiring → 30 day warning → assign renewal task",
+      "slug": "licensecertification-expiring-30-day-warning-assign-renewal-",
+      "description": "When a barber's professional license is approaching expiration, 30 days prior to the deadline, GRIDHAND's automation workflow is triggered, sending a notification to the shop owner's email and creating a task in their calendar to renew the license, ensuring timely completion of the renewal process and avoiding any potential disruption to their business. As the task is assigned, the system also sends a reminder to the owner to gather all necessary documents and fees, streamlining the renewal process. By automating this critical reminder, the barber shop owner can focus on serving customers, confident that their licenses are up to date and their business remains compliant with regulatory requirements.",
+      "filename": "1776757031561-licensecertification-expiring-30-day-warning-assign-renewal-.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/internal-ops/1776757031561-licensecertification-expiring-30-day-warning-assign-renewal-.json",
+      "generatedAt": "2026-04-21T07:37:11.561Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "seasonal-campaigns",
+      "domainName": "Seasonal Campaign Agent",
+      "seed": "Black Friday: 2 weeks before → tease → launch → follow-up sequence",
+      "slug": "black-friday-2-weeks-before-tease-launch-follow-up-sequence",
+      "description": "Two weeks before Black Friday, a timed automation workflow is triggered in GRIDHAND, which begins by sending a teaser email to subscribers through Mailchimp, hinting at upcoming exclusive deals and discounts at the local retail store. As the launch date approaches, the workflow automatically switches to a launch sequence, publishing promotional posts on the store's Facebook and Instagram accounts, and sending a follow-up email with detailed offers and limited-time coupons to incentivize sales, ultimately driving foot traffic and revenue for the business owner during the critical holiday shopping period. By streamlining this promotional sequence, the business owner can focus on in-store preparations while GRIDHAND handles the marketing outreach, ensuring a successful and profitable Black Friday event.",
+      "filename": "1776757033045-black-friday-2-weeks-before-tease-launch-follow-up-sequence.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/seasonal-campaigns/1776757033045-black-friday-2-weeks-before-tease-launch-follow-up-sequence.json",
+      "generatedAt": "2026-04-21T07:37:13.045Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "seasonal-campaigns",
+      "domainName": "Seasonal Campaign Agent",
+      "seed": "New Year: Jan 1 → goal-setting offer → check-in Jan 15",
+      "slug": "new-year-jan-1-goal-setting-offer-check-in-jan-15",
+      "description": "On January 1st, GRIDHAND's automation workflow is triggered, sending a personalized email to all gym members with a goal-setting offer, complete with a special promotion for personal training sessions and a downloadable fitness plan template. Over the next two weeks, members who engage with the email are automatically added to a follow-up sequence, culminating in a check-in email on January 15th that tracks their progress and provides motivational content to help them stay on track. By leveraging this automated workflow, the gym owner can increase member engagement and retention, driving revenue growth through targeted promotions and support, all while freeing up staff time to focus on high-touch, high-value services.",
+      "filename": "1776757034476-new-year-jan-1-goal-setting-offer-check-in-jan-15.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/seasonal-campaigns/1776757034476-new-year-jan-1-goal-setting-offer-check-in-jan-15.json",
+      "generatedAt": "2026-04-21T07:37:14.476Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "seasonal-campaigns",
+      "domainName": "Seasonal Campaign Agent",
+      "seed": "Summer: May 1 → seasonal promotion for relevant services",
+      "slug": "summer-may-1-seasonal-promotion-for-relevant-services",
+      "description": "When May 1 arrives, a workflow is triggered that automatically updates the online booking system and social media accounts for a local gym, promoting their seasonal summer membership specials and outdoor fitness classes. This workflow, which runs daily for the next two weeks, synchronizes the gym's Google Calendar and Facebook Pages to ensure consistent messaging and scheduling, and also sends a weekly email campaign to existing customers through Mailchimp, highlighting the benefits of their summer programs and encouraging referrals. By streamlining the promotion of their seasonal services, the gym owner can focus on delivering results to their clients while attracting new customers and increasing revenue during the peak summer season.",
+      "filename": "1776757036018-summer-may-1-seasonal-promotion-for-relevant-services.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/seasonal-campaigns/1776757036018-summer-may-1-seasonal-promotion-for-relevant-services.json",
+      "generatedAt": "2026-04-21T07:37:16.018Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "industry-specialist",
+      "domainName": "Industry Specialist Agent",
+      "seed": "Auto repair: vehicle due for oil change (6 months) → proactive SMS",
+      "slug": "auto-repair-vehicle-due-for-oil-change-6-months-proactive-sm",
+      "description": "When a vehicle's oil change is due in six months, GRIDHAND's automation workflow is triggered, sending a proactive SMS to the vehicle owner through the shop's preferred messaging app, such as Twilio or Nexmo, to remind them of the upcoming maintenance need. This workflow is time-sensitive, as it allows the auto repair shop to book appointments in advance, ensuring a steady stream of customers and preventing last-minute scheduling hassles. By delivering timely reminders, the business owner can increase customer retention and loyalty, while also maintaining a consistent flow of revenue-generating oil change services.",
+      "filename": "1776757037180-auto-repair-vehicle-due-for-oil-change-6-months-proactive-sm.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry-specialist/1776757037180-auto-repair-vehicle-due-for-oil-change-6-months-proactive-sm.json",
+      "generatedAt": "2026-04-21T07:37:17.180Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "industry-specialist",
+      "domainName": "Industry Specialist Agent",
+      "seed": "Restaurant: table booked → pre-order menu → upsell drinks",
+      "slug": "restaurant-table-booked-pre-order-menu-upsell-drinks",
+      "description": "When a customer books a table at your restaurant through the online reservation system, GRIDHAND automatically triggers a workflow that sends a personalized pre-order menu to the customer's email 24 hours before their scheduled dining time, allowing them to browse and select their meal choices in advance. As the customer reviews the menu, GRIDHAND's integrated system suggests complementary drinks to pair with their selected dishes, sending a follow-up message with upsell options and special promotions, which the customer can easily add to their order. By streamlining the pre-order process and offering targeted drink pairings, your restaurant can increase average ticket sizes, reduce wait times, and enhance the overall dining experience for your customers.",
+      "filename": "1776757038394-restaurant-table-booked-pre-order-menu-upsell-drinks.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry-specialist/1776757038394-restaurant-table-booked-pre-order-menu-upsell-drinks.json",
+      "generatedAt": "2026-04-21T07:37:18.394Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "industry-specialist",
+      "domainName": "Industry Specialist Agent",
+      "seed": "Gym: member not visited in 2 weeks → check-in SMS",
+      "slug": "gym-member-not-visited-in-2-weeks-check-in-sms",
+      "description": "When a gym member hasn't checked in to a workout session for two weeks, GRIDHAND's automation workflow is triggered to send a personalized check-in SMS via Twilio at 10am on the 15th day of inactivity, allowing the gym owner to re-engage the member with a special promotion or a motivational message. This workflow is synchronized with the gym's membership management system, Glofox, to ensure accurate and up-to-date member activity records, enabling the gym owner to track the effectiveness of the re-engagement campaign. By sending a timely and targeted SMS, the gym owner can encourage inactive members to return, thereby increasing revenue and reducing member churn.",
+      "filename": "1776757039689-gym-member-not-visited-in-2-weeks-check-in-sms.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry-specialist/1776757039689-gym-member-not-visited-in-2-weeks-check-in-sms.json",
+      "generatedAt": "2026-04-21T07:37:19.689Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "competitor-monitor",
+      "domainName": "Competitor Monitor Agent",
+      "seed": "Competitor gets negative review → alert owner with opportunity",
+      "slug": "competitor-gets-negative-review-alert-owner-with-opportunity",
+      "description": "When a competitor's business receives a negative review on platforms like Yelp or Google Reviews, the GRIDHAND automation workflow is triggered to immediately alert the owner of the opportunity to win over dissatisfied customers. The system sends a timely notification to the owner's smartphone via the GRIDHAND mobile app, providing details of the negative review and the competitor's business, allowing the owner to craft a targeted response or promotion to attract these potential customers to their own business. By receiving these alerts, the business owner can capitalize on their competitor's mistakes and increase their own customer base, ultimately driving sales and revenue growth for their business.",
+      "filename": "1776757041089-competitor-gets-negative-review-alert-owner-with-opportunity.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/competitor-monitor/1776757041089-competitor-gets-negative-review-alert-owner-with-opportunity.json",
+      "generatedAt": "2026-04-21T07:37:21.089Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "competitor-monitor",
+      "domainName": "Competitor Monitor Agent",
+      "seed": "Competitor drops price → notify + suggest response",
+      "slug": "competitor-drops-price-notify-suggest-response",
+      "description": "When a competitor drops their price, GRIDHAND's automation workflow is triggered, sending a notification to the business owner via Slack at 8am the next morning, and then analyzing the competitor's new pricing strategy using data from Google Search and Yelp. The workflow then suggests a potential response, such as a price adjustment or a promotional offer, based on the business's historical sales data from Square and customer feedback from Facebook Reviews, allowing the owner to quickly respond to the changing market. By automating this process, the business owner can stay ahead of the competition and adjust their pricing strategy to optimize sales and revenue, with GRIDHAND providing a weekly summary of competitor price changes and suggested responses via email.",
+      "filename": "1776757042331-competitor-drops-price-notify-suggest-response.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/competitor-monitor/1776757042331-competitor-drops-price-notify-suggest-response.json",
+      "generatedAt": "2026-04-21T07:37:22.331Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "competitor-monitor",
+      "domainName": "Competitor Monitor Agent",
+      "seed": "Competitor gains 10+ reviews this month → benchmark alert",
+      "slug": "competitor-gains-10-reviews-this-month-benchmark-alert",
+      "description": "When a competitor gains more than 10 new reviews in a month, a benchmark alert is triggered, sending a notification to the business owner via email and the GRIDHAND mobile app, prompting them to review their own reputation management strategy and respond to any recent reviews on platforms like Yelp or Google My Business. This alert workflow automatically summarizes the competitor's review trends and sentiment analysis, providing valuable insights to help the business owner adjust their marketing efforts and stay competitive in the market. By staying on top of competitor activity, the business owner can maintain a strong online presence and attract more customers to their store, ultimately driving sales and revenue growth.",
+      "filename": "1776757043468-competitor-gains-10-reviews-this-month-benchmark-alert.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/competitor-monitor/1776757043468-competitor-gains-10-reviews-this-month-benchmark-alert.json",
+      "generatedAt": "2026-04-21T07:37:23.468Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "dry-run mode"
+      }
+    },
+    {
+      "domainId": "competitor-monitor",
+      "domainName": "Competitor Monitor Agent",
+      "seed": "Competitor posts new service → analyze and report",
+      "slug": "competitor-posts-new-service-analyze-and-report",
+      "description": "When a competitor posts a new service on their Facebook page or website, GRIDHAND's automation workflow is triggered to analyze the post and report back to the business owner, providing a daily summary at 8am via email that outlines the competitor's new offering, including pricing and features, allowing the owner to adjust their own services and stay competitive in the market. This workflow utilizes social media monitoring tools and natural language processing to identify and extract relevant information from the competitor's post, which is then compiled into a concise report that highlights key differences and potential opportunities for the business owner to capitalize on. By receiving this daily report, the business owner can make informed decisions to refine their services, adjust pricing, and ultimately drive more sales and revenue for their company.",
+      "filename": "1776757070307-competitor-posts-new-service-analyze-and-report.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/competitor-monitor/1776757070307-competitor-posts-new-service-analyze-and-report.json",
+      "generatedAt": "2026-04-21T07:37:50.307Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "N8N_API_KEY not set — saved to disk only"
+      }
+    },
+    {
+      "domainId": "competitor-monitor",
+      "domainName": "Competitor Monitor Agent",
+      "seed": "Monthly: competitor comparison report → email to client",
+      "slug": "monthly-competitor-comparison-report-email-to-client",
+      "description": "Every month, on the first day at 8am, a workflow is triggered that automatically compiles a competitor comparison report for Smith's Auto Repair, a local car repair shop, by aggregating data from online review sites like Yelp and Google Reviews, as well as social media platforms, and then emails the report to the owner, John Smith, via Gmail, providing him with valuable insights into how his business stacks up against the competition in terms of pricing, customer satisfaction, and overall reputation. This report enables John to make data-driven decisions to adjust his marketing strategy, pricing, and services to stay ahead of the competition and attract more customers. By receiving this monthly report, John can promptly identify areas for improvement and capitalize on new opportunities, ultimately driving more sales and revenue for his business.",
+      "filename": "1776757071704-monthly-competitor-comparison-report-email-to-client.json",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/competitor-monitor/1776757071704-monthly-competitor-comparison-report-email-to-client.json",
+      "generatedAt": "2026-04-21T07:37:51.704Z",
+      "n8n": {
+        "skipped": true,
+        "reason": "N8N_API_KEY not set — saved to disk only"
+      }
+    }
+  ],
+  "lastRun": "2026-04-21T07:37:52.105Z",
+  "totalCount": 47
+}

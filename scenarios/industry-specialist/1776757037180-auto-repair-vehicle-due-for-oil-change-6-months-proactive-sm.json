@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Industry Specialist Agent - Auto repair: vehicle due for oil change (6 months) → proacti",
+  "nodes": [
+    {
+      "id": "a58jbe6kxkey977f",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-industry-specialist-1776757037180",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "d4c16k1id46qdoa6"
+    },
+    {
+      "id": "ega59e8q8dcbtkj9",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Industry Specialist Agent\n// Scenario: Auto repair: vehicle due for oil change (6 months) → proactive SMS\n// Desc:     When a vehicle\\'s oil change is due in six months, GRIDHAND\\'s automation workflow is triggered, sending a proactive SMS to the vehicle owner through the shop\\'s preferred messaging app, such as Twilio or Nexmo, to remind them of the upcoming maintenance need. This workflow is time-sensitive, as it allows the auto repair shop to book appointments in advance, ensuring a steady stream of customers and preventing last-minute scheduling hassles. By delivering timely reminders, the business owner can increase customer retention and loyalty, while also maintaining a consistent flow of revenue-generating oil change services.\n// Created:  2026-04-21T07:37:17.180Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Auto repair: vehicle due for oil change (6 months) → proactive SMS\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'industry-specialist',\n  scenario: 'Auto repair: vehicle due for oil change (6 months) → proactive SMS',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "b38le6imuq34j9u4",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "industry-specialist",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "industry-specialist",
+      "domainName": "Industry Specialist Agent",
+      "scenario": "Auto repair: vehicle due for oil change (6 months) → proactive SMS",
+      "description": "When a vehicle's oil change is due in six months, GRIDHAND's automation workflow is triggered, sending a proactive SMS to the vehicle owner through the shop's preferred messaging app, such as Twilio or Nexmo, to remind them of the upcoming maintenance need. This workflow is time-sensitive, as it allows the auto repair shop to book appointments in advance, ensuring a steady stream of customers and preventing last-minute scheduling hassles. By delivering timely reminders, the business owner can increase customer retention and loyalty, while also maintaining a consistent flow of revenue-generating oil change services.",
+      "generatedAt": "2026-04-21T07:37:17.180Z"
+    }
+  }
+}

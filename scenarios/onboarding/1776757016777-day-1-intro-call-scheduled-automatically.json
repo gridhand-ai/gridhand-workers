@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Onboarding Agent - Day 1 → intro call scheduled automatically",
+  "nodes": [
+    {
+      "id": "vjbb447a8yyz6rhl",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-onboarding-1776757016777",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "vjatnwtmt5jm8kh5"
+    },
+    {
+      "id": "1vgbrhfwgndedfr3",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Onboarding Agent\n// Scenario: Day 1 → intro call scheduled automatically\n// Desc:     When a new customer books an appointment at Joe\\'s Auto Repair shop, GRIDHAND automatically schedules an introductory call for the next day at 10am, sending a confirmation email to both the customer and the shop owner through integrated calendars like Google Calendar or Microsoft Outlook. This workflow triggers a sequence of personalized communications, starting with the intro call, which the shop owner can use to discuss the customer\\'s vehicle needs and build a relationship, ultimately increasing the chances of converting the booking into a paid service and fostering long-term customer loyalty. By streamlining this initial outreach, Joe\\'s Auto Repair can ensure a consistent and welcoming experience for all new customers, setting the tone for a successful and profitable interaction.\n// Created:  2026-04-21T07:36:56.777Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Day 1 → intro call scheduled automatically\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'onboarding',\n  scenario: 'Day 1 → intro call scheduled automatically',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "fl1opqwzd8vhpsl1",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "onboarding",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "onboarding",
+      "domainName": "Onboarding Agent",
+      "scenario": "Day 1 → intro call scheduled automatically",
+      "description": "When a new customer books an appointment at Joe's Auto Repair shop, GRIDHAND automatically schedules an introductory call for the next day at 10am, sending a confirmation email to both the customer and the shop owner through integrated calendars like Google Calendar or Microsoft Outlook. This workflow triggers a sequence of personalized communications, starting with the intro call, which the shop owner can use to discuss the customer's vehicle needs and build a relationship, ultimately increasing the chances of converting the booking into a paid service and fostering long-term customer loyalty. By streamlining this initial outreach, Joe's Auto Repair can ensure a consistent and welcoming experience for all new customers, setting the tone for a successful and profitable interaction.",
+      "generatedAt": "2026-04-21T07:36:56.777Z"
+    }
+  }
+}

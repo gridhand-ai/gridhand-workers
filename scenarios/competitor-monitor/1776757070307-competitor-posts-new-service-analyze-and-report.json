@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Competitor Monitor Agent - Competitor posts new service → analyze and report",
+  "nodes": [
+    {
+      "id": "3r4g9a7ff9ieuei4",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-competitor-monitor-1776757070306",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "6hed3mit3gl7e98k"
+    },
+    {
+      "id": "jg590qbhym5m5kky",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Competitor Monitor Agent\n// Scenario: Competitor posts new service → analyze and report\n// Desc:     When a competitor posts a new service on their Facebook page or website, GRIDHAND\\'s automation workflow is triggered to analyze the post and report back to the business owner, providing a daily summary at 8am via email that outlines the competitor\\'s new offering, including pricing and features, allowing the owner to adjust their own services and stay competitive in the market. This workflow utilizes social media monitoring tools and natural language processing to identify and extract relevant information from the competitor\\'s post, which is then compiled into a concise report that highlights key differences and potential opportunities for the business owner to capitalize on. By receiving this daily report, the business owner can make informed decisions to refine their services, adjust pricing, and ultimately drive more sales and revenue for their company.\n// Created:  2026-04-21T07:37:50.306Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Competitor posts new service → analyze and report\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'competitor-monitor',\n  scenario: 'Competitor posts new service → analyze and report',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "tpxhomz2bhxf5427",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "competitor-monitor",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "competitor-monitor",
+      "domainName": "Competitor Monitor Agent",
+      "scenario": "Competitor posts new service → analyze and report",
+      "description": "When a competitor posts a new service on their Facebook page or website, GRIDHAND's automation workflow is triggered to analyze the post and report back to the business owner, providing a daily summary at 8am via email that outlines the competitor's new offering, including pricing and features, allowing the owner to adjust their own services and stay competitive in the market. This workflow utilizes social media monitoring tools and natural language processing to identify and extract relevant information from the competitor's post, which is then compiled into a concise report that highlights key differences and potential opportunities for the business owner to capitalize on. By receiving this daily report, the business owner can make informed decisions to refine their services, adjust pricing, and ultimately drive more sales and revenue for their company.",
+      "generatedAt": "2026-04-21T07:37:50.307Z"
+    }
+  }
+}

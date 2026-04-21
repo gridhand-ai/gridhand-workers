@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Onboarding Agent - Day 3 → check-in SMS asking about experience",
+  "nodes": [
+    {
+      "id": "3kw81vk25izzgzns",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-onboarding-1776757018194",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "s074vb5wm20ki7xd"
+    },
+    {
+      "id": "ksqse9q2izmsiy27",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Onboarding Agent\n// Scenario: Day 3 → check-in SMS asking about experience\n// Desc:     When a customer visits a business, such as a barbershop, and makes a purchase, our automation workflow is triggered to send a follow-up SMS on the third day after their visit, checking in to ask about their experience and gather feedback. This SMS, sent via a integrated messaging app like Twilio, is timed to arrive at 2 PM, a quiet period for most small businesses, allowing the owner to quickly review and respond to any customer concerns, and is designed to help the business owner identify areas for improvement and build customer loyalty. By leveraging this automated check-in, the business owner can increase customer retention and encourage positive online reviews, ultimately driving more sales and growth for their barbershop.\n// Created:  2026-04-21T07:36:58.194Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Day 3 → check-in SMS asking about experience\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'onboarding',\n  scenario: 'Day 3 → check-in SMS asking about experience',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "25gd1elj086e9ejq",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "onboarding",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "onboarding",
+      "domainName": "Onboarding Agent",
+      "scenario": "Day 3 → check-in SMS asking about experience",
+      "description": "When a customer visits a business, such as a barbershop, and makes a purchase, our automation workflow is triggered to send a follow-up SMS on the third day after their visit, checking in to ask about their experience and gather feedback. This SMS, sent via a integrated messaging app like Twilio, is timed to arrive at 2 PM, a quiet period for most small businesses, allowing the owner to quickly review and respond to any customer concerns, and is designed to help the business owner identify areas for improvement and build customer loyalty. By leveraging this automated check-in, the business owner can increase customer retention and encourage positive online reviews, ultimately driving more sales and growth for their barbershop.",
+      "generatedAt": "2026-04-21T07:36:58.194Z"
+    }
+  }
+}

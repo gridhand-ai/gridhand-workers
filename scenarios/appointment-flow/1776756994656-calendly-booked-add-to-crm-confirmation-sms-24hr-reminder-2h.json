@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Appointment Flow Agent - Calendly booked → add to CRM → confirmation SMS → 24hr remin",
+  "nodes": [
+    {
+      "id": "1xjmhov8kkrhy36u",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-appointment-flow-1776756994656",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "37xsib8d5d9bkpf1"
+    },
+    {
+      "id": "5ev46m3m2x39qn1j",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Appointment Flow Agent\n// Scenario: Calendly booked → add to CRM → confirmation SMS → 24hr reminder → 2hr reminder\n// Desc:     When a customer books an appointment through Calendly, the workflow is triggered, automatically adding the customer\\'s information to the business\\'s CRM system, such as HubSpot, and sending a confirmation SMS to the customer through Twilio, ensuring they receive instant notification of their scheduled appointment. Over the next 24 hours, the workflow sends a reminder SMS to the customer, and then another reminder just 2 hours before the appointment, both designed to reduce no-shows and keep customers engaged, ultimately resulting in a more streamlined and reliable scheduling process for the business owner. By automating these tasks, the business owner can focus on providing excellent service, knowing that appointments are being managed efficiently and customers are being kept informed every step of the way.\n// Created:  2026-04-21T07:36:34.656Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Calendly booked → add to CRM → confirmation SMS → 24hr reminder → 2hr reminder\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'appointment-flow',\n  scenario: 'Calendly booked → add to CRM → confirmation SMS → 24hr reminder → 2hr reminder',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "hg8xl841cqjxx555",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "appointment-flow",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "appointment-flow",
+      "domainName": "Appointment Flow Agent",
+      "scenario": "Calendly booked → add to CRM → confirmation SMS → 24hr reminder → 2hr reminder",
+      "description": "When a customer books an appointment through Calendly, the workflow is triggered, automatically adding the customer's information to the business's CRM system, such as HubSpot, and sending a confirmation SMS to the customer through Twilio, ensuring they receive instant notification of their scheduled appointment. Over the next 24 hours, the workflow sends a reminder SMS to the customer, and then another reminder just 2 hours before the appointment, both designed to reduce no-shows and keep customers engaged, ultimately resulting in a more streamlined and reliable scheduling process for the business owner. By automating these tasks, the business owner can focus on providing excellent service, knowing that appointments are being managed efficiently and customers are being kept informed every step of the way.",
+      "generatedAt": "2026-04-21T07:36:34.656Z"
+    }
+  }
+}

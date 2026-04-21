@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Social Publishing Agent - New blog post → rewrite for Twitter + LinkedIn + Facebook → ",
+  "nodes": [
+    {
+      "id": "46lvdo9hspzd7bod",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-social-publishing-1776757002988",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "laup5sghhj4lth4p"
+    },
+    {
+      "id": "orixg0ihls4u66mo",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Social Publishing Agent\n// Scenario: New blog post → rewrite for Twitter + LinkedIn + Facebook → schedule\n// Desc:     When a new blog post is published on a Sunday morning, GRIDHAND\\'s automation workflow kicks in, rewriting the post into shorter, social media-friendly updates for Twitter, LinkedIn, and Facebook, and then schedules these posts to go live at optimal engagement times, such as Tuesday and Thursday afternoons, allowing the business owner to effortlessly expand their reach and drive traffic back to their website. By streamlining this process, the owner of a small retail store, for example, can save hours of manual posting time each week and instead focus on serving customers and growing their business. As a result, the store\\'s social media presence becomes more consistent and engaging, attracting new customers and fostering a loyal community around their brand.\n// Created:  2026-04-21T07:36:42.988Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: New blog post → rewrite for Twitter + LinkedIn + Facebook → schedule\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'social-publishing',\n  scenario: 'New blog post → rewrite for Twitter + LinkedIn + Facebook → schedule',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "8ny0sp6wjoxjweew",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "social-publishing",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "social-publishing",
+      "domainName": "Social Publishing Agent",
+      "scenario": "New blog post → rewrite for Twitter + LinkedIn + Facebook → schedule",
+      "description": "When a new blog post is published on a Sunday morning, GRIDHAND's automation workflow kicks in, rewriting the post into shorter, social media-friendly updates for Twitter, LinkedIn, and Facebook, and then schedules these posts to go live at optimal engagement times, such as Tuesday and Thursday afternoons, allowing the business owner to effortlessly expand their reach and drive traffic back to their website. By streamlining this process, the owner of a small retail store, for example, can save hours of manual posting time each week and instead focus on serving customers and growing their business. As a result, the store's social media presence becomes more consistent and engaging, attracting new customers and fostering a loyal community around their brand.",
+      "generatedAt": "2026-04-21T07:36:42.988Z"
+    }
+  }
+}

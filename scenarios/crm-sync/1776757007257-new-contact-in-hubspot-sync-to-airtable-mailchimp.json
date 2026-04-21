@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] CRM Sync Agent - New contact in HubSpot → sync to Airtable + Mailchimp",
+  "nodes": [
+    {
+      "id": "aay0fm0rf30qg1h0",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-crm-sync-1776757007257",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "wd54uoz9bd6mt0yj"
+    },
+    {
+      "id": "oehb7ngor0zbu8ix",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   CRM Sync Agent\n// Scenario: New contact in HubSpot → sync to Airtable + Mailchimp\n// Desc:     When a new contact is added to HubSpot, the workflow is triggered, automatically syncing the contact\\'s information to Airtable, where it is organized and updated in real-time, and also to Mailchimp, where the contact is added to a designated email list. This seamless integration occurs instantly, ensuring that the business owner\\'s customer database is consistently up-to-date across all platforms, saving time and effort. As a result, the business owner can focus on nurturing leads and creating targeted marketing campaigns, knowing that their contact lists are always current and accurate, leading to more effective outreach and engagement with customers.\n// Created:  2026-04-21T07:36:47.257Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: New contact in HubSpot → sync to Airtable + Mailchimp\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'crm-sync',\n  scenario: 'New contact in HubSpot → sync to Airtable + Mailchimp',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "ip76f0cprtbhyhb8",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "crm-sync",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "crm-sync",
+      "domainName": "CRM Sync Agent",
+      "scenario": "New contact in HubSpot → sync to Airtable + Mailchimp",
+      "description": "When a new contact is added to HubSpot, the workflow is triggered, automatically syncing the contact's information to Airtable, where it is organized and updated in real-time, and also to Mailchimp, where the contact is added to a designated email list. This seamless integration occurs instantly, ensuring that the business owner's customer database is consistently up-to-date across all platforms, saving time and effort. As a result, the business owner can focus on nurturing leads and creating targeted marketing campaigns, knowing that their contact lists are always current and accurate, leading to more effective outreach and engagement with customers.",
+      "generatedAt": "2026-04-21T07:36:47.257Z"
+    }
+  }
+}

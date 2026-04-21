@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Review Reputation Agent - Review score drops below 4.0 → alert + action plan",
+  "nodes": [
+    {
+      "id": "rosjg1pllvffj1g7",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-review-reputation-1776756989359",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "8ozdbj4pzzvnnoe1"
+    },
+    {
+      "id": "7sibwqqmaz1d0jsq",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Review Reputation Agent\n// Scenario: Review score drops below 4.0 → alert + action plan\n// Desc:     When a small business\\'s review score on Google My Business or Yelp drops below 4.0, GRIDHAND\\'s automation workflow is triggered, sending an immediate alert to the business owner\\'s Slack channel or email inbox, followed by a step-by-step action plan that includes responding to negative reviews on the review platform within 2 hours, requesting feedback from recent customers through a SurveyMonkey survey, and scheduling a staff meeting on Google Calendar to discuss service improvements. By taking swift action, the business owner can mitigate the impact of negative reviews, identify areas for improvement, and protect their online reputation. This timely intervention can help recover the business\\'s review score and maintain customer trust, ultimately driving more sales and growth for the business.\n// Created:  2026-04-21T07:36:29.359Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Review score drops below 4.0 → alert + action plan\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'review-reputation',\n  scenario: 'Review score drops below 4.0 → alert + action plan',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "smdzhkb1wv79lr63",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "review-reputation",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "review-reputation",
+      "domainName": "Review Reputation Agent",
+      "scenario": "Review score drops below 4.0 → alert + action plan",
+      "description": "When a small business's review score on Google My Business or Yelp drops below 4.0, GRIDHAND's automation workflow is triggered, sending an immediate alert to the business owner's Slack channel or email inbox, followed by a step-by-step action plan that includes responding to negative reviews on the review platform within 2 hours, requesting feedback from recent customers through a SurveyMonkey survey, and scheduling a staff meeting on Google Calendar to discuss service improvements. By taking swift action, the business owner can mitigate the impact of negative reviews, identify areas for improvement, and protect their online reputation. This timely intervention can help recover the business's review score and maintain customer trust, ultimately driving more sales and growth for the business.",
+      "generatedAt": "2026-04-21T07:36:29.359Z"
+    }
+  }
+}

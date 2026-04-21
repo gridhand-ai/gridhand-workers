@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Seasonal Campaign Agent - Black Friday: 2 weeks before → tease → launch → follow-up se",
+  "nodes": [
+    {
+      "id": "hm2hq1yd9m2hayta",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-seasonal-campaigns-1776757033045",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "vl456r939xycjkq5"
+    },
+    {
+      "id": "803finpsgptrijwz",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Seasonal Campaign Agent\n// Scenario: Black Friday: 2 weeks before → tease → launch → follow-up sequence\n// Desc:     Two weeks before Black Friday, a timed automation workflow is triggered in GRIDHAND, which begins by sending a teaser email to subscribers through Mailchimp, hinting at upcoming exclusive deals and discounts at the local retail store. As the launch date approaches, the workflow automatically switches to a launch sequence, publishing promotional posts on the store\\'s Facebook and Instagram accounts, and sending a follow-up email with detailed offers and limited-time coupons to incentivize sales, ultimately driving foot traffic and revenue for the business owner during the critical holiday shopping period. By streamlining this promotional sequence, the business owner can focus on in-store preparations while GRIDHAND handles the marketing outreach, ensuring a successful and profitable Black Friday event.\n// Created:  2026-04-21T07:37:13.045Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Black Friday: 2 weeks before → tease → launch → follow-up sequence\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'seasonal-campaigns',\n  scenario: 'Black Friday: 2 weeks before → tease → launch → follow-up sequence',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "vsg9t8y85tb03gmb",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "seasonal-campaigns",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "seasonal-campaigns",
+      "domainName": "Seasonal Campaign Agent",
+      "scenario": "Black Friday: 2 weeks before → tease → launch → follow-up sequence",
+      "description": "Two weeks before Black Friday, a timed automation workflow is triggered in GRIDHAND, which begins by sending a teaser email to subscribers through Mailchimp, hinting at upcoming exclusive deals and discounts at the local retail store. As the launch date approaches, the workflow automatically switches to a launch sequence, publishing promotional posts on the store's Facebook and Instagram accounts, and sending a follow-up email with detailed offers and limited-time coupons to incentivize sales, ultimately driving foot traffic and revenue for the business owner during the critical holiday shopping period. By streamlining this promotional sequence, the business owner can focus on in-store preparations while GRIDHAND handles the marketing outreach, ensuring a successful and profitable Black Friday event.",
+      "generatedAt": "2026-04-21T07:37:13.045Z"
+    }
+  }
+}

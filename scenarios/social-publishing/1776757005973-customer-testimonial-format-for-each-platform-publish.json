@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Social Publishing Agent - Customer testimonial → format for each platform → publish",
+  "nodes": [
+    {
+      "id": "ypp8gbvvj92hhdtc",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-social-publishing-1776757005973",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "140au9x2da3m6mtl"
+    },
+    {
+      "id": "k3lkw6n5e0gg23ko",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Social Publishing Agent\n// Scenario: Customer testimonial → format for each platform → publish\n// Desc:     When a customer leaves a 5-star review on the auto repair shop\\'s website, GRIDHAND\\'s automation workflow is triggered, which then formats the testimonial into optimized posts for Facebook, Instagram, and Twitter, complete with relevant hashtags and eye-catching images. Over the next three days, these formatted testimonials are automatically published to each platform at peak engagement times, such as Tuesday afternoon on Facebook and Thursday morning on Instagram, to maximize visibility and attract new customers. By streamlining the process of sharing customer testimonials across social media, the shop owner can increase online reputation and drive more sales, without having to spend hours each week manually creating and scheduling posts.\n// Created:  2026-04-21T07:36:45.973Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Customer testimonial → format for each platform → publish\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'social-publishing',\n  scenario: 'Customer testimonial → format for each platform → publish',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "86e6oxeuxyxfpyhn",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "social-publishing",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "social-publishing",
+      "domainName": "Social Publishing Agent",
+      "scenario": "Customer testimonial → format for each platform → publish",
+      "description": "When a customer leaves a 5-star review on the auto repair shop's website, GRIDHAND's automation workflow is triggered, which then formats the testimonial into optimized posts for Facebook, Instagram, and Twitter, complete with relevant hashtags and eye-catching images. Over the next three days, these formatted testimonials are automatically published to each platform at peak engagement times, such as Tuesday afternoon on Facebook and Thursday morning on Instagram, to maximize visibility and attract new customers. By streamlining the process of sharing customer testimonials across social media, the shop owner can increase online reputation and drive more sales, without having to spend hours each week manually creating and scheduling posts.",
+      "generatedAt": "2026-04-21T07:36:45.973Z"
+    }
+  }
+}

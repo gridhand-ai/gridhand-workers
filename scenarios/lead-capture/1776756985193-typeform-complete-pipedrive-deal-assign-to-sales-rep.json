@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Lead Capture Agent - Typeform complete → Pipedrive deal → assign to sales rep",
+  "nodes": [
+    {
+      "id": "vjm2i5nx04g6tpd1",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-lead-capture-1776756985193",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "ft5qi5l6088sy5kp"
+    },
+    {
+      "id": "o857p5w0eh09q9gc",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Lead Capture Agent\n// Scenario: Typeform complete → Pipedrive deal → assign to sales rep\n// Desc:     When a potential customer completes a Typeform questionnaire on a small business\\'s website, such as a real estate agency, GRIDHAND automatically triggers a workflow that creates a new deal in Pipedrive, filling in relevant details like customer name, contact information, and property preferences. This new deal is then instantly assigned to a designated sales representative, who receives a notification email with all the pertinent details, enabling them to swiftly follow up and convert the lead into a client within hours of the initial inquiry. By streamlining this process, the business owner can ensure that no potential sales opportunity slips through the cracks and that their team can respond promptly to capitalize on new leads.\n// Created:  2026-04-21T07:36:25.193Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Typeform complete → Pipedrive deal → assign to sales rep\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'lead-capture',\n  scenario: 'Typeform complete → Pipedrive deal → assign to sales rep',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "r1ewobj11w4hii35",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "lead-capture",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "lead-capture",
+      "domainName": "Lead Capture Agent",
+      "scenario": "Typeform complete → Pipedrive deal → assign to sales rep",
+      "description": "When a potential customer completes a Typeform questionnaire on a small business's website, such as a real estate agency, GRIDHAND automatically triggers a workflow that creates a new deal in Pipedrive, filling in relevant details like customer name, contact information, and property preferences. This new deal is then instantly assigned to a designated sales representative, who receives a notification email with all the pertinent details, enabling them to swiftly follow up and convert the lead into a client within hours of the initial inquiry. By streamlining this process, the business owner can ensure that no potential sales opportunity slips through the cracks and that their team can respond promptly to capitalize on new leads.",
+      "generatedAt": "2026-04-21T07:36:25.193Z"
+    }
+  }
+}

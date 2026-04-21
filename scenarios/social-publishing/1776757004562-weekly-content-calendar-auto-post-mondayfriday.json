@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Social Publishing Agent - Weekly content calendar → auto-post Monday–Friday",
+  "nodes": [
+    {
+      "id": "py1d0ouws4wrzgq5",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-social-publishing-1776757004562",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "61yx0v9chcoian8x"
+    },
+    {
+      "id": "hrtrgq4zltjavj8z",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Social Publishing Agent\n// Scenario: Weekly content calendar → auto-post Monday–Friday\n// Desc:     Every Sunday evening, GRIDHAND\\'s automation workflow is triggered to review the upcoming week\\'s content calendar for a local barbershop, selecting a new social media post to auto-publish on Facebook, Instagram, and Twitter each morning at 8am, Monday through Friday. The workflow seamlessly connects to the barbershop\\'s Hootsuite account, ensuring consistent and engaging content is shared with customers, such as promotions, styling tips, and behind-the-scenes glimpses, all designed to drive foot traffic and bookings throughout the week. By automating their social media posting, the barbershop owner saves several hours each week and increases their online presence, attracting new customers and keeping existing ones informed and entertained.\n// Created:  2026-04-21T07:36:44.562Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Weekly content calendar → auto-post Monday–Friday\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'social-publishing',\n  scenario: 'Weekly content calendar → auto-post Monday–Friday',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "ly8vf4xtq2jjudjt",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "social-publishing",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "social-publishing",
+      "domainName": "Social Publishing Agent",
+      "scenario": "Weekly content calendar → auto-post Monday–Friday",
+      "description": "Every Sunday evening, GRIDHAND's automation workflow is triggered to review the upcoming week's content calendar for a local barbershop, selecting a new social media post to auto-publish on Facebook, Instagram, and Twitter each morning at 8am, Monday through Friday. The workflow seamlessly connects to the barbershop's Hootsuite account, ensuring consistent and engaging content is shared with customers, such as promotions, styling tips, and behind-the-scenes glimpses, all designed to drive foot traffic and bookings throughout the week. By automating their social media posting, the barbershop owner saves several hours each week and increases their online presence, attracting new customers and keeping existing ones informed and entertained.",
+      "generatedAt": "2026-04-21T07:36:44.562Z"
+    }
+  }
+}

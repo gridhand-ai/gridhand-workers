@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Competitor Monitor Agent - Competitor gains 10+ reviews this month → benchmark alert",
+  "nodes": [
+    {
+      "id": "p2bykjs46isubqb7",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-competitor-monitor-1776757043468",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "9eysj0shjd3dp730"
+    },
+    {
+      "id": "ukjwd2tbdwqsgvzl",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Competitor Monitor Agent\n// Scenario: Competitor gains 10+ reviews this month → benchmark alert\n// Desc:     When a competitor gains more than 10 new reviews in a month, a benchmark alert is triggered, sending a notification to the business owner via email and the GRIDHAND mobile app, prompting them to review their own reputation management strategy and respond to any recent reviews on platforms like Yelp or Google My Business. This alert workflow automatically summarizes the competitor\\'s review trends and sentiment analysis, providing valuable insights to help the business owner adjust their marketing efforts and stay competitive in the market. By staying on top of competitor activity, the business owner can maintain a strong online presence and attract more customers to their store, ultimately driving sales and revenue growth.\n// Created:  2026-04-21T07:37:23.468Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Competitor gains 10+ reviews this month → benchmark alert\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'competitor-monitor',\n  scenario: 'Competitor gains 10+ reviews this month → benchmark alert',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "gzkyipelhevo05jy",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "competitor-monitor",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "competitor-monitor",
+      "domainName": "Competitor Monitor Agent",
+      "scenario": "Competitor gains 10+ reviews this month → benchmark alert",
+      "description": "When a competitor gains more than 10 new reviews in a month, a benchmark alert is triggered, sending a notification to the business owner via email and the GRIDHAND mobile app, prompting them to review their own reputation management strategy and respond to any recent reviews on platforms like Yelp or Google My Business. This alert workflow automatically summarizes the competitor's review trends and sentiment analysis, providing valuable insights to help the business owner adjust their marketing efforts and stay competitive in the market. By staying on top of competitor activity, the business owner can maintain a strong online presence and attract more customers to their store, ultimately driving sales and revenue growth.",
+      "generatedAt": "2026-04-21T07:37:23.468Z"
+    }
+  }
+}

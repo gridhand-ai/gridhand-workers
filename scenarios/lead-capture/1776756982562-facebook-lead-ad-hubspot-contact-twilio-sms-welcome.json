@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Lead Capture Agent - Facebook Lead Ad → HubSpot contact → Twilio SMS welcome",
+  "nodes": [
+    {
+      "id": "7sdgswwhsyis6s85",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-lead-capture-1776756982554",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "5odee6f0h0qm8sf8"
+    },
+    {
+      "id": "pdt97g4sn29adul1",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Lead Capture Agent\n// Scenario: Facebook Lead Ad → HubSpot contact → Twilio SMS welcome\n// Desc:     When a customer fills out a Facebook Lead Ad for a free consultation at a local gym, the lead information is automatically synced to HubSpot as a new contact, triggering a workflow that sends a personalized Twilio SMS welcome message within minutes, thanking them for their interest and inviting them to schedule an appointment, allowing the gym owner to quickly follow up and convert the lead into a paying member. This automated process saves the gym owner time and increases the likelihood of converting leads, as it ensures a prompt and engaging response to potential customers. By streamlining the lead response process, the gym owner can focus on providing excellent service and growing their business, rather than manually sending welcome messages to new leads.\n// Created:  2026-04-21T07:36:22.554Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Facebook Lead Ad → HubSpot contact → Twilio SMS welcome\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'lead-capture',\n  scenario: 'Facebook Lead Ad → HubSpot contact → Twilio SMS welcome',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "v67aik99qk1w1k6d",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "lead-capture",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "lead-capture",
+      "domainName": "Lead Capture Agent",
+      "scenario": "Facebook Lead Ad → HubSpot contact → Twilio SMS welcome",
+      "description": "When a customer fills out a Facebook Lead Ad for a free consultation at a local gym, the lead information is automatically synced to HubSpot as a new contact, triggering a workflow that sends a personalized Twilio SMS welcome message within minutes, thanking them for their interest and inviting them to schedule an appointment, allowing the gym owner to quickly follow up and convert the lead into a paying member. This automated process saves the gym owner time and increases the likelihood of converting leads, as it ensures a prompt and engaging response to potential customers. By streamlining the lead response process, the gym owner can focus on providing excellent service and growing their business, rather than manually sending welcome messages to new leads.",
+      "generatedAt": "2026-04-21T07:36:22.562Z"
+    }
+  }
+}

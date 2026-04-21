@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Competitor Monitor Agent - Competitor drops price → notify + suggest response",
+  "nodes": [
+    {
+      "id": "6iim4bjas73im01v",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-competitor-monitor-1776757042331",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "n5tpqp3h2g8lc5h6"
+    },
+    {
+      "id": "ahw3pjy337ywfk11",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Competitor Monitor Agent\n// Scenario: Competitor drops price → notify + suggest response\n// Desc:     When a competitor drops their price, GRIDHAND\\'s automation workflow is triggered, sending a notification to the business owner via Slack at 8am the next morning, and then analyzing the competitor\\'s new pricing strategy using data from Google Search and Yelp. The workflow then suggests a potential response, such as a price adjustment or a promotional offer, based on the business\\'s historical sales data from Square and customer feedback from Facebook Reviews, allowing the owner to quickly respond to the changing market. By automating this process, the business owner can stay ahead of the competition and adjust their pricing strategy to optimize sales and revenue, with GRIDHAND providing a weekly summary of competitor price changes and suggested responses via email.\n// Created:  2026-04-21T07:37:22.331Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Competitor drops price → notify + suggest response\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'competitor-monitor',\n  scenario: 'Competitor drops price → notify + suggest response',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "ahqlywznhojxalw6",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "competitor-monitor",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "competitor-monitor",
+      "domainName": "Competitor Monitor Agent",
+      "scenario": "Competitor drops price → notify + suggest response",
+      "description": "When a competitor drops their price, GRIDHAND's automation workflow is triggered, sending a notification to the business owner via Slack at 8am the next morning, and then analyzing the competitor's new pricing strategy using data from Google Search and Yelp. The workflow then suggests a potential response, such as a price adjustment or a promotional offer, based on the business's historical sales data from Square and customer feedback from Facebook Reviews, allowing the owner to quickly respond to the changing market. By automating this process, the business owner can stay ahead of the competition and adjust their pricing strategy to optimize sales and revenue, with GRIDHAND providing a weekly summary of competitor price changes and suggested responses via email.",
+      "generatedAt": "2026-04-21T07:37:22.331Z"
+    }
+  }
+}

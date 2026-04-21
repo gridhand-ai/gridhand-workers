@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Seasonal Campaign Agent - Summer: May 1 → seasonal promotion for relevant services",
+  "nodes": [
+    {
+      "id": "gvdx2uva8qlpnkel",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-seasonal-campaigns-1776757036018",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "pxeuhz8cr8mkhv90"
+    },
+    {
+      "id": "8qyracuq0xc2qd9l",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Seasonal Campaign Agent\n// Scenario: Summer: May 1 → seasonal promotion for relevant services\n// Desc:     When May 1 arrives, a workflow is triggered that automatically updates the online booking system and social media accounts for a local gym, promoting their seasonal summer membership specials and outdoor fitness classes. This workflow, which runs daily for the next two weeks, synchronizes the gym\\'s Google Calendar and Facebook Pages to ensure consistent messaging and scheduling, and also sends a weekly email campaign to existing customers through Mailchimp, highlighting the benefits of their summer programs and encouraging referrals. By streamlining the promotion of their seasonal services, the gym owner can focus on delivering results to their clients while attracting new customers and increasing revenue during the peak summer season.\n// Created:  2026-04-21T07:37:16.018Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Summer: May 1 → seasonal promotion for relevant services\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'seasonal-campaigns',\n  scenario: 'Summer: May 1 → seasonal promotion for relevant services',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "5zqzkxup3d544g6q",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "seasonal-campaigns",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "seasonal-campaigns",
+      "domainName": "Seasonal Campaign Agent",
+      "scenario": "Summer: May 1 → seasonal promotion for relevant services",
+      "description": "When May 1 arrives, a workflow is triggered that automatically updates the online booking system and social media accounts for a local gym, promoting their seasonal summer membership specials and outdoor fitness classes. This workflow, which runs daily for the next two weeks, synchronizes the gym's Google Calendar and Facebook Pages to ensure consistent messaging and scheduling, and also sends a weekly email campaign to existing customers through Mailchimp, highlighting the benefits of their summer programs and encouraging referrals. By streamlining the promotion of their seasonal services, the gym owner can focus on delivering results to their clients while attracting new customers and increasing revenue during the peak summer season.",
+      "generatedAt": "2026-04-21T07:37:16.018Z"
+    }
+  }
+}

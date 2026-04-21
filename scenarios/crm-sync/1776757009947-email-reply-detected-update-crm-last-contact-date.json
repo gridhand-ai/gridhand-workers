@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] CRM Sync Agent - Email reply detected → update CRM last contact date",
+  "nodes": [
+    {
+      "id": "0at4hwqfssgqnpw5",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-crm-sync-1776757009947",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "2hn5zxxcill0qbzz"
+    },
+    {
+      "id": "yms6i2wlntc6wtgk",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   CRM Sync Agent\n// Scenario: Email reply detected → update CRM last contact date\n// Desc:     When an email reply is detected from a customer, GRIDHAND\\'s automation workflow is triggered, which updates the last contact date in the business\\'s CRM system, such as HubSpot, to reflect the current date and time, ensuring that the customer\\'s interaction history is always up-to-date. This workflow runs daily at 8am, allowing the business owner to see the latest customer engagement when they start their day, and enabling them to prioritize follow-ups and personalize marketing efforts. By automating this process, the business owner can save time and focus on high-value activities, while also improving the accuracy of their customer relationship management and enhancing overall customer satisfaction.\n// Created:  2026-04-21T07:36:49.947Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Email reply detected → update CRM last contact date\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'crm-sync',\n  scenario: 'Email reply detected → update CRM last contact date',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "qlf42bauhn7a6be6",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "crm-sync",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "crm-sync",
+      "domainName": "CRM Sync Agent",
+      "scenario": "Email reply detected → update CRM last contact date",
+      "description": "When an email reply is detected from a customer, GRIDHAND's automation workflow is triggered, which updates the last contact date in the business's CRM system, such as HubSpot, to reflect the current date and time, ensuring that the customer's interaction history is always up-to-date. This workflow runs daily at 8am, allowing the business owner to see the latest customer engagement when they start their day, and enabling them to prioritize follow-ups and personalize marketing efforts. By automating this process, the business owner can save time and focus on high-value activities, while also improving the accuracy of their customer relationship management and enhancing overall customer satisfaction.",
+      "generatedAt": "2026-04-21T07:36:49.947Z"
+    }
+  }
+}

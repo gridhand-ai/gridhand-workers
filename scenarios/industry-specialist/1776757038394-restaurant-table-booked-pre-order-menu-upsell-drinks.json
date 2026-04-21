@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Industry Specialist Agent - Restaurant: table booked → pre-order menu → upsell drinks",
+  "nodes": [
+    {
+      "id": "0v2p9vrbblulacj0",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-industry-specialist-1776757038394",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "djn9tokvsy0rbzdk"
+    },
+    {
+      "id": "28egzwe3kel54kd4",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Industry Specialist Agent\n// Scenario: Restaurant: table booked → pre-order menu → upsell drinks\n// Desc:     When a customer books a table at your restaurant through the online reservation system, GRIDHAND automatically triggers a workflow that sends a personalized pre-order menu to the customer\\'s email 24 hours before their scheduled dining time, allowing them to browse and select their meal choices in advance. As the customer reviews the menu, GRIDHAND\\'s integrated system suggests complementary drinks to pair with their selected dishes, sending a follow-up message with upsell options and special promotions, which the customer can easily add to their order. By streamlining the pre-order process and offering targeted drink pairings, your restaurant can increase average ticket sizes, reduce wait times, and enhance the overall dining experience for your customers.\n// Created:  2026-04-21T07:37:18.394Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Restaurant: table booked → pre-order menu → upsell drinks\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'industry-specialist',\n  scenario: 'Restaurant: table booked → pre-order menu → upsell drinks',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "8jh467dtafug5yea",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "industry-specialist",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "industry-specialist",
+      "domainName": "Industry Specialist Agent",
+      "scenario": "Restaurant: table booked → pre-order menu → upsell drinks",
+      "description": "When a customer books a table at your restaurant through the online reservation system, GRIDHAND automatically triggers a workflow that sends a personalized pre-order menu to the customer's email 24 hours before their scheduled dining time, allowing them to browse and select their meal choices in advance. As the customer reviews the menu, GRIDHAND's integrated system suggests complementary drinks to pair with their selected dishes, sending a follow-up message with upsell options and special promotions, which the customer can easily add to their order. By streamlining the pre-order process and offering targeted drink pairings, your restaurant can increase average ticket sizes, reduce wait times, and enhance the overall dining experience for your customers.",
+      "generatedAt": "2026-04-21T07:37:18.394Z"
+    }
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Review Reputation Agent - Negative review alert → notify owner → track resolution",
+  "nodes": [
+    {
+      "id": "ylclxmbah23lmyo8",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-review-reputation-1776756987945",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "062ldky8rg2p920c"
+    },
+    {
+      "id": "1c57h83owpesz2xf",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Review Reputation Agent\n// Scenario: Negative review alert → notify owner → track resolution\n// Desc:     When a customer leaves a negative review on Yelp or Google Reviews after business hours, the GRIDHAND system triggers a workflow that immediately notifies the owner via SMS and email, allowing them to address the issue promptly the next morning. The system then tracks the owner\\'s response and resolution efforts, sending reminders and updates to ensure the issue is fully resolved within 24 hours, and finally, it requests the customer to revise their review if the issue was satisfactorily resolved, ultimately helping to protect the business\\'s online reputation and improve customer satisfaction. By streamlining this process, the business owner can minimize the negative impact of bad reviews and maintain a strong online presence.\n// Created:  2026-04-21T07:36:27.945Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Negative review alert → notify owner → track resolution\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'review-reputation',\n  scenario: 'Negative review alert → notify owner → track resolution',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "ilnnjaiq11wqhwg4",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "review-reputation",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "review-reputation",
+      "domainName": "Review Reputation Agent",
+      "scenario": "Negative review alert → notify owner → track resolution",
+      "description": "When a customer leaves a negative review on Yelp or Google Reviews after business hours, the GRIDHAND system triggers a workflow that immediately notifies the owner via SMS and email, allowing them to address the issue promptly the next morning. The system then tracks the owner's response and resolution efforts, sending reminders and updates to ensure the issue is fully resolved within 24 hours, and finally, it requests the customer to revise their review if the issue was satisfactorily resolved, ultimately helping to protect the business's online reputation and improve customer satisfaction. By streamlining this process, the business owner can minimize the negative impact of bad reviews and maintain a strong online presence.",
+      "generatedAt": "2026-04-21T07:36:27.945Z"
+    }
+  }
+}

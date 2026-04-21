@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] Industry Specialist Agent - Gym: member not visited in 2 weeks → check-in SMS",
+  "nodes": [
+    {
+      "id": "1ofmo27tp50cdati",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-industry-specialist-1776757039689",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "b9xwwf8zx9xugf2r"
+    },
+    {
+      "id": "8kkt5toyq61sv17i",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   Industry Specialist Agent\n// Scenario: Gym: member not visited in 2 weeks → check-in SMS\n// Desc:     When a gym member hasn\\'t checked in to a workout session for two weeks, GRIDHAND\\'s automation workflow is triggered to send a personalized check-in SMS via Twilio at 10am on the 15th day of inactivity, allowing the gym owner to re-engage the member with a special promotion or a motivational message. This workflow is synchronized with the gym\\'s membership management system, Glofox, to ensure accurate and up-to-date member activity records, enabling the gym owner to track the effectiveness of the re-engagement campaign. By sending a timely and targeted SMS, the gym owner can encourage inactive members to return, thereby increasing revenue and reducing member churn.\n// Created:  2026-04-21T07:37:19.689Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Gym: member not visited in 2 weeks → check-in SMS\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'industry-specialist',\n  scenario: 'Gym: member not visited in 2 weeks → check-in SMS',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "imfds8vfah4sk1pc",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "industry-specialist",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "industry-specialist",
+      "domainName": "Industry Specialist Agent",
+      "scenario": "Gym: member not visited in 2 weeks → check-in SMS",
+      "description": "When a gym member hasn't checked in to a workout session for two weeks, GRIDHAND's automation workflow is triggered to send a personalized check-in SMS via Twilio at 10am on the 15th day of inactivity, allowing the gym owner to re-engage the member with a special promotion or a motivational message. This workflow is synchronized with the gym's membership management system, Glofox, to ensure accurate and up-to-date member activity records, enabling the gym owner to track the effectiveness of the re-engagement campaign. By sending a timely and targeted SMS, the gym owner can encourage inactive members to return, thereby increasing revenue and reducing member churn.",
+      "generatedAt": "2026-04-21T07:37:19.689Z"
+    }
+  }
+}

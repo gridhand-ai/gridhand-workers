@@ -1,0 +1,91 @@
+{
+  "name": "[GRIDHAND] SMS Campaign Agent - Trigger: new contact → welcome SMS series (day 1, 3, 7)",
+  "nodes": [
+    {
+      "id": "9r96qu1coilfj414",
+      "name": "Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-sms-campaigns-1776756990677",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "webhookId": "gq1m61suzcby2ffm"
+    },
+    {
+      "id": "nyg7x3rbrhp20t9d",
+      "name": "Scenario Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// GRIDHAND Auto-Generated Scenario\n// Domain:   SMS Campaign Agent\n// Scenario: Trigger: new contact → welcome SMS series (day 1, 3, 7)\n// Desc:     When a new customer walks into your barbershop and provides their phone number to book an appointment, GRIDHAND\\'s automation kicks in, triggering a welcome SMS series that sends a personalized greeting on day one, a special promotion on day three, and a loyalty reward on day seven, all through the GRIDHAND platform integrated with your existing scheduling app. This workflow runs seamlessly in the background, ensuring that each new contact receives a warm and engaging introduction to your business, encouraging them to book their first appointment and become a regular customer. By automating this welcome series, you can increase customer loyalty and drive repeat business, all without lifting a finger, and focus on what matters most - providing exceptional service to your clients.\n// Created:  2026-04-21T07:36:30.677Z\n//\n// HOW TO USE:\n// 1. Replace this Code node with real n8n nodes for your stack\n// 2. Configure credentials in n8n Settings → Credentials\n// 3. Test with the \"Execute Workflow\" button\n\nconst input = $input.first().json;\n\n// ── Validate required fields ──\nif (!input) {\n  throw new Error('No input data received');\n}\n\n// ── Core scenario logic ──\n// Scenario: Trigger: new contact → welcome SMS series (day 1, 3, 7)\nconst output = {\n  ...input,\n  processed: true,\n  processedAt: new Date().toISOString(),\n  domain: 'sms-campaigns',\n  scenario: 'Trigger: new contact → welcome SMS series (day 1, 3, 7)',\n  gridhandVersion: '1.0',\n};\n\nreturn [{ json: output }];"
+      }
+    },
+    {
+      "id": "4dm1h84lv065qlvi",
+      "name": "Log Completion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "jsCode": "// Replace this node with your notification channel:\n// - Twilio SMS: use n8n-nodes-base.twilio\n// - Slack:      use n8n-nodes-base.slack\n// - Email:      use n8n-nodes-base.emailSend\n// - HubSpot:    use n8n-nodes-base.hubspot\n\nconst result = $input.first().json;\nconsole.log('[GRIDHAND] Scenario completed:', result.scenario);\nreturn [{ json: { success: true, ...result } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scenario Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scenario Logic": {
+      "main": [
+        [
+          {
+            "node": "Log Completion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "sms-campaigns",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "domainId": "sms-campaigns",
+      "domainName": "SMS Campaign Agent",
+      "scenario": "Trigger: new contact → welcome SMS series (day 1, 3, 7)",
+      "description": "When a new customer walks into your barbershop and provides their phone number to book an appointment, GRIDHAND's automation kicks in, triggering a welcome SMS series that sends a personalized greeting on day one, a special promotion on day three, and a loyalty reward on day seven, all through the GRIDHAND platform integrated with your existing scheduling app. This workflow runs seamlessly in the background, ensuring that each new contact receives a warm and engaging introduction to your business, encouraging them to book their first appointment and become a regular customer. By automating this welcome series, you can increase customer loyalty and drive repeat business, all without lifting a finger, and focus on what matters most - providing exceptional service to your clients.",
+      "generatedAt": "2026-04-21T07:36:30.677Z"
+    }
+  }
+}
