@@ -153,15 +153,30 @@ Output a JSON object with:
     )
   )
 
-  // Collect and process director reports
+  // Collect and process director reports — always get a valid object, never silent fail
   const directorReports = []
-  for (const result of directorResults) {
+  const directorNames   = Object.keys(directorsToRun)
+  for (let i = 0; i < directorResults.length; i++) {
+    const result = directorResults[i]
+    const name   = directorNames[i]
     if (result.status === 'fulfilled' && result.value) {
       const r = result.value
       await receive(r)
       directorReports.push(r)
-    } else if (result.status === 'rejected') {
-      console.error(`[${AGENT_ID}] Director failed:`, result.reason?.message)
+    } else {
+      const reason = result.status === 'rejected' ? result.reason?.message : 'returned null/undefined'
+      console.error(`[${AGENT_ID}] Director ${name} failed: ${reason}`)
+      // Always push a stub report so Commander knows it ran but failed
+      directorReports.push({
+        agentId:    name,
+        division:   name.replace('-director', ''),
+        reportsTo:  AGENT_ID,
+        timestamp:  Date.now(),
+        actionsCount: 0,
+        escalations: [],
+        outcomes:   [{ status: 'error', summary: `Director failed: ${reason}`, requiresDirectorAttention: true }],
+        error:      reason,
+      })
     }
   }
 

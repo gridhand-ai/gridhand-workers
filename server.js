@@ -72,7 +72,9 @@ const onboardingWorker      = require('./workers/onboarding');
 const reputationAgent   = require('./agents/reputation-agent');
 const retentionAgent    = require('./agents/retention-agent');
 const leadNurtureAgent  = require('./agents/lead-nurture-agent');
-const credentialMonitor = require('./agents/credential-monitor');
+const credentialMonitor  = require('./agents/credential-monitor');
+const scenarioEngine     = require('./agents/n8n-scenario-engine');
+const gridhandCommander  = require('./agents/gridhand-commander');
 
 // Redis client (Upstash — persistent dedup across Railway cold starts)
 const { getRedis } = require('./lib/redis-client');
@@ -281,6 +283,20 @@ async function isSmsDedup(from, to, body) {
 setInterval(() => credentialMonitor.run().catch(e => console.error('[CredMonitor]', e.message)), 6 * 60 * 60 * 1000);
 // Also run once on startup after 30s (gives server time to fully initialize)
 setTimeout(() => credentialMonitor.run().catch(e => console.error('[CredMonitor]', e.message)), 30000);
+
+// ─── N8N Scenario Engine (daily at 2am) ───────────────────────────────────────
+// 15 domain agents generate automation scenario JSON for the n8n instance.
+// Groq llama-3.3-70b expands seed templates into real scenario descriptions.
+// Saves importable workflow JSON to /scenarios/. Pushes to n8n if N8N_API_KEY set.
+// Token impact: Groq only (free tier) — zero Claude API cost.
+scenarioEngine.scheduleDailyRun();
+
+// ── GridHand Commander — Tier 1 orchestrator ────────────────────────────────
+// Runs every 15 min. Cascades to all 4 Directors → 16 Specialists.
+// High-severity findings SMS MJ via ADMIN_NOTIFY_PHONES.
+setInterval(() => gridhandCommander.run().catch(e => console.error('[Commander]', e.message)), 15 * 60 * 1000);
+// Initial run 60 seconds after boot (let workers stabilize first)
+setTimeout(() => gridhandCommander.run().catch(e => console.error('[Commander]', e.message)), 60 * 1000);
 
 // ─── Public health endpoint (used by Deploy Watch) ────────────────────────────
 app.get('/health', (req, res) => {
@@ -1498,11 +1514,64 @@ server.on('upgrade', (req, socket, head) => {
 });
 
 // Restore persisted client configs from Supabase before accepting traffic
+
+// ─── Executive Assistant — Telegram inbound listener ─────────────────────────
+// Polls Telegram for messages from MJ. Routes through EA → task queue or direct reply.
+async function startEAListener() {
+    const token  = process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = process.env.TELEGRAM_CHAT_ID;
+    if (!token || !chatId) {
+        console.log('[EA] Telegram credentials not set — EA listener skipped');
+        return;
+    }
+    let ea;
+    try { ea = require('./agents/executive-assistant'); }
+    catch (err) { console.error('[EA] Failed to load executive-assistant:', err.message); return; }
+
+    let lastUpdateId = 0;
+    const sessionContext = [];
+    console.log('[EA] Executive Assistant listening on Telegram...');
+
+    async function poll() {
+        try {
+            const url = `https://api.telegram.org/bot${token}/getUpdates?offset=${lastUpdateId + 1}&timeout=20&allowed_updates=["message"]`;
+            const res  = await fetch(url, { signal: AbortSignal.timeout(25000) });
+            const data = await res.json();
+            if (!data.ok || !data.result?.length) return;
+            for (const update of data.result) {
+                lastUpdateId = update.update_id;
+                const msg = update.message;
+                if (!msg || !msg.text) continue;
+                if (String(msg.chat.id) !== String(chatId)) continue;
+                const text = msg.text.trim();
+                console.log('[EA] MJ: "' + text.slice(0, 80) + '"');
+                const reply = await ea.processMessage({ text, from: 'MJ', sessionContext: sessionContext.slice(-6) });
+                sessionContext.push({ role: 'user', content: text });
+                sessionContext.push({ role: 'assistant', content: reply });
+                if (sessionContext.length > 10) sessionContext.splice(0, 2);
+                await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: chatId, text: reply, parse_mode: 'Markdown' }),
+                });
+                console.log('[EA] Replied to MJ');
+            }
+        } catch (err) {
+            if (!err.message?.includes('timeout') && !err.message?.includes('aborted'))
+                console.error('[EA] Poll error:', err.message);
+        } finally {
+            setTimeout(poll, 1000);
+        }
+    }
+    setTimeout(poll, 3000);
+}
+
 restoreConfigsFromSupabase().finally(() => {
     server.listen(PORT, () => {
         console.log(`GRIDHAND Workers running on port ${PORT}`);
         console.log(`${15} workers | ${24} subagents | voice bridge active | fully operational`);
         deployWatch.start();
+        startEAListener();
     });
 });
 
