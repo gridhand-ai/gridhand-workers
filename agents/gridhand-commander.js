@@ -15,11 +15,15 @@
 
 const { createClient } = require('@supabase/supabase-js')
 const { sendSMS }      = require('../lib/twilio-client')
+const { call }         = require('../lib/ai-client')
+const { scout }        = require('../lib/scout')
 
 const acquisitionDirector = require('./acquisition-director')
 const revenueDirector     = require('./revenue-director')
 const experienceDirector  = require('./experience-director')
 const brandDirector       = require('./brand-director')
+
+const OPUS_MODEL = 'claude-opus-4-7'
 
 const AGENT_ID = 'gridhand-commander'
 const DIVISION = 'command'
@@ -69,11 +73,59 @@ async function run(clients = null) {
   const situations = await detectSituations(supabase, clientList)
   console.log(`[${AGENT_ID.toUpperCase()}] ${situations.length} situation(s) detected`)
 
-  // Route situations to the right director(s)
-  const directorsNeeded = new Set(situations.map(s => SITUATION_ROUTING[s.type]).filter(Boolean))
+  // ── SCOUT: Groq reads everything — builds a rich brief for Opus ────────────
+  console.log(`[${AGENT_ID.toUpperCase()}] Scout reading client portfolio...`)
+  let commandBrief = null
+  try {
+    commandBrief = await scout({
+      task: 'Analyze this client portfolio and situations. Identify which divisions need urgent action, which clients are at risk, what opportunities exist, and what the overall health of the business looks like.',
+      sources: [
+        { label: 'active_clients', content: clientList },
+        { label: 'detected_situations', content: situations },
+        { label: 'situation_routing_map', content: SITUATION_ROUTING },
+      ],
+    })
+    console.log(`[${AGENT_ID.toUpperCase()}] Scout brief ready (${commandBrief.length} chars)`)
+  } catch (err) {
+    console.warn(`[${AGENT_ID}] Scout failed, proceeding without brief:`, err.message)
+  }
 
-  // Always run all 4 directors on every cycle — situations just add context
-  // Directors are idempotent; they'll skip clients with nothing to do
+  // ── OPUS: Strategic command decision based on scout brief ─────────────────
+  let opusGuidance = null
+  if (commandBrief) {
+    try {
+      opusGuidance = await call({
+        modelString: OPUS_MODEL,
+        systemPrompt: `You are GridHandCommander, the master AI orchestrator for GRIDHAND — an AI workforce platform serving small businesses.
+Your job: read the intelligence brief and make strategic decisions about what actions to prioritize this cycle.
+Output a JSON object with:
+- priority_directors: array of director names that need urgent attention (e.g. ["revenue-director","experience-director"])
+- severity_override: null | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+- key_risks: array of strings — top 3 risks to flag
+- opportunities: array of strings — top 2 opportunities to act on
+- mj_alert_reason: null or string — only set if something needs MJ's immediate attention`,
+        messages: [{
+          role: 'user',
+          content: `INTELLIGENCE BRIEF FROM SCOUT:\n\n${commandBrief}\n\nProvide your command decision as valid JSON only. No other text.`,
+        }],
+        maxTokens: 600,
+      })
+      console.log(`[${AGENT_ID.toUpperCase()}] Opus command decision received`)
+    } catch (err) {
+      console.warn(`[${AGENT_ID}] Opus guidance failed, falling back to standard routing:`, err.message)
+    }
+  }
+
+  // Parse Opus guidance if available
+  let parsedGuidance = null
+  if (opusGuidance) {
+    try {
+      const jsonMatch = opusGuidance.match(/\{[\s\S]*\}/)
+      if (jsonMatch) parsedGuidance = JSON.parse(jsonMatch[0])
+    } catch { /* use standard routing */ }
+  }
+
+  // Always run all 4 directors — Opus guidance adds priority context
   const directorsToRun = {
     'acquisition-director': acquisitionDirector,
     'revenue-director':     revenueDirector,
@@ -81,10 +133,21 @@ async function run(clients = null) {
     'brand-director':       brandDirector,
   }
 
+  // Build situation context per director, enriched with Opus insights
+  const opusContext = parsedGuidance ? {
+    keyRisks:      parsedGuidance.key_risks || [],
+    opportunities: parsedGuidance.opportunities || [],
+    prioritized:   parsedGuidance.priority_directors || [],
+  } : {}
+
   // Run all directors in parallel
   const directorResults = await Promise.allSettled(
     Object.entries(directorsToRun).map(([id, director]) =>
-      director.run(clientList, situations.filter(s => SITUATION_ROUTING[s.type] === id))
+      director.run(
+        clientList,
+        situations.filter(s => SITUATION_ROUTING[s.type] === id),
+        opusContext,
+      )
     )
   )
 
@@ -100,14 +163,16 @@ async function run(clients = null) {
     }
   }
 
-  // Assess overall severity
+  // Assess overall severity — Opus override takes precedence if set
   const totalActions   = directorReports.reduce((sum, r) => sum + (r.actionsCount || 0), 0)
   const allEscalations = directorReports.flatMap(r => r.escalations || [])
-  const severity       = assessSeverity(allEscalations, situations)
+  const baseSeverity   = assessSeverity(allEscalations, situations)
+  const severity       = (parsedGuidance?.severity_override) || baseSeverity
 
-  // SMS MJ if severity is HIGH or CRITICAL
-  if (severity === 'HIGH' || severity === 'CRITICAL') {
-    await notifyMJ(allEscalations, severity, totalActions)
+  // SMS MJ if severity is HIGH or CRITICAL, or if Opus flagged something specific
+  const mjAlertReason = parsedGuidance?.mj_alert_reason
+  if (severity === 'HIGH' || severity === 'CRITICAL' || mjAlertReason) {
+    await notifyMJ(allEscalations, severity, totalActions, mjAlertReason)
   }
 
   // Log run to Supabase
@@ -217,7 +282,7 @@ function assessSeverity(escalations, situations) {
 }
 
 // ── MJ notification ───────────────────────────────────────────────────────────
-async function notifyMJ(escalations, severity, totalActions) {
+async function notifyMJ(escalations, severity, totalActions, opusReason = null) {
   if (!ADMIN_PHONES.length) {
     console.log(`[${AGENT_ID}] No ADMIN_NOTIFY_PHONES set — skipping MJ alert`)
     return
@@ -226,8 +291,9 @@ async function notifyMJ(escalations, severity, totalActions) {
   const lines = [
     `GRIDHAND COMMANDER — ${severity} ALERT`,
     `${totalActions} actions taken this cycle.`,
-    `${escalations.length} escalation(s) need attention:`,
   ]
+  if (opusReason) lines.push(`⚡ ${opusReason}`)
+  lines.push(`${escalations.length} escalation(s) need attention:`)
 
   for (const esc of escalations.slice(0, 3)) {
     lines.push(`• ${esc.summary || esc.agentId}`)
