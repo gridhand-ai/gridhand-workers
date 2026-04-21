@@ -1,8 +1,17 @@
 /**
  * n8n-scenario-engine.js
  *
- * GRIDHAND N8N Scenario Engine — 15 domain agents that think about automation
- * scenarios for small service businesses and generate importable n8n workflow JSON.
+ * ── LK GRIDHAND AGENTS (Low Key) ──────────────────────────────────────────────
+ * These are INTERNAL agents — they work to improve and build GRIDHAND's system.
+ * They don't serve clients directly. They think, generate scenarios, and build
+ * automation blueprints that get deployed into n8n.
+ *
+ * OG GRIDHAND AGENTS (Original) = lead-nurture, reputation, retention, etc.
+ * Those serve clients directly. These (LK) serve GRIDHAND internally.
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * 35 LK domain agents that think about automation scenarios for small service
+ * businesses and generate importable n8n workflow JSON.
  *
  * Each domain agent:
  *   1. Takes seed scenario templates
