@@ -281,6 +281,11 @@ Output a JSON object with:
     token_warnings: tokenSummary.warnings,
   }, totalActions)
 
+  // Persist token usage for all providers to Supabase
+  await tokenTracker.persistRun(supabase, runId).catch(e =>
+    console.warn(`[${AGENT_ID}] Token persist failed: ${e.message}`)
+  )
+
   // File this run's summary into agent memory for future context
   await fileInteraction({
     runId,
