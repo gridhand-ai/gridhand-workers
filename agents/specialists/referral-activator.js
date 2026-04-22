@@ -11,6 +11,7 @@ const aiClient = require('../../lib/ai-client')
 const { sendSMS } = require('../../lib/twilio-client')
 const { validateSMS } = require('../../lib/message-gate')
 const { buildClientContext } = require('../../lib/client-context')
+const { fileInteraction } = require('../../lib/memory-client')
 
 const AGENT_ID  = 'referral-activator'
 const DIVISION  = 'acquisition'
@@ -41,7 +42,12 @@ async function run(clients = []) {
     }
   }
 
-  return report(reports)
+  const specialistReport = await report(reports)
+  await fileInteraction(specialistReport, {
+    workerId: AGENT_ID,
+    interactionType: 'specialist_run',
+  }).catch(() => {})
+  return specialistReport
 }
 
 async function processClient(client) {

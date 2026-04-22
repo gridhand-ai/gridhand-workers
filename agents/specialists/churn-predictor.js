@@ -9,6 +9,7 @@
 const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
 const { buildClientContext } = require('../../lib/client-context')
+const { fileInteraction } = require('../../lib/memory-client')
 
 const AGENT_ID  = 'churn-predictor'
 const DIVISION  = 'experience'
@@ -44,7 +45,12 @@ async function run(clients = []) {
     }
   }
 
-  return report(reports)
+  const specialistReport = await report(reports)
+  await fileInteraction(specialistReport, {
+    workerId: AGENT_ID,
+    interactionType: 'specialist_run',
+  }).catch(() => {})
+  return specialistReport
 }
 
 async function processClient(client) {

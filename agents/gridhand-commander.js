@@ -18,6 +18,7 @@ const { sendSMS }      = require('../lib/twilio-client')
 const { call }         = require('../lib/ai-client')
 const { scout }        = require('../lib/scout')
 const tokenTracker     = require('../lib/token-tracker')
+const { fileInteraction, retrieveMemory, buildMemoryBriefing } = require('../lib/memory-client')
 
 const acquisitionDirector   = require('./acquisition-director')
 const revenueDirector       = require('./revenue-director')
@@ -63,6 +64,16 @@ async function run(clients = null) {
   // Reset per-run token counters — tracks cumulative usage across full hierarchy
   tokenTracker.resetRun(runId)
 
+  // ── MEMORY: Pull recent agent history before doing anything else ──────────
+  let memoryBriefing = ''
+  try {
+    const recentMemories = await retrieveMemory({ limit: 15 })
+    memoryBriefing = await buildMemoryBriefing(recentMemories)
+    console.log(`[${AGENT_ID.toUpperCase()}] Memory briefing: ${memoryBriefing.slice(0, 200)}...`)
+  } catch (e) {
+    console.warn(`[${AGENT_ID.toUpperCase()}] Memory retrieval failed: ${e.message}`)
+  }
+
   const supabase = getSupabase()
 
   // Load active clients
@@ -88,6 +99,7 @@ async function run(clients = null) {
         { label: 'active_clients', content: clientList },
         { label: 'detected_situations', content: situations },
         { label: 'situation_routing_map', content: SITUATION_ROUTING },
+        { label: 'memory_briefing', content: memoryBriefing || 'No prior memory available.' },
       ],
     })
     console.log(`[${AGENT_ID.toUpperCase()}] Scout brief ready (${commandBrief.length} chars)`)
@@ -257,6 +269,21 @@ Output a JSON object with:
     cost_usd: tokenSummary.cost_usd,
     token_warnings: tokenSummary.warnings,
   }, totalActions)
+
+  // File this run's summary into agent memory for future context
+  await fileInteraction({
+    runId,
+    totalActions,
+    severity,
+    situations: situations.length,
+    directorReports: directorReports.length,
+    tokenSummary: tokenSummary.tokens,
+  }, {
+    workerId: AGENT_ID,
+    interactionType: 'run_summary',
+    severity,
+    runId,
+  }).catch(() => {})
 
   console.log(`[${AGENT_ID.toUpperCase()}] Run ${runId} complete — ${totalActions} total actions, severity: ${severity}`)
   return { runId, totalActions, severity, escalations: allEscalations.length, tokens: tokenSummary.tokens }
