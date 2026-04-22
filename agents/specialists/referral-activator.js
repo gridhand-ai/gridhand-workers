@@ -10,6 +10,7 @@ const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
 const { sendSMS } = require('../../lib/twilio-client')
 const { validateSMS } = require('../../lib/message-gate')
+const { buildClientContext } = require('../../lib/client-context')
 
 const AGENT_ID  = 'referral-activator'
 const DIVISION  = 'acquisition'
@@ -59,12 +60,18 @@ async function processClient(client) {
 
   if (!events?.length) return null
 
+  const ctx = buildClientContext(client)
+
   let actionsTaken = 0
   const asks = []
 
   for (const event of events) {
-    const customerPhone = event.metadata?.customerPhone
-    if (!customerPhone) continue
+    if (!event.metadata?.customerPhone) {
+      console.warn(`[referral-activator] event ${event.action} missing customerPhone — skipping. event: ${JSON.stringify(event).slice(0, 200)}`)
+      continue
+    }
+
+    const customerPhone = event.metadata.customerPhone
 
     // Check cooldown — don't ask if we asked recently
     const { data: lastAsk } = await supabase
@@ -81,7 +88,7 @@ async function processClient(client) {
     }
 
     try {
-      const message = await generateReferralAsk(client, event)
+      const message = await generateReferralAsk(client, event, ctx)
       if (!message) continue
 
       const gateResult = validateSMS(message, { businessName: client.business_name })
@@ -91,7 +98,7 @@ async function processClient(client) {
       }
 
       await sendSMS({
-        from: client.twilio_number,
+        from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
         to: customerPhone,
         body: message,
         clientApiKeys: {},
@@ -131,7 +138,7 @@ async function processClient(client) {
   }
 }
 
-async function generateReferralAsk(client, event) {
+async function generateReferralAsk(client, event, ctx) {
   const triggerContext = {
     '5_star_review': 'just left a 5-star review',
     'payment_completed': 'just completed a payment',
@@ -139,26 +146,32 @@ async function generateReferralAsk(client, event) {
     'positive_feedback': 'shared some great feedback',
   }
 
-  const systemPrompt = `<business>
-Name: ${client.business_name}
-Industry: ${client.industry || 'business'}
-</business>
+  // Verticals where incentive mentions feel natural
+  const incentiveRule = ['health-fitness', 'personal-care', 'retail'].includes(ctx.vertical)
+    ? 'You MAY mention a reward or discount for referrals if it feels natural.'
+    : 'Do not offer a discount or incentive — keep it personal and genuine.'
+
+  const customerName = event.metadata?.customerName || event.metadata?.customerFirstName || null
+
+  const systemPrompt = `${ctx.xml}
 
 <context>
 Customer ${triggerContext[event.action] || 'had a great experience'}.
 Now is the perfect moment to ask for a referral.
+${customerName ? `Customer's first name: ${customerName}` : 'No customer name available.'}
 </context>
 
 <task>
 Write a warm, natural referral request SMS.
 Ask if they know anyone who could benefit from similar help.
+${customerName ? `Address them by first name (${customerName}).` : 'Do NOT use "valued customer" or hollow placeholders — open warmly without a name.'}
 Make it feel like a genuine ask from a business that cares, not a marketing blast.
 </task>
 
 <rules>
 - 2 sentences max
 - Personal and warm tone
-- Don't offer a discount or incentive (keep it authentic)
+- ${incentiveRule}
 - Sign off as ${client.business_name}
 - Output ONLY the SMS text
 </rules>`

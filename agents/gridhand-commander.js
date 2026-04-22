@@ -380,11 +380,13 @@ async function receive(directorReport) {
 async function logRun(supabase, runId, startedAt, severity, data, actionsCount) {
   try {
     // agent_runs schema: id, agent_id, status, summary, payload, ran_at
+    // status must be 'ok' or 'error' to match all other agents — severity lives in payload
+    const normalizedStatus = (severity === 'CRITICAL' || severity === 'error') ? 'error' : 'ok'
     await supabase.from('agent_runs').insert({
       agent_id: AGENT_ID,
-      status: severity,
+      status: normalizedStatus,
       summary: `Commander run ${runId}: ${actionsCount} actions, severity ${severity}`,
-      payload: { runId, startedAt, completedAt: new Date().toISOString(), actionsCount, ...data },
+      payload: { runId, startedAt, completedAt: new Date().toISOString(), actionsCount, severity, ...data },
       ran_at: new Date().toISOString(),
     })
   } catch (err) {

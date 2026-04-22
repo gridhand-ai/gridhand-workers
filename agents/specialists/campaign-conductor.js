@@ -10,26 +10,108 @@ const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
 const { sendSMS } = require('../../lib/twilio-client')
 const { validateSMS } = require('../../lib/message-gate')
+const { isHolidayRelevant, buildClientContext } = require('../../lib/client-context')
 
 const AGENT_ID  = 'campaign-conductor'
 const DIVISION  = 'brand'
 const REPORTS_TO = 'brand-director'
 
-// Upcoming holidays/events with campaign lead time (days before)
-const CAMPAIGN_CALENDAR = [
-  { key: 'valentines',   name: "Valentine's Day",    month: 2,  day: 14,  leadDays: 14 },
-  { key: 'mothers_day',  name: "Mother's Day",        month: 5,  day: 11,  leadDays: 14 }, // 2nd Sunday May
-  { key: 'memorial_day', name: 'Memorial Day Weekend', month: 5,  day: 26,  leadDays: 10 },
-  { key: 'fathers_day',  name: "Father's Day",         month: 6,  day: 15,  leadDays: 14 }, // 3rd Sunday June
-  { key: 'july4',        name: '4th of July',           month: 7,  day: 4,   leadDays: 10 },
-  { key: 'labor_day',    name: 'Labor Day Weekend',     month: 9,  day: 1,   leadDays: 10 },
-  { key: 'halloween',    name: 'Halloween',             month: 10, day: 31,  leadDays: 14 },
-  { key: 'thanksgiving', name: 'Thanksgiving',          month: 11, day: 27,  leadDays: 14 },
-  { key: 'christmas',    name: 'Christmas',             month: 12, day: 25,  leadDays: 21 },
-  { key: 'new_year',     name: "New Year's",            month: 1,  day: 1,   leadDays: 14 },
-  { key: 'back_to_school', name: 'Back to School',      month: 8,  day: 20,  leadDays: 14 },
-  { key: 'spring',       name: 'Spring Season',         month: 3,  day: 20,  leadDays: 14 },
-]
+// Campaign lead time per holiday (days before the event we send the brief)
+const LEAD_DAYS = {
+  new_year:      14,
+  valentines:    14,
+  spring:        14,
+  memorial_day:  10,
+  mothers_day:   14,
+  fathers_day:   14,
+  july4:         10,
+  labor_day:     10,
+  halloween:     14,
+  thanksgiving:  14,
+  christmas:     21,
+  back_to_school: 14,
+  spring_break:  10,
+}
+
+// ── Dynamic holiday date calculation ─────────────────────────────────────────
+
+/**
+ * Returns the Nth occurrence of dayOfWeek in the given month/year.
+ * dayOfWeek: 0=Sun, 1=Mon … 6=Sat
+ * nth: 1-based (1 = first, 2 = second, etc.)
+ */
+function getNthDayOfMonth(year, month, dayOfWeek, nth) {
+  const date = new Date(year, month, 1)
+  let count = 0
+  while (date.getMonth() === month) {
+    if (date.getDay() === dayOfWeek) {
+      count++
+      if (count === nth) return new Date(date)
+    }
+    date.setDate(date.getDate() + 1)
+  }
+  return null
+}
+
+/**
+ * Returns the last occurrence of dayOfWeek in the given month/year.
+ * dayOfWeek: 0=Sun, 1=Mon … 6=Sat
+ */
+function getLastDayOfMonth(year, month, dayOfWeek) {
+  const date = new Date(year, month + 1, 0) // last calendar day of month
+  while (date.getDay() !== dayOfWeek) date.setDate(date.getDate() - 1)
+  return new Date(date)
+}
+
+/**
+ * Returns all holidays falling within the next `daysAhead` days from now.
+ * Handles year-rollover: if a fixed date has already passed this year,
+ * it is calculated for next year instead.
+ */
+function getUpcomingHolidays(daysAhead = 45) {
+  const now = new Date()
+  const year = now.getFullYear()
+  const cutoff = new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000)
+
+  // Build raw list — floating holidays are computed fresh each run
+  const candidates = [
+    { key: 'new_year',      name: "New Year's Day",      date: new Date(year + 1, 0, 1) },
+    { key: 'valentines',    name: "Valentine's Day",     date: new Date(year, 1, 14) },
+    { key: 'spring_break',  name: 'Spring Break',        date: new Date(year, 2, 15) }, // approximate mid-March
+    { key: 'spring',        name: 'Spring Season',       date: new Date(year, 2, 20) }, // spring equinox
+    { key: 'mothers_day',   name: "Mother's Day",        date: getNthDayOfMonth(year, 4, 0, 2) },  // 2nd Sun May
+    { key: 'memorial_day',  name: 'Memorial Day Weekend', date: getLastDayOfMonth(year, 4, 1) },    // last Mon May
+    { key: 'fathers_day',   name: "Father's Day",        date: getNthDayOfMonth(year, 5, 0, 3) },  // 3rd Sun June
+    { key: 'july4',         name: '4th of July',         date: new Date(year, 6, 4) },
+    { key: 'back_to_school', name: 'Back to School',     date: new Date(year, 7, 20) },
+    { key: 'labor_day',     name: 'Labor Day Weekend',   date: getNthDayOfMonth(year, 8, 1, 1) },  // 1st Mon Sep
+    { key: 'halloween',     name: 'Halloween',           date: new Date(year, 9, 31) },
+    { key: 'thanksgiving',  name: 'Thanksgiving',        date: getNthDayOfMonth(year, 10, 4, 4) }, // 4th Thu Nov
+    { key: 'christmas',     name: 'Christmas',           date: new Date(year, 11, 25) },
+  ]
+
+  const upcoming = []
+  for (const h of candidates) {
+    if (!h.date) continue // getNthDayOfMonth can return null in edge cases
+    let d = new Date(h.date)
+    // If the date already passed this year, roll to next year for fixed holidays
+    if (d < now) {
+      // Floating holidays recalculate naturally with year; fixed ones need a bump
+      const fixed = ['valentines', 'spring_break', 'spring', 'july4', 'back_to_school', 'halloween', 'christmas']
+      if (fixed.includes(h.key)) {
+        d = new Date(year + 1, d.getMonth(), d.getDate())
+      } else {
+        continue // floating holiday already passed — skip, next run will catch next year's
+      }
+    }
+    if (d >= now && d <= cutoff) {
+      const leadDays = LEAD_DAYS[h.key] || 14
+      upcoming.push({ ...h, date: d, leadDays })
+    }
+  }
+
+  return upcoming
+}
 
 function getSupabase() {
   return createClient(
@@ -59,15 +141,22 @@ async function processClient(client) {
   const now = new Date()
   const actionsTaken = []
 
-  for (const event of CAMPAIGN_CALENDAR) {
-    const eventDate = new Date(now.getFullYear(), event.month - 1, event.day)
-    // Handle events that might be next year
-    if (eventDate < now) eventDate.setFullYear(now.getFullYear() + 1)
+  const ctx = buildClientContext(client)
 
-    const daysUntil = Math.floor((eventDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  // Pull upcoming holidays then filter to only those relevant for this vertical
+  const upcomingHolidays = getUpcomingHolidays(45)
+  const relevantHolidays = upcomingHolidays.filter(h => isHolidayRelevant(ctx.vertical, h.key))
+
+  if (relevantHolidays.length === 0) {
+    console.log(`[${AGENT_ID}] no relevant holidays for ${client.business_name} (${ctx.vertical}), skipping`)
+    return null
+  }
+
+  for (const event of relevantHolidays) {
+    const daysUntil = Math.floor((event.date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
     if (daysUntil > event.leadDays || daysUntil < 0) continue
 
-    // Check if we already started this campaign for this client
+    // Check if we already started this campaign for this client this year
     const { data: campaignState } = await supabase
       .from('agent_state')
       .select('state')
@@ -82,9 +171,9 @@ async function processClient(client) {
     if (!ownerPhone) continue
 
     try {
-      // Phase 1: Brief the client (14+ days out)
+      // Phase 1: Brief the client (7+ days out)
       if (daysUntil >= 7) {
-        const brief = await generateCampaignBrief(client, event, daysUntil)
+        const brief = await generateCampaignBrief(client, event, daysUntil, ctx)
         if (!brief) continue
 
         const gateResult = validateSMS(brief, { businessName: client.business_name })
@@ -130,11 +219,8 @@ async function processClient(client) {
   }
 }
 
-async function generateCampaignBrief(client, event, daysUntil) {
-  const systemPrompt = `<business>
-Name: ${client.business_name}
-Industry: ${client.industry || 'business'}
-</business>
+async function generateCampaignBrief(client, event, daysUntil, ctx) {
+  const systemPrompt = `${ctx.xml}
 
 <campaign>
 Upcoming event: ${event.name}
@@ -143,7 +229,7 @@ Days until: ${daysUntil}
 
 <task>
 Brief the business owner on a campaign opportunity for ${event.name}.
-Suggest 1 specific, actionable campaign idea that fits their industry.
+Suggest 1 specific, actionable campaign idea that fits their industry and vertical (${ctx.vertical}).
 Ask if they want GRIDHAND to run it.
 </task>
 

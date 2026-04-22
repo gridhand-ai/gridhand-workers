@@ -72,8 +72,19 @@ async function processClient(client) {
 
   for (const step of ONBOARDING_STEPS) {
     if (completedSteps.includes(step.key)) continue
-    if (daysSinceSignup < step.day) continue
-    if (daysSinceSignup > step.day + 1) continue // Only send on the right day (within 1 day window)
+    if (daysSinceSignup < step.day) continue // Too early — not yet due
+
+    // Check per-step state to support catch-up mode (handles missed cron runs)
+    // Was: daysSinceSignup > step.day + 1 (skips forever if cron missed a day)
+    // Now: check if step was already sent via agent_state — send regardless of how late
+    const { data: alreadySent } = await supabase
+      .from('agent_state')
+      .select('id')
+      .eq('client_id', client.id)
+      .eq('agent', 'onboarding_conductor')
+      .eq('entity_id', `onboarding-step-${step.day}`)
+      .single()
+    if (alreadySent) continue // Already sent this step, skip
 
     try {
       // Gather relevant stats for the step
@@ -111,6 +122,15 @@ async function processClient(client) {
         client_id: client.id,
         entity_id: 'progress',
         state: { completed: newCompleted },
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'agent,client_id,entity_id' })
+
+      // Also record per-step sentinel so catch-up guard can detect it
+      await supabase.from('agent_state').upsert({
+        agent: 'onboarding_conductor',
+        client_id: client.id,
+        entity_id: `onboarding-step-${step.day}`,
+        state: { sentAt: new Date().toISOString(), stepKey: step.key },
         updated_at: new Date().toISOString(),
       }, { onConflict: 'agent,client_id,entity_id' })
 

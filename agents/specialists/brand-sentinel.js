@@ -10,10 +10,20 @@ const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
 const { sendSMS } = require('../../lib/twilio-client')
 const { validateSMS } = require('../../lib/message-gate')
+const { buildClientContext } = require('../../lib/client-context')
 
 const AGENT_ID  = 'brand-sentinel'
 const DIVISION  = 'brand'
 const REPORTS_TO = 'brand-director'
+
+const VERTICAL_GUIDANCE = {
+  'vehicle-service':      'Focus on trust signals, response time to negative reviews, and consistency across listings.',
+  'food-beverage':        'Focus on freshness mentions, service speed complaints, and atmosphere feedback.',
+  'health-fitness':       'Focus on cleanliness concerns, equipment quality mentions, and trainer feedback.',
+  'personal-care':        'Focus on wait time complaints, skill feedback, and atmosphere mentions.',
+  'family-entertainment': 'Focus on safety mentions, staff friendliness reviews, and value-for-money sentiment.',
+  'general':              'Focus on the most common complaint theme and identify one actionable fix.',
+}
 
 function getSupabase() {
   return createClient(
@@ -126,10 +136,10 @@ async function processClient(client) {
 }
 
 async function generateWeeklyBriefing(client, metrics) {
-  const systemPrompt = `<business>
-Name: ${client.business_name}
-Industry: ${client.industry || 'business'}
-</business>
+  const ctx = buildClientContext(client)
+  const verticalGuidance = VERTICAL_GUIDANCE[ctx.vertical] || VERTICAL_GUIDANCE['general']
+
+  const systemPrompt = `${ctx.xml}
 
 <brand_metrics week="this week">
 Positive reviews: ${metrics.positiveReviews}
@@ -137,16 +147,20 @@ Negative reviews: ${metrics.negativeReviews}
 Total review activity: ${metrics.totalReviews}
 </brand_metrics>
 
+<vertical_guidance>
+${verticalGuidance}
+</vertical_guidance>
+
 <task>
 Write a brief weekly brand health update for the business owner.
 Be honest — if there are issues, name them concisely.
-If things look good, celebrate briefly and give one proactive tip.
+If things look good, celebrate briefly and give one proactive tip aligned with the vertical guidance above.
 </task>
 
 <rules>
 - 3-4 sentences max
 - Data-driven and practical
-- End with one actionable recommendation
+- End with one actionable recommendation relevant to the vertical
 - Sign off as GRIDHAND
 - Output ONLY the SMS text
 </rules>`

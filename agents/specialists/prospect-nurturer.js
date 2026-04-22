@@ -10,6 +10,7 @@ const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
 const { sendSMS } = require('../../lib/twilio-client')
 const { validateSMS } = require('../../lib/message-gate')
+const { buildClientContext } = require('../../lib/client-context')
 
 const AGENT_ID  = 'prospect-nurturer'
 const DIVISION  = 'acquisition'
@@ -93,7 +94,7 @@ async function processClient(client) {
       }
 
       await sendSMS({
-        from: client.twilio_number,
+        from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
         to: phone,
         body: message,
         clientApiKeys: {},
@@ -136,21 +137,25 @@ async function processClient(client) {
 }
 
 async function generateTouchMessage(client, leadState, touchDay) {
+  const ctx = buildClientContext(client)
   const dayLabels = { 1: 'Day 1', 3: 'Day 3', 7: 'Day 7', 14: 'Day 14' }
-  const systemPrompt = `<business>
-Name: ${client.business_name}
-Industry: ${client.industry || 'business'}
-</business>
+
+  // Resolve name — split on space to get first name only, never use 'valued prospect'
+  const firstName = leadState.customerName?.split(' ')[0] || leadState.firstName || null
+  const greeting = firstName || ''
+
+  const systemPrompt = `${ctx.xml}
 
 <lead>
 Inquiry: ${leadState.inquiryAbout || 'your services'}
-Name: ${leadState.customerName || 'valued prospect'}
+${greeting ? `Name: ${greeting}` : ''}
 Touch: ${dayLabels[touchDay]} follow-up
 </lead>
 
 <task>
 Write a ${touchDay <= 3 ? 'warm and curious' : 'brief and low-pressure'} SMS follow-up.
 ${touchDay === 14 ? 'This is the last message — make it easy for them to say no.' : ''}
+${greeting ? `Address them by first name (${greeting}).` : `Do NOT use "valued prospect" — if no name is available, open with a statement about their interest instead (e.g. "Still thinking about ${leadState.inquiryAbout || 'what we discussed'}?").`}
 Personalize to their inquiry. Add one specific value point.
 </task>
 

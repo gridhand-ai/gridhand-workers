@@ -8,7 +8,6 @@
 
 const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
-const { validateSMS } = require('../../lib/message-gate')
 
 const AGENT_ID  = 'social-manager'
 const DIVISION  = 'brand'
@@ -80,17 +79,17 @@ async function processClient(client) {
     }
 
     try {
-      const draft = await generateDraftResponse(client, msg)
-      if (!draft) continue
+      const generatedDraft = await generateDraftResponse(client, msg)
 
-      const gateResult = validateSMS(draft, { businessName: client.business_name })
-      if (!gateResult.valid) {
-        console.warn(`[${AGENT_ID}] message-gate blocked social draft: ${gateResult.issues.join('; ')}`)
+      // Social drafts don't go through SMS validator — different medium
+      const draft = generatedDraft
+      if (!draft || draft.length < 5 || draft.includes('{{') || draft.includes('undefined')) {
+        console.warn(`[${AGENT_ID}] draft failed quality check, skipping`)
         continue
       }
 
       await supabase.from('social_inbox').update({
-        draft_response: gateResult.text,
+        draft_response: draft,
         drafted_at: new Date().toISOString(),
         handled_at: new Date().toISOString(),
         flagged_for_review: false,

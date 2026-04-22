@@ -45,8 +45,11 @@ async function processClient(client) {
   // Check Stripe subscription state from client record
   // billing fields read directly from clients table
   const subscriptionStatus = client.billing_status
-  const cardExpMonth = null // not stored on clients table
-  const cardExpYear = null
+  const cardExpMonth = client.stripe_data?.card_exp_month || client.stripe_data?.payment_method?.card?.exp_month || null
+  const cardExpYear = client.stripe_data?.card_exp_year || client.stripe_data?.payment_method?.card?.exp_year || null
+  if (!cardExpMonth || !cardExpYear) {
+    console.debug(`[subscription-guard] card expiry data not available for ${client.business_name}`)
+  }
   const trialEndDate = client.trial_ended_at ? new Date(client.trial_ended_at) : null
 
   const actions = []
@@ -71,7 +74,7 @@ async function processClient(client) {
               body: gateResult.text,
               clientApiKeys: {},
               clientSlug: client.email,
-              clientTimezone: 'America/Chicago',
+              clientTimezone: client.timezone || process.env.DEFAULT_TIMEZONE || 'America/Chicago',
             })
             await setGuardState(supabase, client.id, 'card_expiry_warned', true)
             actions.push('card_expiry_warning_sent')
@@ -97,7 +100,7 @@ async function processClient(client) {
             body: gateResult.text,
             clientApiKeys: {},
             clientSlug: client.email,
-            clientTimezone: 'America/Chicago',
+            clientTimezone: client.timezone || process.env.DEFAULT_TIMEZONE || 'America/Chicago',
           })
           await setGuardState(supabase, client.id, 'payment_failure_contacted', true)
           actions.push('payment_failure_recovery_sent')
@@ -125,7 +128,7 @@ async function processClient(client) {
               body: gateResult.text,
               clientApiKeys: {},
               clientSlug: client.email,
-              clientTimezone: 'America/Chicago',
+              clientTimezone: client.timezone || process.env.DEFAULT_TIMEZONE || 'America/Chicago',
             })
             await setGuardState(supabase, client.id, 'trial_end_warned', true)
             actions.push('trial_ending_warning_sent')

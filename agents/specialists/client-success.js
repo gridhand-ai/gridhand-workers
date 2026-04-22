@@ -83,6 +83,18 @@ async function processClient(client) {
     topActions: [...new Set((recentActivity || []).map(a => a.worker_name))].slice(0, 3),
   }
 
+  const ACTION_LABELS = {
+    review_request_sent: 'review requests sent',
+    sms_sent: 'SMS messages sent',
+    task_completed: 'tasks completed',
+    appointment_confirmed: 'appointments confirmed',
+    lead_qualified: 'leads qualified',
+    invoice_sent: 'invoices sent',
+    follow_up_sent: 'follow-ups sent',
+  }
+  const readableActions = (stats.topActions || []).map(a => ACTION_LABELS[a] || a.replace(/_/g, ' '))
+  stats.readableActions = readableActions
+
   try {
     const message = await generateMonthlyReport(client, stats)
     if (!message) return null
@@ -137,7 +149,7 @@ Industry: ${client.industry || 'business'}
 Total automations completed: ${stats.totalTasks}
 SMS sent on their behalf: ${stats.smsSent}
 Review requests sent: ${stats.reviewsRequested}
-Top activity types: ${stats.topActions.join(', ') || 'various'}
+Top activity types: ${(stats.readableActions || stats.topActions || []).join(', ') || 'various'}
 </stats>
 
 <task>

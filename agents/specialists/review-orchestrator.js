@@ -10,6 +10,7 @@ const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
 const { sendSMS } = require('../../lib/twilio-client')
 const { validateSMS } = require('../../lib/message-gate')
+const { buildClientContext } = require('../../lib/client-context')
 
 const AGENT_ID  = 'review-orchestrator'
 const DIVISION  = 'brand'
@@ -93,7 +94,7 @@ async function processClient(client) {
       }
 
       await sendSMS({
-        from: client.twilio_number,
+        from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
         to: customerPhone,
         body: message,
         clientApiKeys: {},
@@ -134,23 +135,32 @@ async function processClient(client) {
 }
 
 async function generateReviewRequest(client, event) {
-  const reviewLink = client.integrations?.google_review_link || client.worker_config?.review_link || ''
+  const ctx = buildClientContext(client)
 
-  const systemPrompt = `<business>
-Name: ${client.business_name}
-Industry: ${client.industry || 'business'}
-${reviewLink ? `Review link: ${reviewLink}` : ''}
-</business>
+  // Resolve review link — check multiple locations, skip entirely if missing
+  let reviewLink = client.integrations?.google_review_link || client.worker_config?.review_link || null
+
+  if (!reviewLink) {
+    console.warn(`[review-orchestrator] no review link for ${client.business_name}, skipping`)
+    return null
+  }
+
+  const customerName = event.metadata?.customerName || event.metadata?.customerFirstName || null
+
+  const systemPrompt = `${ctx.xml}
 
 <context>
 Customer just had a positive service experience (${event.action.replace(/_/g, ' ')}).
 This is the perfect moment for a review request — they're happy right now.
+${customerName ? `Customer's first name: ${customerName}` : 'No customer name available.'}
+Review link: ${reviewLink}
 </context>
 
 <task>
 Write a brief, natural review request SMS.
 Reference that they just used the service. Make the ask feel effortless.
-${reviewLink ? `Include the review link.` : 'Ask them to search the business on Google and leave a review.'}
+${customerName ? `Address them by first name (${customerName}).` : 'Do NOT use "Hi there" — open warmly without a name.'}
+Include the review link.
 </task>
 
 <rules>

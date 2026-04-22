@@ -97,7 +97,7 @@ async function processClient(client) {
       }
 
       await sendSMS({
-        from: client.twilio_number,
+        from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
         to: phone,
         body: message,
         clientApiKeys: {},

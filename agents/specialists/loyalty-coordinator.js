@@ -10,18 +10,20 @@ const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
 const { sendSMS } = require('../../lib/twilio-client')
 const { validateSMS } = require('../../lib/message-gate')
+const { buildClientContext } = require('../../lib/client-context')
 
 const AGENT_ID  = 'loyalty-coordinator'
 const DIVISION  = 'experience'
 const REPORTS_TO = 'experience-director'
 
 const MILESTONES = [
-  { key: 'day_30',      label: '30-day mark',        check: (d, t) => d >= 30  && d < 31 },
-  { key: 'day_60',      label: '60-day mark',         check: (d, t) => d >= 60  && d < 61 },
-  { key: 'day_90',      label: '90-day mark',         check: (d, t) => d >= 90  && d < 91 },
-  { key: 'day_180',     label: '6-month anniversary', check: (d, t) => d >= 180 && d < 181 },
-  { key: 'task_100',    label: '100th task',          check: (d, t) => t >= 100 },
-  { key: 'task_500',    label: '500th task',          check: (d, t) => t >= 500 },
+  { id: 'day_30',      key: 'day_30',      label: '30-day mark',        check: (d, t) => d >= 30  && d < 31 },
+  { id: 'day_60',      key: 'day_60',      label: '60-day mark',        check: (d, t) => d >= 60  && d < 61 },
+  { id: 'day_90',      key: 'day_90',      label: '90-day mark',        check: (d, t) => d >= 90  && d < 91 },
+  { id: 'day_180',     key: 'day_180',     label: '6-month anniversary', check: (d, t) => d >= 180 && d < 181 },
+  { id: 'task_100',    key: 'task_100',    label: '100th task',          check: (d, t) => t >= 100 },
+  { id: 'task_500',    key: 'task_500',    label: '500th task',          check: (d, t) => t >= 500 },
+  { id: 'revenue_10k', key: 'revenue_10k', label: '$10k value milestone', check: (d, t, rev) => typeof rev === 'number' && rev >= 10000 },
 ]
 
 function getSupabase() {
@@ -71,16 +73,28 @@ async function processClient(client) {
   const celebrated = celebratedData?.state?.milestones || []
   const actionsTaken = []
 
+  // Total revenue — optional field, skip gracefully if absent
+  const totalRevenue = typeof client.totalRevenue === 'number' ? client.totalRevenue : null
+
   for (const milestone of MILESTONES) {
     if (celebrated.includes(milestone.key)) continue
-    if (!milestone.check(daysSinceSignup, totalTasks || 0)) continue
+
+    // task_500 is not available on free tier
+    if (milestone.id === 'task_500' && client.plan === 'free') continue
+
+    // revenue_10k: only check when totalRevenue is known
+    if (milestone.id === 'revenue_10k') {
+      if (totalRevenue === null || !milestone.check(daysSinceSignup, totalTasks || 0, totalRevenue)) continue
+    } else {
+      if (!milestone.check(daysSinceSignup, totalTasks || 0, totalRevenue)) continue
+    }
 
     // This milestone is newly hit
     const ownerPhone = client.owner_cell
     if (!ownerPhone) continue
 
     try {
-      const message = await generateCelebrationMessage(client, milestone, { daysSinceSignup, totalTasks })
+      const message = await generateCelebrationMessage(client, milestone, { daysSinceSignup, totalTasks, totalRevenue })
       if (!message) continue
 
       const gateResult = validateSMS(message, { businessName: client.business_name })
@@ -128,24 +142,26 @@ async function processClient(client) {
 }
 
 async function generateCelebrationMessage(client, milestone, stats) {
-  const systemPrompt = `<business>
-Name: ${client.business_name}
-</business>
+  const ctx = buildClientContext(client)
+
+  const systemPrompt = `${ctx.xml}
 
 <milestone>
 Achievement: ${milestone.label}
 Days active: ${stats.daysSinceSignup}
 Total tasks completed: ${stats.totalTasks || 0}
+${stats.totalRevenue !== null ? `Total value generated: $${stats.totalRevenue.toLocaleString()}` : ''}
 </milestone>
 
 <task>
 Write a genuine, warm celebration SMS for this milestone.
+Match the tone of the business vertical — energetic for gyms and fitness, professional warmth for B2B and legal, fun enthusiasm for family entertainment, warm and friendly for personal care.
 Make them feel valued and recognized. Highlight what they've accomplished.
 </task>
 
 <rules>
 - 2-3 sentences max
-- Genuinely enthusiastic, not hollow
+- Genuinely enthusiastic, not hollow — let the vertical tone shine
 - Reference the specific milestone
 - Sign off as GRIDHAND
 - Output ONLY the SMS text

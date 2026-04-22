@@ -18,6 +18,38 @@ const REPORTS_TO = 'revenue-director'
 // Don't upsell a customer who was upselled in the last 90 days
 const UPSELL_COOLDOWN_DAYS = 90
 
+// Real GRIDHAND plan catalog — prevents Groq hallucinating plan names
+const PLAN_CATALOG = {
+  free: {
+    name: 'Free',
+    price: 0,
+    nextPlan: 'Starter',
+    nextPrice: 197,
+    upgrade: 'Starter plan ($197/mo) — unlocks 12 workers including booking, lead follow-up, reminders, and invoice chasing',
+  },
+  starter: {
+    name: 'Starter',
+    price: 197,
+    nextPlan: 'Growth',
+    nextPrice: 347,
+    upgrade: 'Growth plan ($347/mo) — adds lead qualifier, chat-to-lead, reputation monitor, and status updater',
+  },
+  growth: {
+    name: 'Growth',
+    price: 347,
+    nextPlan: 'Command',
+    nextPrice: 497,
+    upgrade: 'Command plan ($497/mo) — full AI workforce, all 30 workers, priority support',
+  },
+  command: {
+    name: 'Command',
+    price: 497,
+    nextPlan: null,
+    nextPrice: null,
+    upgrade: null,
+  },
+}
+
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
@@ -45,6 +77,14 @@ async function processClient(client) {
   const supabase = getSupabase()
   const now = Date.now()
 
+  // Clients on Command are already at the top — nothing to upsell
+  const planKey = (client.plan || 'free').toLowerCase()
+  const currentPlan = PLAN_CATALOG[planKey] || PLAN_CATALOG.free
+  if (!currentPlan.upgrade) {
+    console.log(`[${AGENT_ID}] ${client.business_name} is on Command plan — skipping upsell`)
+    return null
+  }
+
   // Look for upsell triggers in the last 4 hours
   const since = new Date(now - 4 * 60 * 60 * 1000).toISOString()
   const { data: triggers } = await supabase
@@ -67,7 +107,21 @@ async function processClient(client) {
 
   const allTriggers = [...(triggers || [])]
   if (ninetyDayClients?.length) {
-    allTriggers.push({ action: '90_day_mark', metadata: { customerPhone: client.owner_cell } })
+    // 90-day milestone: flag for director review rather than SMS-ing the owner about themselves
+    await supabase.from('activity_log').insert({
+      client_id: client.id,
+      worker_name: AGENT_ID,
+      action: '90_day_upsell_flag',
+      metadata: {
+        reason: '90 days on platform',
+        currentPlan: currentPlan.name,
+        recommendedUpgrade: currentPlan.upgrade,
+        flaggedAt: new Date().toISOString(),
+      },
+      created_at: new Date().toISOString(),
+    })
+    console.log(`[${AGENT_ID}] ${client.business_name} 90-day mark — flagged for director review (not SMS'd)`)
+    // Do not push a trigger that would SMS the owner back to themselves
   }
 
   if (!allTriggers.length) return null
@@ -76,7 +130,11 @@ async function processClient(client) {
   const upsells = []
 
   for (const trigger of allTriggers) {
-    const customerPhone = trigger.metadata?.customerPhone || client.owner_cell
+    // 90_day_mark activity_log rows were the old pattern — they would SMS owner_cell
+    // back to themselves. Skip them here; the new path above handles 90-day separately.
+    if (trigger.action === '90_day_mark') continue
+
+    const customerPhone = trigger.metadata?.customerPhone
     if (!customerPhone) continue
 
     // Cooldown check
@@ -94,7 +152,7 @@ async function processClient(client) {
     }
 
     try {
-      const message = await generateUpsellMessage(client, trigger)
+      const message = await generateUpsellMessage(client, trigger, currentPlan)
       if (!message) continue
 
       const gateResult = validateSMS(message, { businessName: client.business_name })
@@ -104,7 +162,7 @@ async function processClient(client) {
       }
 
       await sendSMS({
-        from: client.twilio_number,
+        from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
         to: customerPhone,
         body: message,
         clientApiKeys: {},
@@ -144,34 +202,38 @@ async function processClient(client) {
   }
 }
 
-async function generateUpsellMessage(client, trigger) {
+async function generateUpsellMessage(client, trigger, currentPlan) {
   const contextMap = {
     '5_star_review':     'They just left a 5-star review — they love you.',
     'milestone_hit':     'They just hit an important milestone.',
     'payment_completed': 'They just completed a payment.',
-    '90_day_mark':       'They\'ve been a client for 90 days.',
   }
 
   const systemPrompt = `<business>
 Name: ${client.business_name}
 Industry: ${client.industry || 'business'}
-Current plan: ${client.plan || 'standard'}
 </business>
+
+<upgrade_path>
+Current plan: ${currentPlan.name} ($${currentPlan.price}/mo)
+Recommended next: ${currentPlan.upgrade}
+</upgrade_path>
 
 <context>
 Moment: ${contextMap[trigger.action] || 'positive client interaction'}
-Upgrade opportunity: offer the next service tier or add-on.
 </context>
 
 <task>
-Write a brief, natural upsell SMS. Make it feel like a natural next step, not a sales pitch.
-Reference what's working for them. Offer one specific upgrade that makes sense.
+Write a brief, natural upsell SMS to the customer referencing what's working for them.
+Mention the specific upgrade listed in upgrade_path — use the exact plan name and price from there.
+Make it feel like a natural next step, not a sales pitch.
 </task>
 
 <rules>
 - 2-3 sentences max
 - Warm and confident tone
 - Make the upgrade feel obvious, not pushy
+- Use only the plan name and price from upgrade_path — never invent plan names
 - Sign off as ${client.business_name}
 - Output ONLY the SMS text
 </rules>`

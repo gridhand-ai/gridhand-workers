@@ -6,7 +6,15 @@
 // Runs: on-demand (called by AcquisitionDirector)
 // ──────────────────────────────────────────────────────────────────────────────
 
+const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+  )
+}
 
 const AGENT_ID  = 'lead-qualifier'
 const DIVISION  = 'acquisition'
@@ -41,6 +49,25 @@ async function processClient(client) {
   const hot    = scored.filter(l => l.score >= 8)
   const warm   = scored.filter(l => l.score >= 4 && l.score < 8)
   const cold   = scored.filter(l => l.score < 4)
+
+  // Persist high-intent leads (score >= 7) to activity_log
+  try {
+    const supabase = getSupabase()
+    for (const lead of scored.filter(l => l.score >= 7)) {
+      await supabase.from('activity_log').insert({
+        client_id: client.id,
+        worker_name: 'lead-qualifier',
+        worker_id: 'lead-qualifier',
+        event_type: 'lead_scored',
+        message: `Lead scored ${lead.score}/10 — ${lead.inquiryAbout || 'inquiry'}`,
+        metadata: { score: lead.score, leadId: lead.id },
+        credits_used: 0,
+        created_at: new Date().toISOString(),
+      }).catch(() => {})
+    }
+  } catch {
+    // Never block the return on persistence failure
+  }
 
   const actions = []
   if (hot.length)  actions.push(`${hot.length} hot lead(s) routed for immediate SMS`)

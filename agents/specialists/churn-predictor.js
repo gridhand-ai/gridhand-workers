@@ -8,12 +8,21 @@
 
 const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
+const { buildClientContext } = require('../../lib/client-context')
 
 const AGENT_ID  = 'churn-predictor'
 const DIVISION  = 'experience'
 const REPORTS_TO = 'experience-director'
 
 const CHURN_RISK_THRESHOLD = 7
+
+// How often this vertical's clients are expected to generate activity
+const CYCLE_MAP = {
+  'food-beverage':     'daily',
+  'vehicle-service':   'weekly',
+  'real-estate':       'monthly',
+  'professional-b2b':  'monthly',
+}
 
 function getSupabase() {
   return createClient(
@@ -105,9 +114,19 @@ async function processClient(client) {
 }
 
 async function scoreChurnRisk(client, signals) {
-  const systemPrompt = `<task>
+  const ctx = buildClientContext(client)
+  const expectedCycle = CYCLE_MAP[ctx.vertical] || 'weekly'
+
+  const systemPrompt = `<client_context>
+  Business: ${client.business_name}
+  Vertical: ${ctx.vertical}
+  Expected cycle: ${expectedCycle}
+</client_context>
+
+<task>
 Score the churn risk for this client from 1-10.
 10 = about to cancel, 1 = highly engaged and stable.
+Factor in the expected activity cycle — a daily-cycle business (e.g. restaurant) with 0 tasks in 7 days is far more alarming than a monthly-cycle business (e.g. real estate firm) with the same signal.
 </task>
 
 <signals>
