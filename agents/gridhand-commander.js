@@ -171,14 +171,21 @@ Output a JSON object with:
     'brand-director':       brandDirector,
   }
 
-  // Run the four operational directors in parallel, injecting the intel brief as commanderBrief
+  // Run the four operational directors staggered by 2s each to spread Groq TPM load.
+  // Full parallel (Promise.allSettled) caused 429 storms — 16+ concurrent Groq calls at once.
+  // Staggering keeps us under the 6k TPM free-tier limit without serializing the work.
+  const directorEntries = Object.entries(operationalDirectors)
   const directorResults = await Promise.allSettled(
-    Object.entries(operationalDirectors).map(([id, director]) =>
-      director.run(
-        clientList,
-        situations.filter(s => SITUATION_ROUTING[s.type] === id),
-        intelligenceBrief, // commanderBrief — third param added to all four directors
-      )
+    directorEntries.map(([id, director], idx) =>
+      new Promise((resolve, reject) => {
+        setTimeout(() => {
+          director.run(
+            clientList,
+            situations.filter(s => SITUATION_ROUTING[s.type] === id),
+            intelligenceBrief,
+          ).then(resolve).catch(reject)
+        }, idx * 2000) // 2s stagger per director
+      })
     )
   )
 
