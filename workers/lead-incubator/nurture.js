@@ -14,22 +14,16 @@
 
 'use strict';
 
-const Anthropic = require('@anthropic-ai/sdk');
-const db        = require('./db');
+const aiClient = require('../../lib/ai-client');
+const db       = require('./db');
 
-const MODEL = 'claude-haiku-4-5-20251001';
-
-// ─── Anthropic Client Factory ──────────────────────────────────────────────────
-
-/**
- * Get an Anthropic client. Uses client-specific key if available, else operator key.
- * @param {string|null} clientApiKey  Optional per-client Anthropic key
- * @returns {Anthropic}
- */
-function getAnthropicClient(clientApiKey = null) {
-    const apiKey = clientApiKey || process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) throw new Error('No Anthropic API key configured');
-    return new Anthropic({ apiKey });
+async function callGroq(messages, maxTokens = 200) {
+    return aiClient.call({
+        modelString:  'groq/llama-3.3-70b-versatile',
+        systemPrompt: '',
+        messages,
+        maxTokens,
+    });
 }
 
 // ─── Lead Qualification ────────────────────────────────────────────────────────
@@ -42,16 +36,6 @@ function getAnthropicClient(clientApiKey = null) {
  * @returns {{ ok, data: { score, tier, questions, summary }, error }}
  */
 async function qualifyLead(lead) {
-    let anthropicKey = null;
-    try {
-        const client = await db.getClientById(lead.client_id);
-        anthropicKey = client?.anthropic_key || null;
-    } catch {
-        // Fall back to operator key
-    }
-
-    const anthropic = getAnthropicClient(anthropicKey);
-
     const leadContext = buildLeadContext(lead);
 
     const prompt = `You are a real estate lead qualification expert. Analyze this lead and score their likelihood to transact.
@@ -80,13 +64,7 @@ Scoring guide:
 - cold (1-39): Early stage, just browsing, no urgency, or incomplete info`;
 
     try {
-        const message = await anthropic.messages.create({
-            model:      MODEL,
-            max_tokens: 512,
-            messages:   [{ role: 'user', content: prompt }],
-        });
-
-        const text = message.content[0]?.text || '';
+        const text = await callGroq([{ role: 'user', content: prompt }], 512) || '';
 
         // Extract JSON from response (handle any surrounding text)
         const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -128,7 +106,6 @@ async function generateInitialResponse(lead) {
         // Proceed without client context
     }
 
-    const anthropic    = getAnthropicClient(client?.anthropic_key || null);
     const agentName    = client?.agent_name || 'your agent';
     const leadContext  = buildLeadContext(lead);
 
@@ -150,13 +127,7 @@ RULES (strictly follow all of these):
 Return ONLY the SMS text, nothing else.`;
 
     try {
-        const message = await anthropic.messages.create({
-            model:      MODEL,
-            max_tokens: 100,
-            messages:   [{ role: 'user', content: prompt }],
-        });
-
-        let smsText = (message.content[0]?.text || '').trim();
+        let smsText = (await callGroq([{ role: 'user', content: prompt }], 100) || '').trim();
 
         // Hard truncate to 160 chars if model disobeyed
         if (smsText.length > 160) {
@@ -190,7 +161,6 @@ async function handleReply(lead, inboundSms) {
         // Proceed without client context
     }
 
-    const anthropic   = getAnthropicClient(client?.anthropic_key || null);
     const agentName   = client?.agent_name || 'your agent';
     const leadContext = buildLeadContext(lead);
 
@@ -246,13 +216,7 @@ Return ONLY valid JSON, no other text:
 }`;
 
     try {
-        const message = await anthropic.messages.create({
-            model:      MODEL,
-            max_tokens: 256,
-            messages:   [{ role: 'user', content: prompt }],
-        });
-
-        const text      = message.content[0]?.text || '';
+        const text = await callGroq([{ role: 'user', content: prompt }], 256) || '';
         const jsonMatch = text.match(/\{[\s\S]*\}/);
 
         if (!jsonMatch) {
@@ -313,7 +277,6 @@ async function getDripMessage(lead, stepNumber) {
         // Proceed without client context
     }
 
-    const anthropic  = getAnthropicClient(client?.anthropic_key || null);
     const agentName  = client?.agent_name || 'your agent';
     const leadContext = buildLeadContext(lead);
 
@@ -349,13 +312,7 @@ RULES:
 Return ONLY the SMS text, nothing else.`;
 
     try {
-        const message = await anthropic.messages.create({
-            model:      MODEL,
-            max_tokens: 100,
-            messages:   [{ role: 'user', content: prompt }],
-        });
-
-        let smsText = (message.content[0]?.text || '').trim();
+        let smsText = (await callGroq([{ role: 'user', content: prompt }], 100) || '').trim();
         if (smsText.length > 160) smsText = smsText.slice(0, 157) + '...';
 
         return { ok: true, data: { message: smsText }, error: null };
@@ -386,7 +343,6 @@ Return ONLY the SMS text, nothing else.`;
  * @returns {{ ok, data: { message }, error }}
  */
 async function generateMorningDigest(leads, client) {
-    const anthropic = getAnthropicClient(client?.anthropic_key || null);
     const agentName = client?.agent_name || 'Agent';
 
     if (!leads || leads.length === 0) {
@@ -435,13 +391,7 @@ Keep it under 320 characters (2 SMS). Direct, practical, no fluff. No emojis.
 Return ONLY the SMS text.`;
 
     try {
-        const message = await anthropic.messages.create({
-            model:      MODEL,
-            max_tokens: 200,
-            messages:   [{ role: 'user', content: prompt }],
-        });
-
-        const digestText = (message.content[0]?.text || '').trim();
+        const digestText = (await callGroq([{ role: 'user', content: prompt }], 200) || '').trim();
         return { ok: true, data: { message: digestText }, error: null };
     } catch (err) {
         console.error(`[Nurture] generateMorningDigest error: ${err.message}`);

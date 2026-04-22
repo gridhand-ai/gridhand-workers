@@ -27,7 +27,7 @@ const experienceDirector    = require('./experience-director')
 const brandDirector         = require('./brand-director')
 const intelligenceDirector  = require('./intelligence-director')
 
-const OPUS_MODEL = 'claude-opus-4-7'
+const OPUS_MODEL = 'groq/llama-3.3-70b-versatile'
 
 const AGENT_ID = 'gridhand-commander'
 const DIVISION = 'command'

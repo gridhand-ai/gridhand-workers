@@ -1,0 +1,177 @@
+{
+  "name": "[GRIDHAND] GYM — Lapsed Member Reactivation",
+  "nodes": [
+    {
+      "id": "trigger-gym-lapsed-member-reactivation",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-industry-gym-lapsed-member-reactivation",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "valfbrr6yq5kgfhw"
+    },
+    {
+      "id": "extract-gym-lapsed-member-reactivation",
+      "name": "Extract Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "mode": "manual",
+        "fields": {
+          "values": [
+            {
+              "name": "clientId",
+              "type": "string",
+              "value": "={{ $json.body.client_id }}"
+            },
+            {
+              "name": "customerPhone",
+              "type": "string",
+              "value": "={{ $json.body.trigger_data.phone ?? $json.body.trigger_data.caller_number ?? $json.body.trigger_data.agent_phone ?? \"\" }}"
+            },
+            {
+              "name": "scenarioId",
+              "type": "string",
+              "value": "gym-lapsed-member-reactivation"
+            },
+            {
+              "name": "triggerData",
+              "type": "object",
+              "value": "={{ $json.body.trigger_data }}"
+            },
+            {
+              "name": "triggerSource",
+              "type": "string",
+              "value": "={{ $json.body.trigger_source ?? \"live\" }}"
+            },
+            {
+              "name": "eventId",
+              "type": "string",
+              "value": "={{ $json.body.event_id ?? \"\" }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "http-gym-lapsed-member-reactivation",
+      "name": "POST to GRIDHAND Workers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://gridhand-workers-production.up.railway.app/trigger/reactivation",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"clientId\":      \"{{ $json.clientId }}\",\n  \"customerPhone\": \"{{ $json.customerPhone }}\",\n  \"scenarioId\":    \"gym-lapsed-member-reactivation\",\n  \"worker\":        \"reactivation\",\n  \"triggerData\":   {{ JSON.stringify($json.triggerData) }},\n  \"triggerSource\": \"{{ $json.triggerSource }}\",\n  \"eventId\":       \"{{ $json.eventId }}\"\n}",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "respond-gym-lapsed-member-reactivation",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        960,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"scenarioId\": \"gym-lapsed-member-reactivation\", \"worker\": \"reactivation\", \"processedAt\": new Date().toISOString() } }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Fields": {
+      "main": [
+        [
+          {
+            "node": "POST to GRIDHAND Workers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST to GRIDHAND Workers": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "industry",
+    "gym",
+    "member_inactive",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "source": "industry-scenario-builder",
+      "scenarioId": "gym-lapsed-member-reactivation",
+      "scenarioName": "Lapsed Member Reactivation",
+      "industry": "gym",
+      "trigger": "member_inactive",
+      "worker": "reactivation",
+      "workersUrl": "https://gridhand-workers-production.up.railway.app/trigger/reactivation",
+      "webhookPath": "gridhand-industry-gym-lapsed-member-reactivation",
+      "description": "When a member hasn't checked in for 30+ days, sends a personalized win-back message. Optionally includes a limited-time offer.",
+      "generatedAt": "2026-04-22T04:08:01.676Z"
+    }
+  }
+}

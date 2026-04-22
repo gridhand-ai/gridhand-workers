@@ -1,0 +1,177 @@
+{
+  "name": "[GRIDHAND] AUTO — No-Show Reschedule",
+  "nodes": [
+    {
+      "id": "trigger-auto-no-show-reschedule",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-industry-auto-no-show-reschedule",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "6tgvst5si2s12nfx"
+    },
+    {
+      "id": "extract-auto-no-show-reschedule",
+      "name": "Extract Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "mode": "manual",
+        "fields": {
+          "values": [
+            {
+              "name": "clientId",
+              "type": "string",
+              "value": "={{ $json.body.client_id }}"
+            },
+            {
+              "name": "customerPhone",
+              "type": "string",
+              "value": "={{ $json.body.trigger_data.phone ?? $json.body.trigger_data.caller_number ?? $json.body.trigger_data.agent_phone ?? \"\" }}"
+            },
+            {
+              "name": "scenarioId",
+              "type": "string",
+              "value": "auto-no-show-reschedule"
+            },
+            {
+              "name": "triggerData",
+              "type": "object",
+              "value": "={{ $json.body.trigger_data }}"
+            },
+            {
+              "name": "triggerSource",
+              "type": "string",
+              "value": "={{ $json.body.trigger_source ?? \"live\" }}"
+            },
+            {
+              "name": "eventId",
+              "type": "string",
+              "value": "={{ $json.body.event_id ?? \"\" }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "http-auto-no-show-reschedule",
+      "name": "POST to GRIDHAND Workers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://gridhand-workers-production.up.railway.app/trigger/no-show",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"clientId\":      \"{{ $json.clientId }}\",\n  \"customerPhone\": \"{{ $json.customerPhone }}\",\n  \"scenarioId\":    \"auto-no-show-reschedule\",\n  \"worker\":        \"no_show\",\n  \"triggerData\":   {{ JSON.stringify($json.triggerData) }},\n  \"triggerSource\": \"{{ $json.triggerSource }}\",\n  \"eventId\":       \"{{ $json.eventId }}\"\n}",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "respond-auto-no-show-reschedule",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        960,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"scenarioId\": \"auto-no-show-reschedule\", \"worker\": \"no_show\", \"processedAt\": new Date().toISOString() } }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Fields": {
+      "main": [
+        [
+          {
+            "node": "POST to GRIDHAND Workers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST to GRIDHAND Workers": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "industry",
+    "auto",
+    "no_show",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "source": "industry-scenario-builder",
+      "scenarioId": "auto-no-show-reschedule",
+      "scenarioName": "No-Show Reschedule",
+      "industry": "auto",
+      "trigger": "no_show",
+      "worker": "no_show",
+      "workersUrl": "https://gridhand-workers-production.up.railway.app/trigger/no-show",
+      "webhookPath": "gridhand-industry-auto-no-show-reschedule",
+      "description": "When a customer misses their service appointment, texts within 30 minutes to offer easy rescheduling.",
+      "generatedAt": "2026-04-22T04:08:00.247Z"
+    }
+  }
+}

@@ -1,0 +1,177 @@
+{
+  "name": "[GRIDHAND] REALESTATE — New Listing — Notify Matched Leads",
+  "nodes": [
+    {
+      "id": "trigger-realestate-new-listing-alert",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-industry-realestate-new-listing-alert",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "jzaa49f5d8936nyq"
+    },
+    {
+      "id": "extract-realestate-new-listing-alert",
+      "name": "Extract Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "mode": "manual",
+        "fields": {
+          "values": [
+            {
+              "name": "clientId",
+              "type": "string",
+              "value": "={{ $json.body.client_id }}"
+            },
+            {
+              "name": "customerPhone",
+              "type": "string",
+              "value": "={{ $json.body.trigger_data.phone ?? $json.body.trigger_data.caller_number ?? $json.body.trigger_data.agent_phone ?? \"\" }}"
+            },
+            {
+              "name": "scenarioId",
+              "type": "string",
+              "value": "realestate-new-listing-alert"
+            },
+            {
+              "name": "triggerData",
+              "type": "object",
+              "value": "={{ $json.body.trigger_data }}"
+            },
+            {
+              "name": "triggerSource",
+              "type": "string",
+              "value": "={{ $json.body.trigger_source ?? \"live\" }}"
+            },
+            {
+              "name": "eventId",
+              "type": "string",
+              "value": "={{ $json.body.event_id ?? \"\" }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "http-realestate-new-listing-alert",
+      "name": "POST to GRIDHAND Workers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://gridhand-workers-production.up.railway.app/trigger/lead-nurture",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"clientId\":      \"{{ $json.clientId }}\",\n  \"customerPhone\": \"{{ $json.customerPhone }}\",\n  \"scenarioId\":    \"realestate-new-listing-alert\",\n  \"worker\":        \"lead_nurture\",\n  \"triggerData\":   {{ JSON.stringify($json.triggerData) }},\n  \"triggerSource\": \"{{ $json.triggerSource }}\",\n  \"eventId\":       \"{{ $json.eventId }}\"\n}",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "respond-realestate-new-listing-alert",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        960,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"scenarioId\": \"realestate-new-listing-alert\", \"worker\": \"lead_nurture\", \"processedAt\": new Date().toISOString() } }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Fields": {
+      "main": [
+        [
+          {
+            "node": "POST to GRIDHAND Workers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST to GRIDHAND Workers": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "industry",
+    "realestate",
+    "new_listing",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "source": "industry-scenario-builder",
+      "scenarioId": "realestate-new-listing-alert",
+      "scenarioName": "New Listing — Notify Matched Leads",
+      "industry": "realestate",
+      "trigger": "new_listing",
+      "worker": "lead_nurture",
+      "workersUrl": "https://gridhand-workers-production.up.railway.app/trigger/lead-nurture",
+      "webhookPath": "gridhand-industry-realestate-new-listing-alert",
+      "description": "When a new listing goes live, texts matched leads who previously expressed interest in that price range, neighborhood, or property type.",
+      "generatedAt": "2026-04-22T04:08:02.708Z"
+    }
+  }
+}

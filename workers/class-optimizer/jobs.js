@@ -18,11 +18,12 @@
 
 'use strict';
 
-const Bull   = require('bull');
-const dayjs  = require('dayjs');
-const db     = require('./db');
-const mb     = require('./mindbody');
-const cal    = require('./calendar');
+const Bull     = require('bull');
+const dayjs    = require('dayjs');
+const db       = require('./db');
+const mb       = require('./mindbody');
+const cal      = require('./calendar');
+const aiClient = require('../../lib/ai-client');
 
 // ─── Queue Config ─────────────────────────────────────────────────────────────
 
@@ -315,12 +316,10 @@ analysis.process('analyze', 2, async (job) => {
         recommendationsCreated++;
     }
 
-    // ── AI-enhanced analysis (if Anthropic SDK available) ─────────────────────
+    // ── AI-enhanced analysis ──────────────────────────────────────────────────
 
-    if (process.env.ANTHROPIC_API_KEY && (underperformers.length > 0 || highDemand.length > 0)) {
+    if (underperformers.length > 0 || highDemand.length > 0) {
         try {
-            const Anthropic = require('@anthropic-ai/sdk');
-            const anthropic = new Anthropic.default({ apiKey: process.env.ANTHROPIC_API_KEY });
 
             const statsContext = stats.slice(0, 20).map(s => {
                 const cls = classMap[s.classId];
@@ -341,13 +340,12 @@ analysis.process('analyze', 2, async (job) => {
                 'Provide 1-3 additional strategic recommendations not already identified. For each, specify: recommendation_type (cancel_class/reschedule/add_capacity/reduce_capacity/add_class), reason (1-2 sentences), and any relevant data points. Format as JSON array.',
             ].join('\n');
 
-            const message = await anthropic.messages.create({
-                model:      'claude-opus-4-5',
-                max_tokens: 1024,
-                messages: [{ role: 'user', content: prompt }],
-            });
-
-            const text = message.content[0]?.text || '';
+            const text = await aiClient.call({
+                modelString:  'groq/llama-3.3-70b-versatile',
+                systemPrompt: '',
+                messages:     [{ role: 'user', content: prompt }],
+                maxTokens:    1024,
+            }) || '';
 
             // Extract JSON from the response
             const jsonMatch = text.match(/\[[\s\S]*\]/);

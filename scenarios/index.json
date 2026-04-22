@@ -657,8 +657,443 @@
         "skipped": true,
         "reason": "N8N_API_KEY not set — saved to disk only"
       }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "restaurant-reservation-confirm",
+      "name": "New Reservation Confirmation",
+      "industry": "restaurant",
+      "trigger": "new_booking",
+      "worker": "appointment_reminder",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/restaurant-reservation-confirm.json",
+      "generatedAt": "2026-04-22T04:07:59.268Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "jAYjzCAMfV78Ts7R",
+        "n8nName": "[GRIDHAND] RESTAURANT — New Reservation Confirmation"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "restaurant-missed-call",
+      "name": "Missed Call Recovery",
+      "industry": "restaurant",
+      "trigger": "missed_call",
+      "worker": "missed_call",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/restaurant-missed-call.json",
+      "generatedAt": "2026-04-22T04:07:59.566Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "ik7JDlofQj9wrpfB",
+        "n8nName": "[GRIDHAND] RESTAURANT — Missed Call Recovery"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "restaurant-review-request",
+      "name": "Post-Visit Review Request",
+      "industry": "restaurant",
+      "trigger": "visit_complete",
+      "worker": "review_pipeline",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/restaurant-review-request.json",
+      "generatedAt": "2026-04-22T04:07:59.769Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "kex9kUy8AM35D8sU",
+        "n8nName": "[GRIDHAND] RESTAURANT — Post-Visit Review Request"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "restaurant-slow-night-blast",
+      "name": "Slow Night Reactivation Blast",
+      "industry": "restaurant",
+      "trigger": "manual_campaign",
+      "worker": "reactivation",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/restaurant-slow-night-blast.json",
+      "generatedAt": "2026-04-22T04:07:59.910Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "LMWXb4MbmMaa8JiB",
+        "n8nName": "[GRIDHAND] RESTAURANT — Slow Night Reactivation Blast"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "auto-vehicle-ready",
+      "name": "Vehicle Ready for Pickup",
+      "industry": "auto",
+      "trigger": "repair_complete",
+      "worker": "repair_ready",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/auto-vehicle-ready.json",
+      "generatedAt": "2026-04-22T04:08:00.091Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "gQs6UfOkw3FS3T7b",
+        "n8nName": "[GRIDHAND] AUTO — Vehicle Ready for Pickup"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "auto-appointment-reminder",
+      "name": "Service Appointment Reminder",
+      "industry": "auto",
+      "trigger": "appointment_reminder",
+      "worker": "appointment_reminder",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/auto-appointment-reminder.json",
+      "generatedAt": "2026-04-22T04:08:00.246Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "UdbP9h3D8dmf4xlo",
+        "n8nName": "[GRIDHAND] AUTO — Service Appointment Reminder"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "auto-no-show-reschedule",
+      "name": "No-Show Reschedule",
+      "industry": "auto",
+      "trigger": "no_show",
+      "worker": "no_show",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/auto-no-show-reschedule.json",
+      "generatedAt": "2026-04-22T04:08:00.390Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "4dS0qb2QJoB5V3DE",
+        "n8nName": "[GRIDHAND] AUTO — No-Show Reschedule"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "auto-review-request",
+      "name": "Post-Service Review Request",
+      "industry": "auto",
+      "trigger": "payment_complete",
+      "worker": "review_pipeline",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/auto-review-request.json",
+      "generatedAt": "2026-04-22T04:08:00.614Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "f9A0dpfDDBJXv01H",
+        "n8nName": "[GRIDHAND] AUTO — Post-Service Review Request"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "salon-booking-confirmation",
+      "name": "Appointment Booking Confirmation",
+      "industry": "salon",
+      "trigger": "new_booking",
+      "worker": "appointment_reminder",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/salon-booking-confirmation.json",
+      "generatedAt": "2026-04-22T04:08:00.809Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "Ag4BU2i9K1OZpuwG",
+        "n8nName": "[GRIDHAND] SALON — Appointment Booking Confirmation"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "salon-day-before-reminder",
+      "name": "Day-Before Appointment Reminder",
+      "industry": "salon",
+      "trigger": "appointment_reminder",
+      "worker": "appointment_reminder",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/salon-day-before-reminder.json",
+      "generatedAt": "2026-04-22T04:08:00.949Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "CKMYiNeBue0iUvEB",
+        "n8nName": "[GRIDHAND] SALON — Day-Before Appointment Reminder"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "salon-no-show-rebook",
+      "name": "No-Show Rebooking Offer",
+      "industry": "salon",
+      "trigger": "no_show",
+      "worker": "no_show",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/salon-no-show-rebook.json",
+      "generatedAt": "2026-04-22T04:08:01.139Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "aWPai8geTQQiMmlq",
+        "n8nName": "[GRIDHAND] SALON — No-Show Rebooking Offer"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "salon-review-request",
+      "name": "Post-Visit Review Request",
+      "industry": "salon",
+      "trigger": "visit_complete",
+      "worker": "review_pipeline",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/salon-review-request.json",
+      "generatedAt": "2026-04-22T04:08:01.283Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "QdCVUArMLZUcb4PF",
+        "n8nName": "[GRIDHAND] SALON — Post-Visit Review Request"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "gym-new-member-onboarding",
+      "name": "New Member Onboarding",
+      "industry": "gym",
+      "trigger": "new_member_signup",
+      "worker": "onboarding",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/gym-new-member-onboarding.json",
+      "generatedAt": "2026-04-22T04:08:01.420Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "66e02VmOyOeI23HV",
+        "n8nName": "[GRIDHAND] GYM — New Member Onboarding"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "gym-class-reminder",
+      "name": "Class Reminder (2 Hours Before)",
+      "industry": "gym",
+      "trigger": "appointment_reminder",
+      "worker": "appointment_reminder",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/gym-class-reminder.json",
+      "generatedAt": "2026-04-22T04:08:01.676Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "vumFmw2ugXkx7nvb",
+        "n8nName": "[GRIDHAND] GYM — Class Reminder (2 Hours Before)"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "gym-lapsed-member-reactivation",
+      "name": "Lapsed Member Reactivation",
+      "industry": "gym",
+      "trigger": "member_inactive",
+      "worker": "reactivation",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/gym-lapsed-member-reactivation.json",
+      "generatedAt": "2026-04-22T04:08:01.813Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "HpH2FKdyoXcdzlyo",
+        "n8nName": "[GRIDHAND] GYM — Lapsed Member Reactivation"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "gym-trial-expiring-upsell",
+      "name": "Trial Expiring — Membership Upsell",
+      "industry": "gym",
+      "trigger": "trial_expiring",
+      "worker": "upsell",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/gym-trial-expiring-upsell.json",
+      "generatedAt": "2026-04-22T04:08:01.964Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "2Fhmzv4CkeKdGMKc",
+        "n8nName": "[GRIDHAND] GYM — Trial Expiring — Membership Upsell"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "dental-appointment-confirmation",
+      "name": "Appointment Scheduled Confirmation",
+      "industry": "dental",
+      "trigger": "new_booking",
+      "worker": "appointment_reminder",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/dental-appointment-confirmation.json",
+      "generatedAt": "2026-04-22T04:08:02.187Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "vDtSOi9maVOFT469",
+        "n8nName": "[GRIDHAND] DENTAL — Appointment Scheduled Confirmation"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "dental-48hr-reminder",
+      "name": "48-Hour Appointment Reminder",
+      "industry": "dental",
+      "trigger": "appointment_reminder",
+      "worker": "appointment_reminder",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/dental-48hr-reminder.json",
+      "generatedAt": "2026-04-22T04:08:02.328Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "gB4z7Kd1UQVTPHQD",
+        "n8nName": "[GRIDHAND] DENTAL — 48-Hour Appointment Reminder"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "dental-post-visit-care",
+      "name": "Post-Visit Care Instructions",
+      "industry": "dental",
+      "trigger": "visit_complete",
+      "worker": "review_pipeline",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/dental-post-visit-care.json",
+      "generatedAt": "2026-04-22T04:08:02.463Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "QO4MkhpLWw384rYL",
+        "n8nName": "[GRIDHAND] DENTAL — Post-Visit Care Instructions"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "dental-recall-reminder",
+      "name": "6-Month Recall Reminder",
+      "industry": "dental",
+      "trigger": "recall_due",
+      "worker": "reactivation",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/dental-recall-reminder.json",
+      "generatedAt": "2026-04-22T04:08:02.708Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "Sc8Sf3OM4CjwMLa4",
+        "n8nName": "[GRIDHAND] DENTAL — 6-Month Recall Reminder"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "realestate-new-listing-alert",
+      "name": "New Listing — Notify Matched Leads",
+      "industry": "realestate",
+      "trigger": "new_listing",
+      "worker": "lead_nurture",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/realestate-new-listing-alert.json",
+      "generatedAt": "2026-04-22T04:08:02.908Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "SNdXpTzTGJhNnFTg",
+        "n8nName": "[GRIDHAND] REALESTATE — New Listing — Notify Matched Leads"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "realestate-open-house-invite",
+      "name": "Open House Invite",
+      "industry": "realestate",
+      "trigger": "open_house_scheduled",
+      "worker": "lead_nurture",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/realestate-open-house-invite.json",
+      "generatedAt": "2026-04-22T04:08:03.243Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "9jVN0cepSKW4rSd0",
+        "n8nName": "[GRIDHAND] REALESTATE — Open House Invite"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "realestate-offer-received",
+      "name": "Offer Received — Agent Alert",
+      "industry": "realestate",
+      "trigger": "offer_received",
+      "worker": "missed_call",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/realestate-offer-received.json",
+      "generatedAt": "2026-04-22T04:08:03.446Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "MmlLMjRpgkUSrYtE",
+        "n8nName": "[GRIDHAND] REALESTATE — Offer Received — Agent Alert"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "realestate-closing-congratulations",
+      "name": "Closing Day Congratulations",
+      "industry": "realestate",
+      "trigger": "closing_complete",
+      "worker": "review_pipeline",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/realestate-closing-congratulations.json",
+      "generatedAt": "2026-04-22T04:08:03.581Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "FTCDgItyS452hBzG",
+        "n8nName": "[GRIDHAND] REALESTATE — Closing Day Congratulations"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "trades-estimate-followup",
+      "name": "Estimate Sent — Follow-Up",
+      "industry": "trades",
+      "trigger": "estimate_sent",
+      "worker": "lead_nurture",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/trades-estimate-followup.json",
+      "generatedAt": "2026-04-22T04:08:03.784Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "FYubCIpyueFMrmSb",
+        "n8nName": "[GRIDHAND] TRADES — Estimate Sent — Follow-Up"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "trades-job-complete-invoice",
+      "name": "Job Complete — Invoice + Review Request",
+      "industry": "trades",
+      "trigger": "job_complete",
+      "worker": "review_pipeline",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/trades-job-complete-invoice.json",
+      "generatedAt": "2026-04-22T04:08:03.934Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "IwD8S7ZfE3w3wvep",
+        "n8nName": "[GRIDHAND] TRADES — Job Complete — Invoice + Review Request"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "trades-seasonal-checkup",
+      "name": "Seasonal Maintenance Reminder",
+      "industry": "trades",
+      "trigger": "seasonal_campaign",
+      "worker": "reactivation",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/trades-seasonal-checkup.json",
+      "generatedAt": "2026-04-22T04:08:04.070Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "t2XxDFaM09ZquwjS",
+        "n8nName": "[GRIDHAND] TRADES — Seasonal Maintenance Reminder"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "trades-emergency-callback",
+      "name": "Emergency Inquiry — Immediate Callback SMS",
+      "industry": "trades",
+      "trigger": "emergency_inquiry",
+      "worker": "missed_call",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/trades-emergency-callback.json",
+      "generatedAt": "2026-04-22T04:08:04.283Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "khjqmENgfdg65GxK",
+        "n8nName": "[GRIDHAND] TRADES — Emergency Inquiry — Immediate Callback SMS"
+      }
+    },
+    {
+      "source": "industry-scenario-builder",
+      "scenarioId": "trades-no-show-reschedule",
+      "name": "Missed Appointment Reschedule",
+      "industry": "trades",
+      "trigger": "no_show",
+      "worker": "no_show",
+      "filePath": "/Volumes/GridHand/GRIDHAND-Workshop/projects/gridhand-workers/scenarios/industry/trades-no-show-reschedule.json",
+      "generatedAt": "2026-04-22T04:08:04.473Z",
+      "n8n": {
+        "pushed": true,
+        "n8nId": "udqTIcaQDIrtt16P",
+        "n8nName": "[GRIDHAND] TRADES — Missed Appointment Reschedule"
+      }
     }
   ],
-  "lastRun": "2026-04-21T07:37:52.105Z",
-  "totalCount": 47
+  "lastRun": "2026-04-22T04:08:04.473Z",
+  "totalCount": 76
 }

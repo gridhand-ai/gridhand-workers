@@ -1,0 +1,177 @@
+{
+  "name": "[GRIDHAND] AUTO — Vehicle Ready for Pickup",
+  "nodes": [
+    {
+      "id": "trigger-auto-vehicle-ready",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-industry-auto-vehicle-ready",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "jac8mkrsso75pqmy"
+    },
+    {
+      "id": "extract-auto-vehicle-ready",
+      "name": "Extract Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "mode": "manual",
+        "fields": {
+          "values": [
+            {
+              "name": "clientId",
+              "type": "string",
+              "value": "={{ $json.body.client_id }}"
+            },
+            {
+              "name": "customerPhone",
+              "type": "string",
+              "value": "={{ $json.body.trigger_data.phone ?? $json.body.trigger_data.caller_number ?? $json.body.trigger_data.agent_phone ?? \"\" }}"
+            },
+            {
+              "name": "scenarioId",
+              "type": "string",
+              "value": "auto-vehicle-ready"
+            },
+            {
+              "name": "triggerData",
+              "type": "object",
+              "value": "={{ $json.body.trigger_data }}"
+            },
+            {
+              "name": "triggerSource",
+              "type": "string",
+              "value": "={{ $json.body.trigger_source ?? \"live\" }}"
+            },
+            {
+              "name": "eventId",
+              "type": "string",
+              "value": "={{ $json.body.event_id ?? \"\" }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "http-auto-vehicle-ready",
+      "name": "POST to GRIDHAND Workers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://gridhand-workers-production.up.railway.app/trigger/repair-ready",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"clientId\":      \"{{ $json.clientId }}\",\n  \"customerPhone\": \"{{ $json.customerPhone }}\",\n  \"scenarioId\":    \"auto-vehicle-ready\",\n  \"worker\":        \"repair_ready\",\n  \"triggerData\":   {{ JSON.stringify($json.triggerData) }},\n  \"triggerSource\": \"{{ $json.triggerSource }}\",\n  \"eventId\":       \"{{ $json.eventId }}\"\n}",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "respond-auto-vehicle-ready",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        960,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"scenarioId\": \"auto-vehicle-ready\", \"worker\": \"repair_ready\", \"processedAt\": new Date().toISOString() } }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Fields": {
+      "main": [
+        [
+          {
+            "node": "POST to GRIDHAND Workers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST to GRIDHAND Workers": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "industry",
+    "auto",
+    "repair_complete",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "source": "industry-scenario-builder",
+      "scenarioId": "auto-vehicle-ready",
+      "scenarioName": "Vehicle Ready for Pickup",
+      "industry": "auto",
+      "trigger": "repair_complete",
+      "worker": "repair_ready",
+      "workersUrl": "https://gridhand-workers-production.up.railway.app/trigger/repair-ready",
+      "webhookPath": "gridhand-industry-auto-vehicle-ready",
+      "description": "When a repair order is marked complete, immediately texts the customer that their vehicle is ready with shop hours and total cost.",
+      "generatedAt": "2026-04-22T04:07:59.910Z"
+    }
+  }
+}

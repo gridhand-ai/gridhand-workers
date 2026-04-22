@@ -8,7 +8,7 @@
  * 3. Records all outreach to Supabase for tracking
  */
 
-const Anthropic = require('@anthropic-ai/sdk');
+const aiClient  = require('../../lib/ai-client');
 const twilio    = require('twilio');
 
 // ---------------------------------------------------------------------------
@@ -22,9 +22,7 @@ const twilio    = require('twilio');
  * Format: concise, actionable, includes client name + gap + suggested next step.
  * Max 160 chars so it's a single SMS segment.
  */
-async function generateAgentAlert({ client, opportunity, agency, apiKey }) {
-    const anthropic = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY });
-
+async function generateAgentAlert({ client, opportunity, agency }) {
     const systemPrompt = `You are an AI assistant for GridHand AI, an insurance agency intelligence platform.
 Write a SHORT agent alert SMS (under 160 characters) notifying an insurance agent about a cross-sell opportunity.
 Format: "[Client Name] | [Gap] | [Action]"
@@ -41,15 +39,15 @@ Gap description: ${opportunity.description || ''}
 Write the agent alert SMS now.`;
 
     try {
-        const response = await anthropic.messages.create({
-            model:      'claude-haiku-4-5-20251001',
-            max_tokens: 100,
-            system:     systemPrompt,
-            messages:   [{ role: 'user', content: userPrompt }],
+        const text = await aiClient.call({
+            modelString: 'groq/llama-3.3-70b-versatile',
+            systemPrompt,
+            messages:    [{ role: 'user', content: userPrompt }],
+            maxTokens:   100,
         });
-        return response.content[0]?.text?.trim() || buildFallbackAlert(client, opportunity);
+        return text || buildFallbackAlert(client, opportunity);
     } catch (e) {
-        console.error(`[Outreach] Claude alert generation failed: ${e.message}`);
+        console.error(`[Outreach] AI alert generation failed: ${e.message}`);
         return buildFallbackAlert(client, opportunity);
     }
 }
@@ -67,9 +65,7 @@ function buildFallbackAlert(client, opportunity) {
  * Generate a personalized outreach message from the AGENT to the CLIENT.
  * This is a draft the agent can send or customize — not auto-sent to the client.
  */
-async function generateClientOutreach({ client, opportunity, agency, apiKey }) {
-    const anthropic = new Anthropic({ apiKey: apiKey || process.env.ANTHROPIC_API_KEY });
-
+async function generateClientOutreach({ client, opportunity, agency }) {
     const systemPrompt = `You are an experienced insurance agent writing a brief, friendly outreach text message to a client.
 Write a SHORT SMS draft (under 200 characters).
 Be warm, consultative — not pushy. Position it as a helpful check-in, not a sales pitch.
@@ -85,15 +81,15 @@ Estimated new premium: $${opportunity.estimated_premium?.toLocaleString() || 'va
 Write the client SMS draft now.`;
 
     try {
-        const response = await anthropic.messages.create({
-            model:      'claude-haiku-4-5-20251001',
-            max_tokens: 150,
-            system:     systemPrompt,
-            messages:   [{ role: 'user', content: userPrompt }],
+        const text = await aiClient.call({
+            modelString: 'groq/llama-3.3-70b-versatile',
+            systemPrompt,
+            messages:    [{ role: 'user', content: userPrompt }],
+            maxTokens:   150,
         });
-        return response.content[0]?.text?.trim() || buildFallbackClientMessage(client, opportunity, agency);
+        return text || buildFallbackClientMessage(client, opportunity, agency);
     } catch (e) {
-        console.error(`[Outreach] Claude client message generation failed: ${e.message}`);
+        console.error(`[Outreach] AI client message generation failed: ${e.message}`);
         return buildFallbackClientMessage(client, opportunity, agency);
     }
 }
@@ -171,10 +167,8 @@ function buildOutreachRecord({ agencyId, opportunityId, clientId, messageBody, s
  *   4. Return records to be persisted by the caller (jobs.js handles DB writes)
  */
 async function processOpportunity({ agency, client, opportunity, supabase }) {
-    const apiKey = agency.anthropic_api_key || process.env.ANTHROPIC_API_KEY;
-
     // 1. Generate agent alert
-    const agentAlertBody = await generateAgentAlert({ client, opportunity, agency, apiKey });
+    const agentAlertBody = await generateAgentAlert({ client, opportunity, agency });
 
     // 2. Send SMS to agent
     let twilioSid = null;
@@ -185,7 +179,7 @@ async function processOpportunity({ agency, client, opportunity, supabase }) {
     }
 
     // 3. Generate client outreach draft (stored for agent to review/send)
-    const clientDraft = await generateClientOutreach({ client, opportunity, agency, apiKey });
+    const clientDraft = await generateClientOutreach({ client, opportunity, agency });
 
     // 4. Build outreach log record
     const outreachRecord = buildOutreachRecord({

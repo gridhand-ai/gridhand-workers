@@ -2,9 +2,7 @@
 // Takes Tekmetric data + Google Calendar availability and produces
 // optimized daily schedule with alerts and recommendations
 
-const Anthropic = require('@anthropic-ai/sdk');
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const aiClient = require('../../lib/ai-client');
 
 // ─── Utilization Thresholds ───────────────────────────────────────────────────
 const THRESHOLDS = {
@@ -197,13 +195,14 @@ Format: Start with "Day wrap-up for [date]:"
 Include: jobs done, utilization %, standout metrics, tomorrow callout if any.`;
 
     try {
-        const response = await anthropic.messages.create({
-            model:      'claude-haiku-4-5-20251001',
-            max_tokens: 200,
-            messages:   [{ role: 'user', content: prompt }],
+        const text = await aiClient.call({
+            modelString: 'groq/llama-3.3-70b-versatile',
+            systemPrompt: '',
+            messages:    [{ role: 'user', content: prompt }],
+            maxTokens:   200,
         });
 
-        return response.content[0]?.text?.trim() || buildFallbackBrief(snapshot, bayUtilization, type);
+        return text || buildFallbackBrief(snapshot, bayUtilization, type);
     } catch (e) {
         console.error(`[Scheduler] AI brief error: ${e.message}`);
         return buildFallbackBrief(snapshot, bayUtilization, type);

@@ -33,13 +33,14 @@ function getSupabase() {
   )
 }
 
-async function run(clients = []) {
-  console.log(`[${AGENT_ID.toUpperCase()}] Starting run — ${clients.length} clients`)
+async function run(clients = [], owner = 'gridhand') {
+  console.log(`[${AGENT_ID.toUpperCase()}] Starting run — ${clients.length} clients, owner: ${owner}`)
+  const isClientContext = owner !== 'gridhand'
   const reports = []
 
   for (const client of clients) {
     try {
-      const result = await processClient(client)
+      const result = await processClient(client, isClientContext)
       if (result) reports.push(result)
     } catch (err) {
       console.error(`[${AGENT_ID}] Error for client ${client.id}:`, err.message)
@@ -67,7 +68,7 @@ async function run(clients = []) {
   return specialistReport
 }
 
-async function processClient(client) {
+async function processClient(client, isClientContext = false) {
   const supabase = getSupabase()
   const now = Date.now()
 
@@ -100,7 +101,7 @@ async function processClient(client) {
     planActive: client.stripe_data?.subscription_status === 'active',
   }
 
-  const score = await scoreChurnRisk(client, signals)
+  const score = await scoreChurnRisk(client, signals, isClientContext)
 
   // Save churn score
   await supabase.from('agent_state').upsert({
@@ -133,11 +134,23 @@ async function processClient(client) {
   }
 }
 
-async function scoreChurnRisk(client, signals) {
+async function scoreChurnRisk(client, signals, isClientContext = false) {
   const ctx = buildClientContext(client)
   const expectedCycle = CYCLE_MAP[ctx.vertical] || 'weekly'
 
-  const systemPrompt = `<client_context>
+  const ownerBlock = isClientContext
+    ? `<owner_context>
+This churn analysis is being run as a client-facing monitoring service for ${client.business_name}.
+Surface risk clearly so the client can take action on their own account health.
+</owner_context>`
+    : `<owner_context>
+This churn analysis is an internal GRIDHAND health check.
+Flag high-risk clients so the experience director can intervene before cancellation.
+</owner_context>`
+
+  const systemPrompt = `${ownerBlock}
+
+<client_context>
   Business: ${client.business_name}
   Vertical: ${ctx.vertical}
   Expected cycle: ${expectedCycle}

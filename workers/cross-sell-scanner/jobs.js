@@ -16,7 +16,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { syncBookOfBusiness, syncDelta } = require('./ams');
 const { analyzeBook, getTopOpportunities } = require('./analyzer');
 const { sendBulkAlerts, processOpportunity, generateAgentAlert, sendAgentAlert } = require('./outreach');
-const Anthropic   = require('@anthropic-ai/sdk');
+const aiClient    = require('../../lib/ai-client');
 const twilio      = require('twilio');
 
 // ---------------------------------------------------------------------------
@@ -398,18 +398,18 @@ queues.weeklyReport.process(async (job) => {
 
 async function generateWeeklyReportText(agency, topList, outreachCount, convertedCount, pipeline) {
     try {
-        const anthropic = new Anthropic({ apiKey: agency.anthropic_api_key || process.env.ANTHROPIC_API_KEY });
-        const prompt    = `Weekly cross-sell report for ${agency.name}.
+        const prompt = `Weekly cross-sell report for ${agency.name}.
 Pipeline: $${pipeline.toLocaleString()} estimated annual premium across ${topList.length} open opportunities.
 Outreach sent this week: ${outreachCount}. Converted: ${convertedCount}.
 Top opportunities: ${topList.slice(0, 5).map(o => `${o.client} — ${o.opportunity} ($${o.est_premium?.toLocaleString()}/yr)`).join('; ')}.
 Write a 3-sentence agent-facing summary.`;
 
-        const res = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001', max_tokens: 300,
-            messages: [{ role: 'user', content: prompt }],
-        });
-        return res.content[0]?.text?.trim() || '';
+        return await aiClient.call({
+            modelString: 'groq/llama-3.3-70b-versatile',
+            systemPrompt: '',
+            messages:    [{ role: 'user', content: prompt }],
+            maxTokens:   300,
+        }) || '';
     } catch {
         return `${agency.name} weekly report: ${topList.length} open opportunities, $${pipeline.toLocaleString()} estimated pipeline, ${outreachCount} outreach sent, ${convertedCount} converted.`;
     }
@@ -549,7 +549,6 @@ queues.lifeEventScan.process(async (job) => {
                             client,
                             opportunity: top,
                             agency,
-                            apiKey: agency.anthropic_api_key || process.env.ANTHROPIC_API_KEY,
                         });
                         const prefix = lifeEvents[0].event_type === 'new_home'
                             ? '[NEW HOME] '

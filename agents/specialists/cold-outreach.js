@@ -27,13 +27,14 @@ function getSupabase() {
   )
 }
 
-async function run(clients = []) {
-  console.log(`[${AGENT_ID.toUpperCase()}] Starting run — ${clients.length} clients`)
+async function run(clients = [], owner = 'gridhand') {
+  console.log(`[${AGENT_ID.toUpperCase()}] Starting run — ${clients.length} clients, owner: ${owner}`)
+  const isClientContext = owner !== 'gridhand'
   const reports = []
 
   for (const client of clients) {
     try {
-      const result = await processClient(client)
+      const result = await processClient(client, isClientContext)
       if (result) reports.push(result)
     } catch (err) {
       console.error(`[${AGENT_ID}] Error for client ${client.id}:`, err.message)
@@ -59,7 +60,7 @@ async function run(clients = []) {
   return specialistReport
 }
 
-async function processClient(client) {
+async function processClient(client, isClientContext = false) {
   const supabase = getSupabase()
   const now = Date.now()
 
@@ -105,7 +106,7 @@ async function processClient(client) {
     }
 
     try {
-      const message = await generateReEngagementMessage(client, state, coldAttempts + 1)
+      const message = await generateReEngagementMessage(client, state, coldAttempts + 1, isClientContext)
       if (!message) continue
 
       const gateResult = validateSMS(message, { businessName: client.business_name })
@@ -155,14 +156,26 @@ async function processClient(client) {
   }
 }
 
-async function generateReEngagementMessage(client, leadState, attemptNumber) {
+async function generateReEngagementMessage(client, leadState, attemptNumber, isClientContext = false) {
   const tones = {
     1: 'curious and helpful — wonder if timing changed for them',
     2: 'brief and value-focused — one specific benefit they might be missing',
     3: 'graceful farewell — no hard feelings, door always open',
   }
 
-  const systemPrompt = `<business>
+  const ownerBlock = isClientContext
+    ? `<owner_context>
+This outreach campaign is running on behalf of ${client.business_name} to re-engage their own cold leads.
+Write from the perspective of ${client.business_name} reaching out to their prospect.
+</owner_context>`
+    : `<owner_context>
+This outreach campaign is an internal GRIDHAND acquisition effort.
+Write from the perspective of GRIDHAND reaching out to a cold prospect business.
+</owner_context>`
+
+  const systemPrompt = `${ownerBlock}
+
+<business>
 Name: ${client.business_name}
 Industry: ${client.industry || 'business'}
 </business>

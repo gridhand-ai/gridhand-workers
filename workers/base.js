@@ -112,7 +112,7 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
         { role: 'user', content: message },
     ];
 
-    const modelString   = client.model || 'anthropic/claude-haiku-4-5-20251001';
+    const modelString   = client.model || 'groq/llama-3.3-70b-versatile';
     const clientApiKeys = client.apiKeys || {};
     const fallbackReply = `Thanks for reaching out to ${biz.name}! We'll get back to you shortly.`;
 

@@ -1,0 +1,177 @@
+{
+  "name": "[GRIDHAND] TRADES — Emergency Inquiry — Immediate Callback SMS",
+  "nodes": [
+    {
+      "id": "trigger-trades-emergency-callback",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "path": "gridhand-industry-trades-emergency-callback",
+        "httpMethod": "POST",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "fag9v5dyfn1v27su"
+    },
+    {
+      "id": "extract-trades-emergency-callback",
+      "name": "Extract Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "mode": "manual",
+        "fields": {
+          "values": [
+            {
+              "name": "clientId",
+              "type": "string",
+              "value": "={{ $json.body.client_id }}"
+            },
+            {
+              "name": "customerPhone",
+              "type": "string",
+              "value": "={{ $json.body.trigger_data.phone ?? $json.body.trigger_data.caller_number ?? $json.body.trigger_data.agent_phone ?? \"\" }}"
+            },
+            {
+              "name": "scenarioId",
+              "type": "string",
+              "value": "trades-emergency-callback"
+            },
+            {
+              "name": "triggerData",
+              "type": "object",
+              "value": "={{ $json.body.trigger_data }}"
+            },
+            {
+              "name": "triggerSource",
+              "type": "string",
+              "value": "={{ $json.body.trigger_source ?? \"live\" }}"
+            },
+            {
+              "name": "eventId",
+              "type": "string",
+              "value": "={{ $json.body.event_id ?? \"\" }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "http-trades-emergency-callback",
+      "name": "POST to GRIDHAND Workers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://gridhand-workers-production.up.railway.app/trigger/missed-call",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"clientId\":      \"{{ $json.clientId }}\",\n  \"customerPhone\": \"{{ $json.customerPhone }}\",\n  \"scenarioId\":    \"trades-emergency-callback\",\n  \"worker\":        \"missed_call\",\n  \"triggerData\":   {{ JSON.stringify($json.triggerData) }},\n  \"triggerSource\": \"{{ $json.triggerSource }}\",\n  \"eventId\":       \"{{ $json.eventId }}\"\n}",
+        "options": {
+          "timeout": 10000
+        }
+      }
+    },
+    {
+      "id": "respond-trades-emergency-callback",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        960,
+        300
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true, \"scenarioId\": \"trades-emergency-callback\", \"worker\": \"missed_call\", \"processedAt\": new Date().toISOString() } }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Fields": {
+      "main": [
+        [
+          {
+            "node": "POST to GRIDHAND Workers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST to GRIDHAND Workers": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "tags": [
+    "gridhand",
+    "industry",
+    "trades",
+    "emergency_inquiry",
+    "auto-generated"
+  ],
+  "meta": {
+    "gridhand": {
+      "source": "industry-scenario-builder",
+      "scenarioId": "trades-emergency-callback",
+      "scenarioName": "Emergency Inquiry — Immediate Callback SMS",
+      "industry": "trades",
+      "trigger": "emergency_inquiry",
+      "worker": "missed_call",
+      "workersUrl": "https://gridhand-workers-production.up.railway.app/trigger/missed-call",
+      "webhookPath": "gridhand-industry-trades-emergency-callback",
+      "description": "When a customer submits an emergency service request or calls after hours, sends an immediate callback SMS within 60 seconds.",
+      "generatedAt": "2026-04-22T04:08:04.070Z"
+    }
+  }
+}

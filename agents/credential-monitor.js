@@ -12,7 +12,7 @@
 //      - Google: POST https://oauth2.googleapis.com/token
 //      - Success → update row with new access_token + token_expires_at
 //      - Failure → flag as critical, send alert
-//   3. If expiring within 7 days + no refresh_token → SMS MJ via NOTIFY_PHONES
+//   3. If expiring within 7 days + no refresh_token → SMS MJ via ADMIN_NOTIFY_PHONES
 //
 // Infrastructure checks (run once per daily invocation):
 //   4. Twilio account balance — alert if < $5
@@ -43,11 +43,11 @@ const EL_MIN_QUOTA_FRACTION  = 0.10;
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
- * Parse NOTIFY_PHONES env var into an array of E.164 numbers.
+ * Parse ADMIN_NOTIFY_PHONES env var into an array of E.164 numbers.
  * Format: "+12627972304" or "+12627972304,+14145550001"
  */
 function getNotifyPhones() {
-    const raw = process.env.NOTIFY_PHONES || '';
+    const raw = process.env.ADMIN_NOTIFY_PHONES || '';
     return raw
         .split(',')
         .map(p => p.trim())
@@ -55,14 +55,14 @@ function getNotifyPhones() {
 }
 
 /**
- * Send SMS alert to every number in NOTIFY_PHONES.
+ * Send SMS alert to every number in ADMIN_NOTIFY_PHONES.
  * Uses the server's default Twilio credentials (no client context needed).
  * Non-blocking — failures are logged, not thrown.
  */
 async function alertViaSms(message) {
     const phones = getNotifyPhones();
     if (!phones.length) {
-        console.warn('[CredMonitor] NOTIFY_PHONES not set — cannot send SMS alert');
+        console.warn('[CredMonitor] ADMIN_NOTIFY_PHONES not set — cannot send SMS alert');
         return;
     }
 

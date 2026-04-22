@@ -32,13 +32,14 @@ function getSupabase() {
   )
 }
 
-async function run(clients = []) {
-  console.log(`[${AGENT_ID.toUpperCase()}] Starting run — ${clients.length} clients`)
+async function run(clients = [], owner = 'gridhand') {
+  console.log(`[${AGENT_ID.toUpperCase()}] Starting run — ${clients.length} clients, owner: ${owner}`)
+  const isClientContext = owner !== 'gridhand'
   const reports = []
 
   for (const client of clients) {
     try {
-      const result = await processClient(client)
+      const result = await processClient(client, isClientContext)
       if (result) reports.push(result)
     } catch (err) {
       console.error(`[${AGENT_ID}] Error for client ${client.id}:`, err.message)
@@ -63,7 +64,7 @@ async function run(clients = []) {
   return specialistReport
 }
 
-async function processClient(client) {
+async function processClient(client, isClientContext = false) {
   const supabase = getSupabase()
   const now = Date.now()
 
@@ -113,6 +114,7 @@ async function processClient(client) {
         .gte('created_at', startOfOnboarding)
 
       const message = await generateOnboardingMessage(client, step, {
+        isClientContext,
         daysSinceSignup: Math.floor(daysSinceSignup),
         tasksDone: tasksDone || 0,
       })
@@ -171,6 +173,19 @@ async function processClient(client) {
 }
 
 async function generateOnboardingMessage(client, step, stats) {
+  const isClientContext = stats.isClientContext || false
+
+  const ownerBlock = isClientContext
+    ? `<owner_context>
+This onboarding message is being sent to a sub-client of ${client.business_name}.
+The message should reflect ${client.business_name}'s brand voice and onboarding experience — not GRIDHAND's.
+Do not reference GRIDHAND by name unless the business has branded their service with GRIDHAND.
+</owner_context>`
+    : `<owner_context>
+This onboarding message is from GRIDHAND to a new GRIDHAND client.
+Sign off as GRIDHAND. Represent the GRIDHAND platform warmly and professionally.
+</owner_context>`
+
   const stepInstructions = {
     welcome: `Day 1 welcome. Introduce GRIDHAND warmly, confirm their setup is live, mention they can book an intro call anytime. Make them feel excited.`,
     checkin: `Day 3 check-in. Ask how the first few days feel. Mention something specific GRIDHAND has already done for them (${stats.tasksDone} tasks completed).`,
@@ -179,7 +194,9 @@ async function generateOnboardingMessage(client, step, stats) {
     celebration: `Day 30 celebration. They made it to 30 days! Celebrate ${stats.tasksDone} tasks completed. Look forward together.`,
   }
 
-  const systemPrompt = `<business>
+  const systemPrompt = `${ownerBlock}
+
+<business>
 Name: ${client.business_name}
 Industry: ${client.industry || 'business'}
 </business>

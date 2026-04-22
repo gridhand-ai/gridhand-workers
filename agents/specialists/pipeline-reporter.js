@@ -35,15 +35,17 @@ function getSupabase() {
 /**
  * Main entry point — generate pipeline health report for each client.
  * @param {Array<Object>} clients
+ * @param {string} [owner] - 'gridhand' (default) for internal reporting, or a client_id for client-scoped monthly reports
  * @returns {Object} specialist report
  */
-async function run(clients = []) {
-  console.log(`[${AGENT_ID.toUpperCase()}] Starting run — ${clients.length} clients`)
+async function run(clients = [], owner = 'gridhand') {
+  console.log(`[${AGENT_ID.toUpperCase()}] Starting run — ${clients.length} clients, owner: ${owner}`)
+  const isClientContext = owner !== 'gridhand'
   const reports = []
 
   for (const client of clients) {
     try {
-      const result = await processClient(client)
+      const result = await processClient(client, isClientContext)
       if (result) reports.push(result)
     } catch (err) {
       console.error(`[${AGENT_ID}] Error for client ${client.id}:`, err.message)
@@ -74,9 +76,10 @@ async function run(clients = []) {
 /**
  * Process a single client — pull lead stage counts and assess pipeline health.
  * @param {Object} client
+ * @param {boolean} isClientContext
  * @returns {Object|null}
  */
-async function processClient(client) {
+async function processClient(client, isClientContext = false) {
   const supabase       = getSupabase()
   const now            = Date.now()
   const stallCutoff    = new Date(now - STALL_THRESHOLD_DAYS * 24 * 60 * 60 * 1000).toISOString()
@@ -110,7 +113,7 @@ async function processClient(client) {
   const stalledStages  = stages.filter(s => stats[s] > 0 && !activeStages.has(s))
 
   // AI synthesis — produce actionable insight string
-  const insight = await synthesizePipeline(client, stats, stalledStages)
+  const insight = await synthesizePipeline(client, stats, stalledStages, isClientContext)
 
   const isStalled = stalledStages.includes('warm') || stalledStages.includes('new')
 
@@ -130,10 +133,24 @@ async function processClient(client) {
  * @param {Object} client
  * @param {Object} stats
  * @param {Array<string>} stalledStages
+ * @param {boolean} isClientContext
  * @returns {Promise<string>}
  */
-async function synthesizePipeline(client, stats, stalledStages) {
-  const systemPrompt = `<business>
+async function synthesizePipeline(client, stats, stalledStages, isClientContext = false) {
+  const ownerBlock = isClientContext
+    ? `<owner_context>
+This report will be shared with ${client.business_name} as their monthly pipeline summary.
+Frame insights as actionable advice the business owner can act on directly.
+Avoid internal GRIDHAND references.
+</owner_context>`
+    : `<owner_context>
+This is an internal GRIDHAND acquisition director report.
+Frame insights for the acquisition director to prioritize follow-up actions across the client portfolio.
+</owner_context>`
+
+  const systemPrompt = `${ownerBlock}
+
+<business>
 Name: ${client.business_name}
 Industry: ${client.industry || 'business'}
 </business>

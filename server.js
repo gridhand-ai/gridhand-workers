@@ -74,6 +74,7 @@ const retentionAgent    = require('./agents/retention-agent');
 const leadNurtureAgent  = require('./agents/lead-nurture-agent');
 const credentialMonitor  = require('./agents/credential-monitor');
 const scenarioEngine     = require('./agents/n8n-scenario-engine');
+const industryBuilder    = require('./agents/industry-scenario-builder');
 const gridhandCommander  = require('./agents/gridhand-commander');
 
 // Redis client (Upstash — persistent dedup across Railway cold starts)
@@ -291,12 +292,25 @@ setTimeout(() => credentialMonitor.run().catch(e => console.error('[CredMonitor]
 // Token impact: Groq only (free tier) — zero Claude API cost.
 scenarioEngine.scheduleDailyRun();
 
+// ── Industry Scenario Builder (daily at 2am, same schedule) ───────────────────
+// Converts the 29 pre-built industry templates (lib/make-scenarios.js) into
+// importable n8n workflow JSON. Each workflow: Webhook → Set → HTTP Request →
+// Respond. Pushes to n8n if N8N_API_KEY is set; saves to disk otherwise.
+// Token impact: neutral — no AI calls, pure JSON generation.
+industryBuilder.scheduleDailyRun();
+
 // ── GridHand Commander — Tier 1 orchestrator ────────────────────────────────
 // Runs every 15 min. Cascades to all 4 Directors → 16 Specialists.
 // High-severity findings SMS MJ via ADMIN_NOTIFY_PHONES.
 setInterval(() => gridhandCommander.run().catch(e => console.error('[Commander]', e.message)), 15 * 60 * 1000);
 // Initial run 60 seconds after boot (let workers stabilize first)
 setTimeout(() => gridhandCommander.run().catch(e => console.error('[Commander]', e.message)), 60 * 1000);
+
+// ─── Scheduled Cron Jobs ──────────────────────────────────────────────────────
+// Weekly report sweep (Monday 8am CT) and any future time-based batch jobs.
+// All setInterval-based recurring tasks live above; cron.js handles calendar-
+// scheduled jobs that need a specific day/time rather than a fixed interval.
+require('./cron');
 
 // ─── Public health endpoint (used by Deploy Watch) ────────────────────────────
 app.get('/health', (req, res) => {
@@ -636,6 +650,24 @@ app.post('/trigger/onboarding', requireApiKey, async (req, res) => {
         campaignTracker.trackSent(client.slug, 'onboarding');
         res.json({ success: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── City Data Refresh Trigger ───────────────────────────────────────────────
+// POST /trigger/city-data-refresh
+// Forces a cache eviction and re-fetch of city open data (Milwaukee business licenses).
+// Body: { city?: string }  — omit to refresh all cities
+// Auth: requireApiKey
+
+const cityData = require('./lib/city-data');
+
+app.post('/trigger/city-data-refresh', requireApiKey, async (req, res) => {
+    const { city = 'all' } = req.body;
+    try {
+        const result = await cityData.refreshCache(city);
+        res.json({ success: true, ...result });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // ─── Intelligent Agent Routes ────────────────────────────────────────────────

@@ -27,7 +27,7 @@ module.exports = {
     if (tone === 'professional') {
       try {
         body = await aiClient.call({
-          modelString: 'anthropic/claude-haiku-4-5-20251001',
+          modelString: 'groq/llama-3.3-70b-versatile',
           systemPrompt: 'You rewrite SMS status updates to be more professional while keeping them under 160 chars and friendly. Reply with only the rewritten message.',
           messages: [{ role: 'user', content: `Rewrite this status update: "${body}"` }],
           maxTokens: 200,

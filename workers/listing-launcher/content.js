@@ -15,10 +15,8 @@
 
 'use strict';
 
-const Anthropic = require('@anthropic-ai/sdk');
+const aiClient  = require('../../lib/ai-client');
 const axios     = require('axios');
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const CANVA_BASE = 'https://api.canva.com/rest/v1';
 
@@ -42,14 +40,12 @@ function buildListingContext(listing) {
 }
 
 async function callClaude(systemPrompt, userPrompt) {
-    const message = await anthropic.messages.create({
-        model:      'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        messages:   [{ role: 'user', content: userPrompt }],
-        system:     systemPrompt,
-    });
-
-    return message.content[0]?.text?.trim() || '';
+    return await aiClient.call({
+        modelString: 'groq/llama-3.3-70b-versatile',
+        systemPrompt,
+        messages:    [{ role: 'user', content: userPrompt }],
+        maxTokens:   1024,
+    }) || '';
 }
 
 // ─── MLS Description ──────────────────────────────────────────────────────────
