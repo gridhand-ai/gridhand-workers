@@ -17,6 +17,7 @@ const { createClient } = require('@supabase/supabase-js')
 const { sendSMS }      = require('../lib/twilio-client')
 const { call }         = require('../lib/ai-client')
 const { scout }        = require('../lib/scout')
+const tokenTracker     = require('../lib/token-tracker')
 
 const acquisitionDirector   = require('./acquisition-director')
 const revenueDirector       = require('./revenue-director')
@@ -58,6 +59,9 @@ async function run(clients = null) {
   const runId    = `cmd_${Date.now()}`
   const startedAt = new Date().toISOString()
   console.log(`[${AGENT_ID.toUpperCase()}] Run ${runId} starting`)
+
+  // Reset per-run token counters — tracks cumulative usage across full hierarchy
+  tokenTracker.resetRun(runId)
 
   const supabase = getSupabase()
 
@@ -229,16 +233,33 @@ Output a JSON object with:
     await notifyMJ(allEscalations, severity, totalActions, mjAlertReason)
   }
 
+  // Capture token usage across entire hierarchy for this run
+  const tokenSummary = tokenTracker.runSummary()
+  console.log(
+    `[${AGENT_ID.toUpperCase()}] Token usage — ` +
+    `groq: ${tokenSummary.tokens.groq}tok, ` +
+    `anthropic: ${tokenSummary.tokens.anthropic}tok, ` +
+    `ollama: ${tokenSummary.tokens.ollama}tok (free), ` +
+    `cost: $${tokenSummary.cost_usd.total}, ` +
+    `day total: ${tokenSummary.day_tokens.total}tok`
+  )
+  if (tokenSummary.warnings.length) {
+    console.warn(`[${AGENT_ID.toUpperCase()}] ⚠️  Token warnings: ${tokenSummary.warnings.join(' | ')}`)
+  }
+
   // Log run to Supabase
   await logRun(supabase, runId, startedAt, severity, {
     situations: situations.length,
     directorReports: directorReports.length,
     totalActions,
     escalations: allEscalations.length,
+    tokens: tokenSummary.tokens,
+    cost_usd: tokenSummary.cost_usd,
+    token_warnings: tokenSummary.warnings,
   }, totalActions)
 
   console.log(`[${AGENT_ID.toUpperCase()}] Run ${runId} complete — ${totalActions} total actions, severity: ${severity}`)
-  return { runId, totalActions, severity, escalations: allEscalations.length }
+  return { runId, totalActions, severity, escalations: allEscalations.length, tokens: tokenSummary.tokens }
 }
 
 // ── Situation detection ───────────────────────────────────────────────────────
