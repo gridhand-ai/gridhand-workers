@@ -11,6 +11,7 @@ const aiClient = require('../../lib/ai-client')
 const { sendSMS } = require('../../lib/twilio-client')
 const { validateSMS } = require('../../lib/message-gate')
 const { fileInteraction } = require('../../lib/memory-client')
+const vault = require('../../lib/memory-vault')
 
 const AGENT_ID  = 'invoice-recovery'
 const DIVISION  = 'revenue'
@@ -41,6 +42,18 @@ async function run(clients = []) {
     workerId: AGENT_ID,
     interactionType: 'specialist_run',
   }).catch(() => {})
+  // Store contact history (invoice recovery attempts) per client into shared vault
+  for (const r of reports) {
+    if (r.clientId) {
+      await vault.store(r.clientId, vault.KEYS.CONTACT_HISTORY, {
+        lastAction: 'invoice_recovery',
+        chaseSent: r.status === 'action_taken',
+        totalAtRisk: r.data?.totalAtRisk,
+        summary: r.summary || 'invoice recovery cycle complete',
+        timestamp: Date.now(),
+      }, 7, AGENT_ID).catch(() => {})
+    }
+  }
   return specialistReport
 }
 

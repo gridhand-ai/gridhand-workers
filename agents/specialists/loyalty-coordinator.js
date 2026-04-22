@@ -12,6 +12,7 @@ const { sendSMS } = require('../../lib/twilio-client')
 const { validateSMS } = require('../../lib/message-gate')
 const { buildClientContext } = require('../../lib/client-context')
 const { fileInteraction } = require('../../lib/memory-client')
+const vault = require('../../lib/memory-vault')
 
 const AGENT_ID  = 'loyalty-coordinator'
 const DIVISION  = 'experience'
@@ -52,6 +53,16 @@ async function run(clients = []) {
     workerId: AGENT_ID,
     interactionType: 'specialist_run',
   }).catch(() => {})
+  // Store communication preferences per client into shared vault
+  for (const r of reports) {
+    if (r.clientId) {
+      await vault.store(r.clientId, vault.KEYS.COMMUNICATION_PREFS, {
+        milestoneCelebrated: r.status === 'action_taken',
+        summary: r.summary || 'loyalty check complete',
+        timestamp: Date.now(),
+      }, 6, AGENT_ID).catch(() => {})
+    }
+  }
   return specialistReport
 }
 

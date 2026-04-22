@@ -10,6 +10,7 @@ const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
 const { buildClientContext } = require('../../lib/client-context')
 const { fileInteraction } = require('../../lib/memory-client')
+const vault = require('../../lib/memory-vault')
 
 const AGENT_ID  = 'churn-predictor'
 const DIVISION  = 'experience'
@@ -50,6 +51,19 @@ async function run(clients = []) {
     workerId: AGENT_ID,
     interactionType: 'specialist_run',
   }).catch(() => {})
+  // Store churn signals per client into shared vault
+  for (const r of reports) {
+    if (r.clientId) {
+      await vault.store(r.clientId, vault.KEYS.CHURN_SIGNALS, {
+        score: r.data?.score,
+        engagementTrend: r.data?.signals?.engagementTrend,
+        tasksPast7d: r.data?.signals?.tasksPast7d,
+        highRisk: r.requiresDirectorAttention || false,
+        summary: r.summary || 'churn analysis complete',
+        timestamp: Date.now(),
+      }, 8, AGENT_ID).catch(() => {})
+    }
+  }
   return specialistReport
 }
 

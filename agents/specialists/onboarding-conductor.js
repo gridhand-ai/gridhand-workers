@@ -11,6 +11,7 @@ const aiClient = require('../../lib/ai-client')
 const { sendSMS } = require('../../lib/twilio-client')
 const { validateSMS } = require('../../lib/message-gate')
 const { fileInteraction } = require('../../lib/memory-client')
+const vault = require('../../lib/memory-vault')
 
 const AGENT_ID  = 'onboarding-conductor'
 const DIVISION  = 'experience'
@@ -49,6 +50,16 @@ async function run(clients = []) {
     workerId: AGENT_ID,
     interactionType: 'specialist_run',
   }).catch(() => {})
+  // Store communication preferences (onboarding progress) per client into shared vault
+  for (const r of reports) {
+    if (r.clientId) {
+      await vault.store(r.clientId, vault.KEYS.COMMUNICATION_PREFS, {
+        onboardingStepSent: r.status === 'action_taken',
+        summary: r.summary || 'onboarding sequence check complete',
+        timestamp: Date.now(),
+      }, 7, AGENT_ID).catch(() => {})
+    }
+  }
   return specialistReport
 }
 

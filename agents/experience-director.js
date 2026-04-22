@@ -8,6 +8,7 @@
 
 const { createClient } = require('@supabase/supabase-js')
 const { call }         = require('../lib/ai-client')
+const vault            = require('../lib/memory-vault')
 
 const churnPredictor       = require('./specialists/churn-predictor')
 const loyaltyCoordinator   = require('./specialists/loyalty-coordinator')
@@ -37,7 +38,7 @@ function getSupabase() {
 }
 
 // ── Groq reasoning: decide specialist priority for this client cohort ─────────
-async function reasonAboutSpecialists(clientList, newClientCount, situation, commanderBrief) {
+async function reasonAboutSpecialists(clientList, newClientCount, situation, commanderBrief, vaultContext = '') {
   const clientSample = clientList.slice(0, 5).map(c => ({
     id:       c.id,
     vertical: c.industry_type || c.industry || 'unknown',
@@ -52,7 +53,7 @@ async function reasonAboutSpecialists(clientList, newClientCount, situation, com
   try {
     const raw = await call({
       modelString: GROQ_MODEL,
-      systemPrompt: `You are the ExperienceDirector for GRIDHAND AI. You manage client success and retention for small business clients across verticals: auto_repair, restaurant, gym, barbershop, retail, real_estate, and others.
+      systemPrompt: `You are part of the GRIDHAND collective intelligence. ${vaultContext ? vaultContext + '\n\n' : ''}You are the ExperienceDirector for GRIDHAND AI. You manage client success and retention for small business clients across verticals: auto_repair, restaurant, gym, barbershop, retail, real_estate, and others.
 Your specialists are: churn-predictor (identifies at-risk clients before they cancel), loyalty-coordinator (runs loyalty and re-engagement programs), client-success (monitors satisfaction and usage health), onboarding-conductor (guides new clients through setup, runs for clients under 30 days).
 Given the client list and situation, decide the optimal dispatch order for specialists and briefly explain why.
 Respond ONLY with valid JSON matching: { "specialists_priority": ["specialist-name", ...], "vertical": "dominant_vertical_or_mixed", "rationale": "one sentence" }`,
@@ -102,8 +103,12 @@ async function run(clients = null, situation = null, commanderBrief = null) {
     return days <= 31
   })
 
+  // ── Load shared memory context ────────────────────────────────────────────
+  const clientId     = clientList[0]?.id
+  const vaultContext = clientId ? await vault.getContext(clientId).catch(() => '') : ''
+
   // ── Groq reasoning: determine specialist priority ─────────────────────────
-  const reasoning = await reasonAboutSpecialists(clientList, newClients.length, situation, commanderBrief)
+  const reasoning = await reasonAboutSpecialists(clientList, newClients.length, situation, commanderBrief, vaultContext)
   await logReasoning(supabase, reasoning, situation)
 
   // Build ordered specialist list — AI-ranked if available, default otherwise

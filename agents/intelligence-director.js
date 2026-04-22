@@ -13,6 +13,7 @@
 const { createClient } = require('@supabase/supabase-js')
 const { call }         = require('../lib/ai-client')
 const { scout }        = require('../lib/scout')
+const vault            = require('../lib/memory-vault')
 
 const dailyDigest       = require('./daily-digest')
 const credentialMonitor = require('./credential-monitor')
@@ -43,6 +44,10 @@ async function run(clients = null, situation = null) {
   const supabase   = getSupabase()
   const clientList = clients || await getActiveClients(supabase)
   const now        = Date.now()
+
+  // ── Load shared memory context ────────────────────────────────────────────
+  const clientId     = clientList[0]?.id
+  const vaultContext = clientId ? await vault.getContext(clientId).catch(() => '') : ''
 
   // ── Run all intelligence agents in parallel ──────────────────────────────
   console.log(`[${AGENT_ID.toUpperCase()}] Running intelligence agents in parallel...`)
@@ -81,6 +86,7 @@ async function run(clients = null, situation = null) {
         { label: 'agent_outputs',   content: agentOutputs },
         { label: 'system_signals',  content: systemSignals },
         { label: 'active_clients',  content: clientList.map(c => ({ id: c.id, name: c.business_name, plan: c.plan, industry: c.industry })) },
+        { label: 'vault_context',   content: vaultContext || 'No vault context yet.' },
       ],
       maxTokens: 4000,
     })
@@ -94,7 +100,7 @@ async function run(clients = null, situation = null) {
     try {
       const opusResponse = await call({
         modelString: OPUS_MODEL,
-        systemPrompt: `You are the IntelligenceDirector for GRIDHAND AI. You synthesize operational intelligence and provide strategic assessments to the Commander.
+        systemPrompt: `You are part of the GRIDHAND collective intelligence. ${vaultContext ? vaultContext + '\n\n' : ''}You are the IntelligenceDirector for GRIDHAND AI. You synthesize operational intelligence and provide strategic assessments to the Commander.
 Output valid JSON with:
 - system_health: "GREEN" | "YELLOW" | "RED"
 - critical_alerts: array of urgent issues requiring immediate action

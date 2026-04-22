@@ -11,6 +11,7 @@ const aiClient = require('../../lib/ai-client')
 const { sendSMS } = require('../../lib/twilio-client')
 const { validateSMS } = require('../../lib/message-gate')
 const { fileInteraction } = require('../../lib/memory-client')
+const vault = require('../../lib/memory-vault')
 
 const AGENT_ID  = 'subscription-guard'
 const DIVISION  = 'revenue'
@@ -41,6 +42,17 @@ async function run(clients = []) {
     workerId: AGENT_ID,
     interactionType: 'specialist_run',
   }).catch(() => {})
+  // Store churn signals (payment health) per client into shared vault
+  for (const r of reports) {
+    if (r.clientId) {
+      await vault.store(r.clientId, vault.KEYS.CHURN_SIGNALS, {
+        paymentHealthAction: r.status === 'action_taken',
+        issue: r.data?.issue,
+        summary: r.summary || 'subscription health check complete',
+        timestamp: Date.now(),
+      }, 8, AGENT_ID).catch(() => {})
+    }
+  }
   return specialistReport
 }
 

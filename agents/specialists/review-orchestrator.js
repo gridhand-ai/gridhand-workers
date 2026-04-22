@@ -12,6 +12,7 @@ const { sendSMS } = require('../../lib/twilio-client')
 const { validateSMS } = require('../../lib/message-gate')
 const { buildClientContext } = require('../../lib/client-context')
 const { fileInteraction } = require('../../lib/memory-client')
+const vault = require('../../lib/memory-vault')
 
 const AGENT_ID  = 'review-orchestrator'
 const DIVISION  = 'brand'
@@ -46,6 +47,16 @@ async function run(clients = []) {
     workerId: AGENT_ID,
     interactionType: 'specialist_run',
   }).catch(() => {})
+  // Store review sentiment per client into shared vault
+  for (const r of reports) {
+    if (r.clientId) {
+      await vault.store(r.clientId, vault.KEYS.REVIEW_SENTIMENT, {
+        requestsSent: r.status === 'action_taken' ? 1 : 0,
+        summary: r.summary || 'review request cycle complete',
+        timestamp: Date.now(),
+      }, 6, AGENT_ID).catch(() => {})
+    }
+  }
   return specialistReport
 }
 

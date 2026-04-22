@@ -9,6 +9,7 @@
 const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
 const { fileInteraction } = require('../../lib/memory-client')
+const vault = require('../../lib/memory-vault')
 
 function getSupabase() {
   return createClient(
@@ -39,6 +40,19 @@ async function run(clients = []) {
     workerId: AGENT_ID,
     interactionType: 'specialist_run',
   }).catch(() => {})
+  // Store best lead outcome per client into shared vault
+  for (const r of reports) {
+    if (r.clientId) {
+      const hotCount  = r.data?.hot?.length  || 0
+      const warmCount = r.data?.warm?.length || 0
+      await vault.store(r.clientId, vault.KEYS.LAST_LEAD_OUTCOME, {
+        hotLeads: hotCount,
+        warmLeads: warmCount,
+        summary: `${hotCount} hot, ${warmCount} warm leads qualified`,
+        timestamp: Date.now(),
+      }, 7, AGENT_ID).catch(() => {})
+    }
+  }
   return specialistReport
 }
 

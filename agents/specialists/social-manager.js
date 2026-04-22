@@ -9,6 +9,7 @@
 const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
 const { fileInteraction } = require('../../lib/memory-client')
+const vault = require('../../lib/memory-vault')
 
 const AGENT_ID  = 'social-manager'
 const DIVISION  = 'brand'
@@ -45,6 +46,16 @@ async function run(clients = []) {
     workerId: AGENT_ID,
     interactionType: 'specialist_run',
   }).catch(() => {})
+  // Store brand voice (social engagement patterns) per client into shared vault
+  for (const r of reports) {
+    if (r.clientId) {
+      await vault.store(r.clientId, vault.KEYS.BRAND_VOICE, {
+        socialDraftGenerated: r.status === 'action_taken',
+        summary: r.summary || 'social management cycle complete',
+        timestamp: Date.now(),
+      }, 5, AGENT_ID).catch(() => {})
+    }
+  }
   return specialistReport
 }
 

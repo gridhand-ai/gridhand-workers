@@ -19,6 +19,7 @@ const { call }         = require('../lib/ai-client')
 const { scout }        = require('../lib/scout')
 const tokenTracker     = require('../lib/token-tracker')
 const { fileInteraction, retrieveMemory, buildMemoryBriefing } = require('../lib/memory-client')
+const vault = require('../lib/memory-vault')
 
 const acquisitionDirector   = require('./acquisition-director')
 const revenueDirector       = require('./revenue-director')
@@ -89,6 +90,15 @@ async function run(clients = null) {
   const situations = await detectSituations(supabase, clientList)
   console.log(`[${AGENT_ID.toUpperCase()}] ${situations.length} situation(s) detected`)
 
+  // ── VAULT: Load shared memory context for all active clients ──────────────
+  const vaultContexts = {}
+  for (const client of clientList) {
+    try {
+      vaultContexts[client.id] = await vault.getContext(client.id)
+    } catch (_) {}
+  }
+  const vaultSummary = Object.values(vaultContexts).filter(Boolean).join('\n\n')
+
   // ── SCOUT: Groq reads everything — builds a rich brief for Opus ────────────
   console.log(`[${AGENT_ID.toUpperCase()}] Scout reading client portfolio...`)
   let commandBrief = null
@@ -100,6 +110,7 @@ async function run(clients = null) {
         { label: 'detected_situations', content: situations },
         { label: 'situation_routing_map', content: SITUATION_ROUTING },
         { label: 'memory_briefing', content: memoryBriefing || 'No prior memory available.' },
+        { label: 'vault_context', content: vaultSummary || 'No vault context yet.' },
       ],
     })
     console.log(`[${AGENT_ID.toUpperCase()}] Scout brief ready (${commandBrief.length} chars)`)
