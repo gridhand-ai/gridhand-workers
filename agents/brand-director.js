@@ -10,10 +10,12 @@ const { createClient } = require('@supabase/supabase-js')
 const { call }         = require('../lib/ai-client')
 const vault            = require('../lib/memory-vault')
 
-const reviewOrchestrator = require('./specialists/review-orchestrator')
-const socialManager      = require('./specialists/social-manager')
-const brandSentinel      = require('./specialists/brand-sentinel')
-const campaignConductor  = require('./specialists/campaign-conductor')
+const reviewOrchestrator  = require('./specialists/review-orchestrator')
+const socialManager       = require('./specialists/social-manager')
+const brandSentinel       = require('./specialists/brand-sentinel')
+const campaignConductor   = require('./specialists/campaign-conductor')
+const contentScheduler    = require('./specialists/content-scheduler')
+const reputationDefender  = require('./specialists/reputation-defender')
 
 const AGENT_ID   = 'brand-director'
 const DIVISION   = 'brand'
@@ -21,13 +23,18 @@ const REPORTS_TO = 'gridhand-commander'
 const GROQ_MODEL = 'groq/llama-3.3-70b-versatile'
 
 // All specialists this director can dispatch, in default order
-const ALL_SPECIALISTS = ['review-orchestrator', 'social-manager', 'brand-sentinel', 'campaign-conductor']
+const ALL_SPECIALISTS = [
+  'review-orchestrator', 'social-manager', 'brand-sentinel', 'campaign-conductor',
+  'content-scheduler', 'reputation-defender',
+]
 
 const SPECIALIST_MAP = {
   'review-orchestrator': reviewOrchestrator,
   'social-manager':      socialManager,
   'brand-sentinel':      brandSentinel,
   'campaign-conductor':  campaignConductor,
+  'content-scheduler':   contentScheduler,
+  'reputation-defender': reputationDefender,
 }
 
 function getSupabase() {

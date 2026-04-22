@@ -14,6 +14,9 @@ const invoiceRecovery   = require('./specialists/invoice-recovery')
 const upsellTimer       = require('./specialists/upsell-timer')
 const subscriptionGuard = require('./specialists/subscription-guard')
 const pricingOptimizer  = require('./specialists/pricing-optimizer')
+const paymentDunner     = require('./specialists/payment-dunner')
+const contractRenewal   = require('./specialists/contract-renewal')
+const revenueForecaster = require('./specialists/revenue-forecaster')
 
 const AGENT_ID   = 'revenue-director'
 const DIVISION   = 'revenue'
@@ -23,13 +26,19 @@ const GROQ_MODEL = 'groq/llama-3.3-70b-versatile'
 const ESCALATION_REVENUE_THRESHOLD = 500
 
 // All specialists this director can dispatch, in default order
-const ALL_SPECIALISTS = ['invoice-recovery', 'upsell-timer', 'subscription-guard', 'pricing-optimizer']
+const ALL_SPECIALISTS = [
+  'invoice-recovery', 'upsell-timer', 'subscription-guard', 'pricing-optimizer',
+  'payment-dunner', 'contract-renewal', 'revenue-forecaster',
+]
 
 const SPECIALIST_MAP = {
   'invoice-recovery':    invoiceRecovery,
   'upsell-timer':        upsellTimer,
   'subscription-guard':  subscriptionGuard,
   'pricing-optimizer':   pricingOptimizer,
+  'payment-dunner':      paymentDunner,
+  'contract-renewal':    contractRenewal,
+  'revenue-forecaster':  revenueForecaster,
 }
 
 function getSupabase() {

@@ -15,13 +15,16 @@ const { call }         = require('../lib/ai-client')
 const { scout }        = require('../lib/scout')
 const vault            = require('../lib/memory-vault')
 
-const dailyDigest       = require('./daily-digest')
-const credentialMonitor = require('./credential-monitor')
-const workerGuardian    = require('./worker-guardian')
-const reputationAgent   = require('./reputation-agent')
-const retentionAgent    = require('./retention-agent')
-const leadNurtureAgent  = require('./lead-nurture-agent')
-const n8nEngine         = require('./n8n-scenario-engine')
+const dailyDigest        = require('./daily-digest')
+const credentialMonitor  = require('./credential-monitor')
+const workerGuardian     = require('./worker-guardian')
+const reputationAgent    = require('./reputation-agent')
+const retentionAgent     = require('./retention-agent')
+const leadNurtureAgent   = require('./lead-nurture-agent')
+const n8nEngine          = require('./n8n-scenario-engine')
+const competitorMonitor       = require('./specialists/competitor-monitor')
+const marketPulse             = require('./specialists/market-pulse')
+const performanceBenchmarker  = require('./specialists/performance-benchmarker')
 
 const AGENT_ID   = 'intelligence-director'
 const DIVISION   = 'intelligence'
@@ -57,20 +60,26 @@ async function run(clients = null, situation = null) {
     reputationResult,
     retentionResult,
     leadNurtureResult,
+    marketPulseResult,
+    performanceBenchResult,
   ] = await Promise.allSettled([
     workerGuardian.run  ? workerGuardian.run({ quiet: true })         : Promise.resolve(null),
     credentialMonitor.run ? credentialMonitor.run()                   : Promise.resolve(null),
     reputationAgent.run ? reputationAgent.run(clientList)             : Promise.resolve(null),
     retentionAgent.run  ? retentionAgent.run(clientList)              : Promise.resolve(null),
     leadNurtureAgent.run ? leadNurtureAgent.run(clientList)           : Promise.resolve(null),
+    marketPulse.run(clientList),
+    performanceBenchmarker.run(clientList),
   ])
 
   const agentOutputs = {
-    workerGuardian:  guardianResult.status    === 'fulfilled' ? guardianResult.value    : { error: guardianResult.reason?.message },
-    credentials:     credentialResult.status  === 'fulfilled' ? credentialResult.value  : { error: credentialResult.reason?.message },
-    reputation:      reputationResult.status  === 'fulfilled' ? reputationResult.value  : { error: reputationResult.reason?.message },
-    retention:       retentionResult.status   === 'fulfilled' ? retentionResult.value   : { error: retentionResult.reason?.message },
-    leadNurture:     leadNurtureResult.status === 'fulfilled' ? leadNurtureResult.value : { error: leadNurtureResult.reason?.message },
+    workerGuardian:        guardianResult.status          === 'fulfilled' ? guardianResult.value          : { error: guardianResult.reason?.message },
+    credentials:           credentialResult.status        === 'fulfilled' ? credentialResult.value        : { error: credentialResult.reason?.message },
+    reputation:            reputationResult.status        === 'fulfilled' ? reputationResult.value        : { error: reputationResult.reason?.message },
+    retention:             retentionResult.status         === 'fulfilled' ? retentionResult.value         : { error: retentionResult.reason?.message },
+    leadNurture:           leadNurtureResult.status       === 'fulfilled' ? leadNurtureResult.value       : { error: leadNurtureResult.reason?.message },
+    marketPulse:           marketPulseResult.status       === 'fulfilled' ? marketPulseResult.value       : { error: marketPulseResult.reason?.message },
+    performanceBenchmarks: performanceBenchResult.status  === 'fulfilled' ? performanceBenchResult.value  : { error: performanceBenchResult.reason?.message },
   }
 
   // Pull recent system signals from Supabase
@@ -217,7 +226,37 @@ function getBrief() {
   return lines.join('\n')
 }
 
-module.exports = { run, report, getBrief, AGENT_ID, DIVISION, REPORTS_TO, schedule: '0 * * * *', tier: 2 }
+// ── runInternalIntelligence: delegates to competitor-monitor Mode A ───────────
+// Aggregates city/industry-wide open data into the industry_intelligence table.
+// @param {string} industry - 'restaurant' | 'auto' | 'salon' | 'retail'
+// @param {string} city     - e.g. 'Milwaukee'
+// @param {string} state    - e.g. 'WI'
+async function runInternalIntelligence(industry, city, state) {
+  console.log(`[${AGENT_ID.toUpperCase()}] runInternalIntelligence: ${industry} / ${city}, ${state}`)
+  try {
+    return await competitorMonitor.runInternal({ industry, city, state })
+  } catch (err) {
+    console.error(`[${AGENT_ID}] runInternalIntelligence failed:`, err.message)
+    return { status: 'error', reason: err.message }
+  }
+}
+
+// ── runClientMonitoring: delegates to competitor-monitor Mode B ───────────────
+// Monitors specific competitors per client, saves insights to competitor_monitoring.
+// Does NOT send alerts — alert delivery is handled separately via message-gate.
+// @param {string} clientId
+// @param {Array<{name: string, url: string, platform: string}>} competitors
+async function runClientMonitoring(clientId, competitors) {
+  console.log(`[${AGENT_ID.toUpperCase()}] runClientMonitoring: clientId=${clientId}`)
+  try {
+    return await competitorMonitor.runClient({ clientId, competitors })
+  } catch (err) {
+    console.error(`[${AGENT_ID}] runClientMonitoring failed:`, err.message)
+    return { status: 'error', reason: err.message }
+  }
+}
+
+module.exports = { run, report, getBrief, runInternalIntelligence, runClientMonitoring, AGENT_ID, DIVISION, REPORTS_TO, schedule: '0 * * * *', tier: 2 }
 
 // ── MISSION FILE CONSOLIDATION (weekly) ──────────────────────────────────────
 // Reads ~/.claude/GRIDHAND_MISSION.md, removes duplicates, consolidates similar

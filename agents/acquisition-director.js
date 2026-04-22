@@ -1,6 +1,6 @@
 'use strict'
 // ── OG GRIDHAND AGENT — TIER 2 ────────────────────────────────────────────────
-// AcquisitionDirector — Manages lead pipeline; delegates to 4 specialists
+// AcquisitionDirector — Manages lead pipeline; delegates to 7 specialists
 // Division: acquisition
 // Reports to: gridhand-commander
 // Runs: every 30 minutes (via Commander cascade)
@@ -10,10 +10,13 @@ const { createClient } = require('@supabase/supabase-js')
 const { call }         = require('../lib/ai-client')
 const vault            = require('../lib/memory-vault')
 
-const leadQualifier     = require('./specialists/lead-qualifier')
-const prospectNurturer  = require('./specialists/prospect-nurturer')
-const referralActivator = require('./specialists/referral-activator')
-const coldOutreach      = require('./specialists/cold-outreach')
+const leadQualifier      = require('./specialists/lead-qualifier')
+const prospectNurturer   = require('./specialists/prospect-nurturer')
+const referralActivator  = require('./specialists/referral-activator')
+const coldOutreach       = require('./specialists/cold-outreach')
+const appointmentSetter  = require('./specialists/appointment-setter')
+const winBackOutreach    = require('./specialists/win-back-outreach')
+const pipelineReporter   = require('./specialists/pipeline-reporter')
 
 const AGENT_ID   = 'acquisition-director'
 const DIVISION   = 'acquisition'
@@ -21,13 +24,19 @@ const REPORTS_TO = 'gridhand-commander'
 const GROQ_MODEL = 'groq/llama-3.3-70b-versatile'
 
 // All specialists this director can dispatch, in default order
-const ALL_SPECIALISTS = ['lead-qualifier', 'prospect-nurturer', 'referral-activator', 'cold-outreach']
+const ALL_SPECIALISTS = [
+  'lead-qualifier', 'prospect-nurturer', 'referral-activator', 'cold-outreach',
+  'appointment-setter', 'win-back-outreach', 'pipeline-reporter',
+]
 
 const SPECIALIST_MAP = {
   'lead-qualifier':     leadQualifier,
   'prospect-nurturer':  prospectNurturer,
   'referral-activator': referralActivator,
   'cold-outreach':      coldOutreach,
+  'appointment-setter': appointmentSetter,
+  'win-back-outreach':  winBackOutreach,
+  'pipeline-reporter':  pipelineReporter,
 }
 
 function getSupabase() {

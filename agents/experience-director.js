@@ -14,6 +14,9 @@ const churnPredictor       = require('./specialists/churn-predictor')
 const loyaltyCoordinator   = require('./specialists/loyalty-coordinator')
 const clientSuccess        = require('./specialists/client-success')
 const onboardingConductor  = require('./specialists/onboarding-conductor')
+const feedbackCollector    = require('./specialists/feedback-collector')
+const milestoneCelebrator  = require('./specialists/milestone-celebrator')
+const supportEscalator     = require('./specialists/support-escalator')
 
 const AGENT_ID   = 'experience-director'
 const DIVISION   = 'experience'
@@ -21,13 +24,19 @@ const REPORTS_TO = 'gridhand-commander'
 const GROQ_MODEL = 'groq/llama-3.3-70b-versatile'
 
 // All specialists this director can dispatch, in default order
-const ALL_SPECIALISTS = ['churn-predictor', 'loyalty-coordinator', 'client-success', 'onboarding-conductor']
+const ALL_SPECIALISTS = [
+  'churn-predictor', 'loyalty-coordinator', 'client-success', 'onboarding-conductor',
+  'feedback-collector', 'milestone-celebrator', 'support-escalator',
+]
 
 const SPECIALIST_MAP = {
-  'churn-predictor':     churnPredictor,
-  'loyalty-coordinator': loyaltyCoordinator,
-  'client-success':      clientSuccess,
+  'churn-predictor':      churnPredictor,
+  'loyalty-coordinator':  loyaltyCoordinator,
+  'client-success':       clientSuccess,
   'onboarding-conductor': onboardingConductor,
+  'feedback-collector':   feedbackCollector,
+  'milestone-celebrator': milestoneCelebrator,
+  'support-escalator':    supportEscalator,
 }
 
 function getSupabase() {
