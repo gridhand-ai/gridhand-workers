@@ -62,14 +62,15 @@ function getTone(client) {
 async function run({ client, message, customerNumber, workerName, systemPrompt, maxTokens = 150, skipHandoffs = false }) {
     const biz    = client.business;
     const global = client.settings?.global || {};
-    const clientSlug = client.slug;
+    const clientSlug        = client.slug;
+    const supabaseClientId  = client.supabaseClientId || null;  // UUID for activity_log FK
 
     // ─── Task limit check ─────────────────────────────────────────────────────
     const taskCheck = await taskCounter.checkAndCount({ client, workerName, customerNumber });
 
     if (!taskCheck.allowed) {
         await emit('task_blocked', {
-            workerName, clientSlug, customerNumber,
+            workerName, clientSlug, supabaseClientId, customerNumber,
             summary: `Limit reached: ${taskCheck.count}/${taskCheck.limit} tasks (${taskCheck.tier} tier)`,
         });
 
@@ -87,7 +88,7 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
 
     if (taskCheck.isNewTask) {
         stateMachine.start(workerName, clientSlug, customerNumber);
-        await emit('task_started', { workerName, clientSlug, customerNumber,
+        await emit('task_started', { workerName, clientSlug, supabaseClientId, customerNumber,
             summary: `Task ${taskCheck.count}/${taskCheck.limit === Infinity ? '∞' : taskCheck.limit} (${taskCheck.tier})`,
         });
     }
@@ -95,7 +96,7 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
     // Escalate if upset
     if (!skipHandoffs && global.escalateOnUpset && isUpset(message)) {
         clientIntel.recordTask(clientSlug, { workerName, wasUpset: true });
-        await emit('task_completed', { workerName, clientSlug, customerNumber, summary: 'escalated_upset' });
+        await emit('task_completed', { workerName, clientSlug, supabaseClientId, customerNumber, summary: 'escalated_upset' });
         return `I understand your concern and want to make sure you're taken care of. Someone from the ${biz.name} team will reach out to you directly very shortly. We appreciate your patience.`;
     }
 
@@ -138,7 +139,7 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
             if (!r) throw new Error('Empty response from AI');
             return r;
         },
-        { workerName, clientSlug, customerNumber, maxRetries: 2, fallbackReply }
+        { workerName, clientSlug, supabaseClientId, customerNumber, maxRetries: 2, fallbackReply }
     );
 
     if (reply && reply !== fallbackReply) {
@@ -147,7 +148,7 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
         clientIntel.recordTask(clientSlug, { workerName, wasUpset: isUpset(message) });
         stateMachine.complete(workerName, clientSlug);
         await emit('task_completed', {
-            workerName, clientSlug, customerNumber,
+            workerName, clientSlug, supabaseClientId, customerNumber,
             summary: reply.slice(0, 60),
             provider: aiClient.getModelLabel(modelString),
         });
