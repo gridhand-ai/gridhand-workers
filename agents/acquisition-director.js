@@ -10,6 +10,8 @@ const { createClient } = require('@supabase/supabase-js')
 const { call }         = require('../lib/ai-client')
 const vault            = require('../lib/memory-vault')
 
+const exa                = require('../lib/exa-client')
+
 const leadQualifier      = require('./specialists/lead-qualifier')
 const prospectNurturer   = require('./specialists/prospect-nurturer')
 const referralActivator  = require('./specialists/referral-activator')

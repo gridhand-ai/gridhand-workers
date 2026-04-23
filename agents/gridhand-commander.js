@@ -19,7 +19,8 @@ const { call }         = require('../lib/ai-client')
 const { scout }        = require('../lib/scout')
 const tokenTracker     = require('../lib/token-tracker')
 const { fileInteraction, retrieveMemory, buildMemoryBriefing } = require('../lib/memory-client')
-const vault = require('../lib/memory-vault')
+const vault            = require('../lib/memory-vault')
+const linear           = require('../lib/linear-client')
 
 const acquisitionDirector   = require('./acquisition-director')
 const revenueDirector       = require('./revenue-director')
@@ -163,6 +164,16 @@ Output a JSON object with:
     )
     await receive(intelReport)
     console.log(`[${AGENT_ID.toUpperCase()}] Intelligence Director complete — extracting brief`)
+
+    // If system_health is RED, create a Linear issue immediately — don't wait for notifyMJ
+    const systemHealth = intelReport?.payload?.system_health || intelReport?.system_health
+    if (systemHealth === 'RED') {
+      await linear.createIssue({
+        title:       '[GRIDHAND] Intelligence Director — system_health RED',
+        description: `Intelligence Director reported RED system health.\n\nTimestamp: ${new Date().toISOString()}\n\nReport summary: ${JSON.stringify((intelReport?.outcomes || []).slice(0, 3))}`,
+        priority:    1,
+      }).catch(() => {})
+    }
   } catch (intelErr) {
     console.error(`[${AGENT_ID}] Intelligence Director failed: ${intelErr.message}`)
     intelReport = {
@@ -175,6 +186,13 @@ Output a JSON object with:
       outcomes:   [{ status: 'error', summary: `Director failed: ${intelErr.message}`, requiresDirectorAttention: true }],
       error:      intelErr.message,
     }
+
+    // Intel director crash is itself a Linear issue
+    await linear.createIssue({
+      title:       '[GRIDHAND] Intelligence Director crashed',
+      description: `Commander detected Intelligence Director failure.\n\nError: ${intelErr.message}\n\nTimestamp: ${new Date().toISOString()}`,
+      priority:    2,
+    }).catch(() => {})
   }
 
   // Pull the intelligence brief — null if Intel Director failed or hasn't run yet
@@ -443,6 +461,27 @@ async function notifyMJ(escalations, severity, totalActions, opusReason = null) 
       console.error(`[${AGENT_ID}] Alert failed for ${phone}:`, err.message)
     }
   }
+
+  // Create a Linear issue for every HIGH/CRITICAL alert so nothing slips through
+  const topEscalation = escalations[0]
+  const issueTitle = `[GRIDHAND] ${severity} alert — ${topEscalation?.summary || opusReason || 'Commander escalation'}`
+  const issueDesc = [
+    `Commander detected a ${severity} situation requiring attention.`,
+    '',
+    opusReason ? `Reason: ${opusReason}` : '',
+    `Total actions this cycle: ${totalActions}`,
+    `Escalations (${escalations.length}):`,
+    ...escalations.slice(0, 5).map(e => `- ${e.summary || e.agentId}`),
+    escalations.length > 5 ? `...and ${escalations.length - 5} more.` : '',
+    '',
+    `Timestamp: ${new Date().toISOString()}`,
+  ].filter(l => l !== null && l !== undefined).join('\n')
+
+  await linear.createIssue({
+    title:       issueTitle,
+    description: issueDesc,
+    priority:    severity === 'CRITICAL' ? 1 : 2,
+  }).catch(() => {})
 }
 
 // ── Receive director reports ──────────────────────────────────────────────────

@@ -29,6 +29,7 @@ const sender           = require('../workers/twilio-sender');
 const { emit, sendTelegramAlert } = require('../lib/events');
 const optoutManager    = require('../subagents/compliance/optout-manager');
 const tcpaChecker      = require('../subagents/compliance/tcpa-checker');
+const posthog          = require('../lib/posthog-client');
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
@@ -336,6 +337,7 @@ async function runForClient(clientId, clientLoader = null) {
                 console.log(`[RetentionAgent] Churn flag: ${clientId} customer dormant ${Math.floor(daysDormant)}d`);
                 await setRetentionState(clientId, customerPhone, { ...state, churnFlagged: true });
                 await logActivity(clientId, 'churn_flagged', `Customer dormant ${Math.floor(daysDormant)}d (${visitCount} visits)`, { daysDormant: Math.floor(daysDormant), visitCount });
+                try { posthog.track(clientId, 'churn_risk_detected', { days_inactive: Math.floor(daysDormant), industry: clientConfig.industry }) } catch (_) {}
                 churnFlagged++;
                 continue; // Don't send a message if we already flagged — let client decide
             }
@@ -368,6 +370,14 @@ async function runForClient(clientId, clientLoader = null) {
 
             const sent = await sendRetentionSMS({ clientConfig, clientLoader, customerPhone, body });
             if (!sent) continue;
+
+            // PostHog: track retention message sent
+            try {
+                posthog.track(clientId, 'retention_message_sent', {
+                    type: msgType === 'win-back' ? 'win_back' : msgType,
+                    industry: clientConfig.industry,
+                })
+            } catch (_) {}
 
             // Update state
             const newState = {

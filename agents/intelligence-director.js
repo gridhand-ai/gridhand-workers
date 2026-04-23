@@ -15,6 +15,8 @@ const { call }         = require('../lib/ai-client')
 const { scout }        = require('../lib/scout')
 const vault            = require('../lib/memory-vault')
 
+const exa                = require('../lib/exa-client')
+
 const dailyDigest        = require('./daily-digest')
 const credentialMonitor  = require('./credential-monitor')
 const workerGuardian     = require('./worker-guardian')

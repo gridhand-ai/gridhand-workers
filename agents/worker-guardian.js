@@ -19,6 +19,8 @@ const { createClient } = require('@supabase/supabase-js')
 const { sendTelegramAlert } = require('../lib/events')
 const path = require('path')
 const fs   = require('fs')
+const sentry = require('../lib/sentry-client')
+sentry.init()
 
 const WORKERS_DIR = path.join(__dirname, '../workers')
 const CLIENTS_DIR = path.join(__dirname, '../clients')
@@ -248,6 +250,7 @@ async function run() {
     if (report) {
         await sendTelegramAlert(report)
         console.log('[worker-guardian] Telegram alert sent')
+        sentry.captureMessage(report, 'error', { check: 'worker-guardian-health' })
     }
 
     return { ok: allOk, checks }
@@ -255,6 +258,7 @@ async function run() {
 
 run().catch(e => {
     console.error('[worker-guardian] Fatal error:', e.message)
+    sentry.captureError(e, { agent: 'worker-guardian' })
     sendTelegramAlert(`*Worker Guardian CRASHED* 🔥\n\`${e.message}\``).catch(() => {})
     process.exit(1)
 })

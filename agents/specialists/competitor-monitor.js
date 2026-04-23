@@ -12,6 +12,7 @@
 const { createClient } = require('@supabase/supabase-js')
 const { call }         = require('../../lib/ai-client')
 const { scrapeUrl }    = require('../../lib/web-scraper')
+const firecrawl        = require('../../lib/firecrawl-client')
 
 const SPECIALIST_ID = 'competitor-monitor'
 const GROQ_MODEL    = 'groq/llama-3.3-70b-versatile'
@@ -239,6 +240,20 @@ async function runClient({ clientId, competitors }) {
         }
       } catch (err) {
         console.warn(`[${SPECIALIST_ID}] Scrape failed for ${name} (${url}):`, err.message)
+      }
+
+      // If basic scrape returned sparse content (<200 chars), try Firecrawl for richer markdown
+      if (url && (!pageContent || pageContent.length < 200)) {
+        try {
+          const fcResult = await firecrawl.scrape(url)
+          if (fcResult.content && fcResult.content.length > (pageContent || '').length) {
+            pageContent = fcResult.content.slice(0, 3000) + (fcResult.content.length > 3000 ? '...[truncated]' : '')
+            console.log(`[${SPECIALIST_ID}] Firecrawl enriched content for ${name} (${pageContent.length} chars)`)
+          }
+        } catch (fcErr) {
+          console.warn(`[${SPECIALIST_ID}] Firecrawl failed for ${name}:`, fcErr.message)
+          // firecrawl failure does not block the agent — continue with whatever pageContent we have
+        }
       }
     }
 
