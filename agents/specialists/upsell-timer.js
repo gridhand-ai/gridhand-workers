@@ -110,7 +110,7 @@ async function processClient(client) {
     .eq('client_id', client.id)
     .in('worker_name', ['5_star_review', 'milestone_hit', 'payment_completed', '90_day_mark'])
     .gte('created_at', since)
-    .is('upsell_sent', null)
+    .not('action', 'eq', 'upsell_sent')  // skip rows already actioned as upsell
 
   // Also check for 90-day clients
   const ninetyDaysAgo = new Date(now - 90 * 24 * 60 * 60 * 1000).toISOString()
@@ -195,9 +195,7 @@ async function processClient(client) {
         updated_at: new Date().toISOString(),
       }, { onConflict: 'agent,client_id,entity_id' })
 
-      if (trigger.id) {
-        await supabase.from('activity_log').update({ upsell_sent: new Date().toISOString() }).eq('id', trigger.id)
-      }
+      // Cooldown tracked in agent_state above — no activity_log column update needed
 
       actionsTaken++
       upsells.push({ trigger: trigger.action })

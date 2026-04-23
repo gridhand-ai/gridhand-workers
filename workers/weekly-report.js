@@ -59,9 +59,9 @@ module.exports = {
     // Activity count already came from generateWeeklyReport — no second query
     await supabase.from('activity_log').insert({
       client_id: clientId,
-      worker: 'weekly-report',
+      worker_name: 'weekly-report',
       action: 'task_completed',
-      result: `Weekly report sent: ${activityCount} tasks this week`,
+      message: `Weekly report sent: ${activityCount} tasks this week`,
       created_at: new Date().toISOString(),
     });
 

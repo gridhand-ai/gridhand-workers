@@ -176,7 +176,7 @@ async function sendSolicitations(supabase, solicitations, clientMap) {
       })
 
       await supabase.from('activity_log').insert({
-        agent_id:   SPECIALIST_ID,
+        worker_id:  SPECIALIST_ID,
         client_id:  sol.clientId,
         action:     'review_solicitation_sent',
         outcome:    'sent',
@@ -198,7 +198,7 @@ async function logResponseDrafts(supabase, responses) {
     if (!resp.draft) continue
     try {
       await supabase.from('activity_log').insert({
-        agent_id:   SPECIALIST_ID,
+        worker_id:  SPECIALIST_ID,
         client_id:  resp.clientId,
         action:     'review_response_drafted',
         outcome:    'drafted',
@@ -240,7 +240,7 @@ async function detectAndLogReputationAlerts(supabase, clientList, allRecentRevie
   for (const alert of alerts) {
     try {
       await supabase.from('activity_log').insert({
-        agent_id:   SPECIALIST_ID,
+        worker_id:  SPECIALIST_ID,
         client_id:  alert.clientId,
         action:     'reputation_alert',
         outcome:    'flagged',

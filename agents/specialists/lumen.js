@@ -56,7 +56,7 @@ async function getLastRunTimestamp(supabase) {
     const { data } = await supabase
       .from('activity_log')
       .select('created_at')
-      .eq('agent_id', SPECIALIST_ID)
+      .eq('worker_id', SPECIALIST_ID)
       .eq('action', 'weekly_insight')
       .order('created_at', { ascending: false })
       .limit(1)
@@ -160,7 +160,7 @@ async function storeInsights(supabase, insights) {
     if (!insight.clientId || !insight.summary) continue
     try {
       await supabase.from('activity_log').insert({
-        agent_id:   SPECIALIST_ID,
+        worker_id:  SPECIALIST_ID,
         client_id:  insight.clientId,
         action:     'weekly_insight',
         outcome:    'generated',

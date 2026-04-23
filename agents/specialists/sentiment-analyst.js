@@ -90,7 +90,7 @@ async function logSentimentResults(supabase, results, clientList) {
   for (const item of escalations) {
     try {
       await supabase.from('activity_log').insert({
-        agent_id:   SPECIALIST_ID,
+        worker_id:  SPECIALIST_ID,
         client_id:  item.clientId,
         action:     'sentiment_escalation',
         outcome:    'flagged',

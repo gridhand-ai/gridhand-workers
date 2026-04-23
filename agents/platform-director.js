@@ -39,12 +39,12 @@ async function getRecentWorkerFailures(supabase) {
     const since = new Date(Date.now() - 15 * 60 * 1000).toISOString()
     const { data } = await supabase
       .from('activity_log')
-      .select('agent_id, outcome, created_at, metadata')
+      .select('worker_id, outcome, created_at, metadata')
       .eq('outcome', 'error')
       .gte('created_at', since)
     const byAgent = {}
     for (const row of data || []) {
-      byAgent[row.agent_id] = (byAgent[row.agent_id] || 0) + 1
+      byAgent[row.worker_id] = (byAgent[row.worker_id] || 0) + 1
     }
     return { failures: data || [], byAgent }
   } catch { return { failures: [], byAgent: {} } }

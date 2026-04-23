@@ -117,7 +117,7 @@ async function logViolations(supabase, audits) {
   for (const v of violations) {
     try {
       await supabase.from('activity_log').insert({
-        agent_id:   SPECIALIST_ID,
+        worker_id:  SPECIALIST_ID,
         client_id:  v.clientId,
         action:     'compliance_violation',
         outcome:    'flagged',

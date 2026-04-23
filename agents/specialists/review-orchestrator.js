@@ -75,7 +75,7 @@ async function processClient(client) {
     .in('worker_name', ['appointment_completed', 'service_completed', 'booking_fulfilled', 'task_completed'])
     .gte('created_at', windowStart)
     .lte('created_at', windowEnd)
-    .is('review_requested', null)
+    .not('action', 'eq', 'review_requested')  // skip rows already actioned
 
   if (!serviceEvents?.length) return null
 
@@ -128,8 +128,7 @@ async function processClient(client) {
         updated_at: new Date().toISOString(),
       }, { onConflict: 'agent,client_id,entity_id' })
 
-      // Mark event as handled
-      await supabase.from('activity_log').update({ review_requested: new Date().toISOString() }).eq('id', event.id)
+      // Suppression state tracked in agent_state above — no activity_log column update needed
 
       actionsTaken++
       requestsSent.push({ event: event.action })

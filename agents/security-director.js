@@ -97,7 +97,7 @@ async function synthesizeThreatLevel(authAnomalies, exposedClients, workerErrors
 async function logSecurityScan(supabase, assessment) {
   try {
     await supabase.from('activity_log').insert({
-      agent_id:   AGENT_ID,
+      worker_id:  AGENT_ID,
       client_id:  'system',
       action:     'security_scan',
       outcome:    assessment.threatLevel === 'critical' || assessment.threatLevel === 'high' ? 'escalated' : 'ok',

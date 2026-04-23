@@ -73,7 +73,7 @@ async function processClient(client) {
     .eq('client_id', client.id)
     .in('action', REFERRAL_TRIGGERS)
     .gte('created_at', since)
-    .is('referral_ask_sent', null)
+    .not('action', 'eq', 'referral_ask_sent')  // skip rows already actioned
 
   if (!events?.length) return null
 
@@ -132,8 +132,7 @@ async function processClient(client) {
         updated_at: new Date().toISOString(),
       }, { onConflict: 'agent,client_id,entity_id' })
 
-      // Mark event as handled
-      await supabase.from('activity_log').update({ referral_ask_sent: new Date().toISOString() }).eq('id', event.id)
+      // Suppression state tracked in agent_state above — no activity_log column update needed
 
       actionsTaken++
       asks.push({ trigger: event.action })

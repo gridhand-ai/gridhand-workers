@@ -184,7 +184,7 @@ async function receive(childReport, supabaseInstance) {
     await supabase
       .from('activity_log')
       .update({ outcome: 'actioned', outcome_director: AGENT_ID })
-      .eq('agent_id', childReport.agentId)
+      .eq('worker_id', childReport.agentId)
       .is('outcome', null)
       .catch(() => {}) // never block on logging
   }

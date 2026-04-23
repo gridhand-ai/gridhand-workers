@@ -20,9 +20,6 @@ const exa                = require('../lib/exa-client')
 const dailyDigest        = require('./daily-digest')
 const credentialMonitor  = require('./credential-monitor')
 const workerGuardian     = require('./worker-guardian')
-const reputationAgent    = require('./reputation-agent')
-const retentionAgent     = require('./retention-agent')
-const leadNurtureAgent   = require('./lead-nurture-agent')
 const n8nEngine          = require('./n8n-scenario-engine')
 const competitorMonitor       = require('./specialists/competitor-monitor')
 const marketPulse             = require('./specialists/market-pulse')
@@ -75,9 +72,13 @@ async function run(clients = null, situation = null) {
   ] = await Promise.allSettled([
     workerGuardian.run  ? workerGuardian.run({ quiet: true })         : Promise.resolve(null),
     credentialMonitor.run ? credentialMonitor.run()                   : Promise.resolve(null),
-    reputationAgent.run ? reputationAgent.run(clientList)             : Promise.resolve(null),
-    retentionAgent.run  ? retentionAgent.run(clientList)              : Promise.resolve(null),
-    leadNurtureAgent.run ? leadNurtureAgent.run(clientList)           : Promise.resolve(null),
+    // reputationAgent, retentionAgent, leadNurtureAgent are operational agents —
+    // they send SMS and require a single UUID clientId, not a clientList array.
+    // Their scheduled runs are handled by server.js setIntervals. Resolved here
+    // as null so the intelligence brief treats them as skipped (not errored).
+    Promise.resolve(null),
+    Promise.resolve(null),
+    Promise.resolve(null),
     marketPulse.run(clientList),
     performanceBenchmarker.run(clientList),
     vanguard.run(clientList),
