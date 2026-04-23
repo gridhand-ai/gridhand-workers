@@ -78,10 +78,10 @@ async function processClient(client) {
         client_id: client.id,
         worker_name: 'lead-qualifier',
         worker_id: 'lead-qualifier',
-        event_type: 'lead_scored',
+        action: 'lead_scored',
         message: `Lead scored ${lead.score}/10 — ${lead.inquiryAbout || 'inquiry'}`,
-        metadata: { score: lead.score, leadId: lead.id },
-        credits_used: 0,
+        metadata: { score: lead.score, leadId: lead.id, event_type: 'lead_scored' },
+        credits_consumed: 0,
         created_at: new Date().toISOString(),
       }).catch(() => {})
     }

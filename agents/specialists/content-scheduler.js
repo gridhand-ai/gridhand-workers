@@ -119,7 +119,7 @@ async function processClient(client) {
     .select('created_at')
     .eq('client_id', client.id)
     .eq('worker_name', AGENT_ID)
-    .eq('event_type', 'content_batch')
+    .eq('action', 'content_batch')
     .order('created_at', { ascending: false })
     .limit(1)
 
@@ -155,10 +155,10 @@ async function processClient(client) {
       client_id:    client.id,
       worker_name:  AGENT_ID,
       worker_id:    AGENT_ID,
-      event_type:   'content_batch',
-      message:      `Generated ${ideas.length} content ideas (avg quality ${avgScore}/10) for week of ${new Date().toDateString()}`,
-      metadata:     { ideas, avgScore, pipelineLog, generatedAt: new Date().toISOString() },
-      credits_used: 0,
+      action:            'content_batch',
+      message:           `Generated ${ideas.length} content ideas (avg quality ${avgScore}/10) for week of ${new Date().toDateString()}`,
+      metadata:          { ideas, avgScore, pipelineLog, generatedAt: new Date().toISOString() },
+      credits_consumed:  0,
       created_at:   new Date().toISOString(),
     })
   } catch (err) {
