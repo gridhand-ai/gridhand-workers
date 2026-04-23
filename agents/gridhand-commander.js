@@ -312,21 +312,23 @@ async function detectSituations(supabase, clients) {
   const oneHourAgo = new Date(now - 60 * 60 * 1000).toISOString()
 
   try {
-    // activity_log uses worker_name as the event type identifier
+    // activity_log.worker_id holds machine-readable event identifiers.
+    // Portal writes: 'lead-followup', 'invoice-chaser', 'recall-worker', 'review-worker'
+    // Specialists write: 'churn_risk', 'payment_failed', 'upsell_opportunity'
     const { data: recentEvents } = await supabase
       .from('activity_log')
-      .select('client_id, worker_name, message, metadata, created_at')
-      .in('worker_name', [
-        'lead_created', 'review_negative', 'payment_failed',
-        'invoice_overdue', 'client_created', 'churn_risk',
-        'upsell_opportunity_flagged',
+      .select('client_id, worker_id, worker_name, message, metadata, created_at')
+      .in('worker_id', [
+        'lead-followup', 'review-worker', 'invoice-chaser',
+        'recall-worker', 'churn_risk', 'payment_failed',
+        'upsell_opportunity',
       ])
       .gte('created_at', oneHourAgo)
       .order('created_at', { ascending: false })
       .limit(100)
 
     for (const event of (recentEvents || [])) {
-      const type = eventToSituation(event.worker_name)
+      const type = eventToSituation(event.worker_id)
       if (type) {
         situations.push({
           type,
@@ -364,17 +366,21 @@ async function detectSituations(supabase, clients) {
   return situations
 }
 
-function eventToSituation(workerName) {
+// Maps activity_log.worker_id values to situation types.
+// Portal writes worker_id as slug identifiers; specialists use event-code worker_ids.
+function eventToSituation(workerId) {
   const map = {
-    'lead_created':                'new_lead',
-    'review_negative':             'review_negative',
-    'payment_failed':              'payment_failed',
-    'invoice_overdue':             'invoice_overdue',
-    'client_created':              'client_new',
-    'churn_risk':                  'churn_risk',
-    'upsell_opportunity_flagged':  'upsell_opportunity',
+    // Portal commander worker_ids
+    'lead-followup':     'new_lead',
+    'review-worker':     'review_new',
+    'invoice-chaser':    'invoice_overdue',
+    'recall-worker':     'churn_risk',
+    // Specialist worker_ids written by workers agents
+    'churn_risk':        'churn_risk',
+    'payment_failed':    'payment_failed',
+    'upsell_opportunity': 'upsell_opportunity',
   }
-  return map[workerName] || null
+  return map[workerId] || null
 }
 
 // ── Severity assessment ───────────────────────────────────────────────────────

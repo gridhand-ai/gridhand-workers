@@ -99,7 +99,7 @@ async function processClient(client) {
   }
 
   // Load brand voice from vault for context
-  const brandVoiceEntry = await vault.get(client.id, vault.KEYS.BRAND_VOICE).catch(() => null)
+  const brandVoiceEntry = await vault.recall(client.id, vault.KEYS.BRAND_VOICE).catch(() => null)
   const brandVoice      = brandVoiceEntry?.voice || null
 
   const ideas = await generateContentBatch(client, brandVoice)

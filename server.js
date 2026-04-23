@@ -850,6 +850,46 @@ app.post('/events/integration', requireApiKey, async (req, res) => {
     }
 });
 
+// POST /send-sms
+// General-purpose outbound SMS endpoint called by the portal's cron workers
+// (appointment-reminder, etc.) when they need to send a message on behalf of
+// a client without going through a specific worker flow.
+//
+// Enforces full TCPA + opt-out guards via lib/twilio-client.js sendSMS().
+// Never call Twilio directly — always go through this endpoint or sendSMS().
+//
+// Body:  { clientId, to, message, tcpaCheck? }
+// Auth:  WORKERS_API_SECRET or GRIDHAND_API_KEY bearer token
+// Returns: { success: true, sid } | { error: string }
+app.post('/send-sms', requireApiKey, async (req, res) => {
+    const { clientId, to, message } = req.body;
+    if (!clientId || !to || !message) {
+        return res.status(400).json({ error: 'clientId, to, and message are required' });
+    }
+    const client = loadClientBySupabaseId(clientId);
+    if (!client) {
+        console.warn(`[send-sms] Client ${clientId} not provisioned in workers — SMS not sent`);
+        return res.status(404).json({ error: 'client_not_provisioned' });
+    }
+    try {
+        const { sendSMS } = require('./lib/twilio-client');
+        const result = await sendSMS({
+            from:            client.twilioNumber || null,
+            to,
+            body:            message,
+            clientApiKeys:   null,
+            clientSlug:      client.slug,
+            clientTimezone:  client.timezone || 'America/Chicago',
+        });
+        console.log(`[send-sms] Sent to ${to} for client ${client.slug} (SID: ${result.sid})`);
+        return res.json({ success: true, sid: result.sid });
+    } catch (err) {
+        console.error(`[send-sms] Failed for client ${clientId} → ${to}: ${err.message}`);
+        reportWorkerError(clientId, 'send-sms', err.message, { to });
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 // POST /test-dispatch
 // Dry-run integration test — runs the full dispatcher logic (client lookup,
 // phone extraction, worker routing) but NEVER fires real SMS or any action.
