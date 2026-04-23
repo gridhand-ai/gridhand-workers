@@ -5,8 +5,7 @@ const path = require('path');
 // Key: Twilio number (e.g. "+14144044418")
 // Value: client config filename (e.g. "test-client")
 const NUMBER_MAP = {
-    // Add entries here as you onboard clients
-    '+14144044418': 'astros-playland'
+    '+14144044418': 'mj-gridhand'
 };
 
 const REGISTRY_PATH = path.join(__dirname, 'registry.json');

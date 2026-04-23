@@ -8,6 +8,7 @@ subagents/data/
 clients/*.json
 !clients/_operator-template.json
 !clients/test-client.json
+!clients/mj-gridhand.json
 !clients/loader.js
 .claude/
 .DS_Store

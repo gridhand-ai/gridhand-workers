@@ -1,0 +1,92 @@
+{
+  "slug": "mj-gridhand",
+  "id": "mj-gridhand",
+  "supabaseClientId": "100153fc-9e77-4af0-8374-3a226df7fb18",
+  "twilioNumber": "+14144044418",
+
+  "model": "anthropic/claude-haiku-4-5-20251001",
+
+  "apiKeys": {
+    "anthropic": null,
+    "twilio": { "accountSid": null, "authToken": null }
+  },
+
+  "workers": [
+    "receptionist",
+    "faq",
+    "after-hours",
+    "review-requester",
+    "reminder",
+    "reactivation",
+    "lead-followup"
+  ],
+
+  "business": {
+    "name": "Astros Playland & Cafe",
+    "industry": "Family Entertainment",
+    "city": "Oak Creek, WI",
+    "address": "140 E Rawson Ave Suite 116, Oak Creek, WI 53154",
+    "phone": "+12624407859",
+    "email": "mjrahim34@gmail.com",
+    "website": "https://www.astrosplaylandcafe.com/",
+    "hours": "Mon-Thu 10am-9pm, Fri-Sun 10am-10pm",
+    "description": "Oak Creek's premier space-themed indoor playground and family cafe for kids aged 1-12.",
+
+    "admission": {
+      "childPerDay": "$18.99 per child (all-day, no time limits)",
+      "adults": "2 adults FREE per play pass. Additional adults $4.99 each.",
+      "underOne": "FREE",
+      "socks": "$3.99 Astro socks required for all guests"
+    },
+
+    "services": [
+      { "name": "General Admission", "price": "$18.99/child" },
+      { "name": "Monthly Membership", "price": "$39.99/child/month" },
+      { "name": "Party Room Mon-Thu", "price": "$300" },
+      { "name": "Party Room Fri-Sun", "price": "$400" }
+    ],
+
+    "faqs": [
+      { "q": "What are your hours?", "a": "We're open Monday–Thursday 10am–9pm and Friday–Sunday 10am–10pm." },
+      { "q": "How much does it cost?", "a": "All-day admission is $18.99 per child. 2 adults get in FREE per play pass." },
+      { "q": "Where are you located?", "a": "140 E Rawson Ave Suite 116, Oak Creek, WI 53154." },
+      { "q": "Can I book a birthday party?", "a": "Yes! Party rooms are $300 Mon–Thu and $400 Fri–Sun. Book at astrosplaylandcafe.com." }
+    ]
+  },
+
+  "settings": {
+    "global": {
+      "tone": "friendly, warm, family-focused",
+      "faqHandoff": true,
+      "escalateOnUpset": true,
+      "escalationNumber": "+12624407859"
+    },
+    "review-requester": {
+      "delayHours": 2,
+      "reviewLink": "https://maps.google.com/?cid=5655487815922698538"
+    },
+    "reminder": {
+      "firstReminderHours": 24,
+      "secondReminderHours": 1,
+      "includeAddress": true
+    },
+    "after-hours": {
+      "captureLeadInfo": true
+    },
+    "reactivation": {
+      "dormantDays": 45,
+      "offerDiscount": false
+    },
+    "lead-followup": {
+      "followUpCount": 2,
+      "daysBetweenFollowUps": 3
+    }
+  },
+
+  "integrations": {
+    "googleBusiness": {
+      "placeId": "ChIJn9t9Ap0VBYgRKkmfWzRUfE4",
+      "googleMapsUrl": "https://maps.google.com/?cid=5655487815922698538"
+    }
+  }
+}
