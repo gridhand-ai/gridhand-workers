@@ -9,7 +9,7 @@
  */
 
 const aiClient  = require('../../lib/ai-client');
-const twilio    = require('twilio');
+const twilioLib = require('../../lib/twilio-client');
 
 // ---------------------------------------------------------------------------
 // Message generation via Claude
@@ -100,18 +100,8 @@ function buildFallbackClientMessage(client, opportunity, agency) {
 }
 
 // ---------------------------------------------------------------------------
-// SMS delivery via Twilio
+// SMS delivery — routes through lib/twilio-client.js for TCPA + opt-out compliance
 // ---------------------------------------------------------------------------
-
-function getTwilioClient(agency) {
-    const sid   = agency.twilio_account_sid || process.env.TWILIO_ACCOUNT_SID;
-    const token = agency.twilio_auth_token  || process.env.TWILIO_AUTH_TOKEN;
-
-    if (!sid || !token) {
-        throw new Error(`Twilio credentials missing for agency: ${agency.slug}`);
-    }
-    return twilio(sid, token);
-}
 
 /**
  * Send an agent alert SMS.
@@ -121,18 +111,19 @@ async function sendAgentAlert({ agency, messageBody }) {
     const agentPhone   = agency.agent_phone;
     const twilioNumber = agency.twilio_number;
 
-    if (!agentPhone) throw new Error(`No agent_phone configured for agency: ${agency.slug}`);
+    if (!agentPhone)   throw new Error(`No agent_phone configured for agency: ${agency.slug}`);
     if (!twilioNumber) throw new Error(`No twilio_number configured for agency: ${agency.slug}`);
 
-    const client = getTwilioClient(agency);
-    const msg    = await client.messages.create({
-        body: messageBody,
-        from: twilioNumber,
-        to:   agentPhone,
+    const result = await twilioLib.sendSMS({
+        from:           twilioNumber,
+        to:             agentPhone,
+        body:           messageBody,
+        clientSlug:     agency.slug || null,
+        clientTimezone: agency.timezone || 'America/Chicago',
     });
 
-    console.log(`[Outreach] Agent alert sent → ${agentPhone} | SID: ${msg.sid}`);
-    return msg.sid;
+    console.log(`[Outreach] Agent alert sent → ${agentPhone.slice(-4)} | SID: ${result.sid}`);
+    return result.sid;
 }
 
 // ---------------------------------------------------------------------------

@@ -87,6 +87,15 @@ async function run(clients = null) {
     return
   }
 
+  // Load assigned_workers — used to filter each director's client list so
+  // specialists only run for clients that have toggled those workers ON.
+  const clientIds = clientList.map(c => c.id)
+  const assignmentMap = await loadAssignedWorkers(supabase, clientIds)
+  const assignedCount = assignmentMap
+    ? Object.values(assignmentMap).reduce((n, s) => n + s.size, 0)
+    : 'unknown (fallback mode)'
+  console.log(`[${AGENT_ID.toUpperCase()}] ${assignedCount} active worker assignment(s) loaded`)
+
   // Detect situations requiring director action
   const situations = await detectSituations(supabase, clientList)
   console.log(`[${AGENT_ID.toUpperCase()}] ${situations.length} situation(s) detected`)
@@ -125,14 +134,18 @@ async function run(clients = null) {
     try {
       opusGuidance = await call({
         modelString: OPUS_MODEL,
-        systemPrompt: `You are GridHandCommander, the master AI orchestrator for GRIDHAND — an AI workforce platform serving small businesses.
-Your job: read the intelligence brief and make strategic decisions about what actions to prioritize this cycle.
-Output a JSON object with:
-- priority_directors: array of director names that need urgent attention (e.g. ["revenue-director","experience-director"])
-- severity_override: null | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
-- key_risks: array of strings — top 3 risks to flag
-- opportunities: array of strings — top 2 opportunities to act on
-- mj_alert_reason: null or string — only set if something needs MJ's immediate attention`,
+        systemPrompt: `<role>GridHandCommander — master AI orchestrator for GRIDHAND AI workforce platform serving small businesses.</role>
+<rules>Read the intelligence brief and make strategic decisions about what actions to prioritize this cycle.</rules>
+<output>Respond with valid JSON only:
+{
+  "priority_directors": ["director1", "director2"],
+  "severity_override": null,
+  "key_risks": ["risk1", "risk2", "risk3"],
+  "opportunities": ["opportunity1", "opportunity2"],
+  "mj_alert_reason": null
+}
+severity_override values: null | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+mj_alert_reason: null unless something requires MJ's immediate attention</output>`,
         messages: [{
           role: 'user',
           content: `INTELLIGENCE BRIEF FROM SCOUT:\n\n${commandBrief}\n\nProvide your command decision as valid JSON only. No other text.`,
@@ -224,8 +237,17 @@ Output a JSON object with:
     directorEntries.map(([id, director], idx) =>
       new Promise((resolve, reject) => {
         setTimeout(() => {
+          // Filter clients to only those with this director's workers active.
+          // This is how the client's dashboard toggle connects to actual work:
+          // assigned_workers.active = true → client appears in this director's run.
+          const directorClients = filterClientsForDirector(clientList, assignmentMap, id)
+          console.log(`[${AGENT_ID.toUpperCase()}] ${id}: ${directorClients.length}/${clientList.length} clients have active workers`)
+          if (!directorClients.length) {
+            resolve({ agentId: id, division: id.replace('-director', ''), reportsTo: AGENT_ID, timestamp: Date.now(), actionsCount: 0, escalations: [], outcomes: [] })
+            return
+          }
           director.run(
-            clientList,
+            directorClients,
             situations.filter(s => SITUATION_ROUTING[s.type] === id),
             intelligenceBrief,
           ).then(resolve).catch(reject)
@@ -276,16 +298,20 @@ Output a JSON object with:
 
   // Capture token usage across entire hierarchy for this run
   const tokenSummary = tokenTracker.runSummary()
-  console.log(
-    `[${AGENT_ID.toUpperCase()}] Token usage — ` +
-    `groq: ${tokenSummary.tokens.groq}tok, ` +
-    `anthropic: ${tokenSummary.tokens.anthropic}tok, ` +
-    `ollama: ${tokenSummary.tokens.ollama}tok (free), ` +
-    `cost: $${tokenSummary.cost_usd.total}, ` +
-    `day total: ${tokenSummary.day_tokens.total}tok`
-  )
+  // Only report Claude (Anthropic) spend — Groq and Ollama are free, no need to surface them.
+  if (tokenSummary.tokens.anthropic > 0) {
+    console.log(
+      `[${AGENT_ID.toUpperCase()}] Claude token usage — ` +
+      `${tokenSummary.tokens.anthropic}tok, ` +
+      `cost: $${tokenSummary.cost_usd.anthropic}, ` +
+      `day total: ${tokenSummary.day_tokens.anthropic}tok`
+    )
+  }
   if (tokenSummary.warnings.length) {
-    console.warn(`[${AGENT_ID.toUpperCase()}] ⚠️  Token warnings: ${tokenSummary.warnings.join(' | ')}`)
+    const claudeWarnings = tokenSummary.warnings.filter(w => w.includes('anthropic'))
+    if (claudeWarnings.length) {
+      console.warn(`[${AGENT_ID.toUpperCase()}] ⚠️  Claude token warnings: ${claudeWarnings.join(' | ')}`)
+    }
   }
 
   // Log run to Supabase
@@ -523,6 +549,65 @@ async function getActiveClients(supabase) {
     return []
   }
   return data || []
+}
+
+// ── Worker assignment filter ──────────────────────────────────────────────────
+// Loads assigned_workers for all active clients and returns a map:
+//   clientId → Set of active worker_id strings
+// Specialists are only dispatched to clients where the corresponding worker
+// has been toggled ON in the dashboard (active = true).
+async function loadAssignedWorkers(supabase, clientIds) {
+  if (!clientIds.length) return {}
+  const { data, error } = await supabase
+    .from('assigned_workers')
+    .select('client_id, worker_id')
+    .in('client_id', clientIds)
+    .eq('active', true)
+  if (error) {
+    console.warn(`[${AGENT_ID}] assigned_workers fetch failed: ${error.message} — running all specialists as fallback`)
+    return null // null = fallback to full client list
+  }
+  const map = {}
+  for (const row of data || []) {
+    if (!map[row.client_id]) map[row.client_id] = new Set()
+    map[row.client_id].add(row.worker_id)
+  }
+  return map
+}
+
+// Worker IDs that correspond to each director's division.
+// These must match the worker_id values written to assigned_workers by the portal.
+const DIRECTOR_WORKER_IDS = {
+  'brand-director': [
+    'social-manager', 'content-scheduler', 'review-orchestrator',
+    'brand-sentinel', 'campaign-conductor', 'reputation-defender',
+  ],
+  'acquisition-director': [
+    'lead-qualifier', 'prospect-nurturer', 'referral-activator', 'cold-outreach',
+  ],
+  'revenue-director': [
+    'invoice-recovery', 'upsell-timer', 'subscription-guard', 'pricing-optimizer',
+    'payment-dunner', 'revenue-forecaster',
+  ],
+  'experience-director': [
+    'churn-predictor', 'loyalty-coordinator', 'client-success',
+    'onboarding-conductor', 'milestone-celebrator', 'feedback-collector',
+  ],
+}
+
+// Given the full client list and the assignment map, return only clients that
+// have at least one of this director's workers toggled on.
+// Falls back to the full list when the map is null (DB error) so the run
+// continues safely rather than silently doing nothing.
+function filterClientsForDirector(clients, assignmentMap, directorId) {
+  if (assignmentMap === null) return clients // fallback: run all
+  const workerIds = DIRECTOR_WORKER_IDS[directorId] || []
+  if (!workerIds.length) return clients
+  return clients.filter(c => {
+    const assigned = assignmentMap[c.id]
+    if (!assigned) return false
+    return workerIds.some(wid => assigned.has(wid))
+  })
 }
 
 module.exports = {

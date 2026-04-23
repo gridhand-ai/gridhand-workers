@@ -197,7 +197,8 @@ async function generateMessage(client, type, data) {
     trial_ending: `Free trial ends in ${data.daysLeft} day(s). Encourage them to add payment info to continue.`,
   }
 
-  const systemPrompt = `<business>
+  const systemPrompt = `<role>Subscription Guard for GRIDHAND AI — write payment and subscription notification SMS messages for small business clients.</role>
+<business>
 Name: ${client.business_name}
 </business>
 

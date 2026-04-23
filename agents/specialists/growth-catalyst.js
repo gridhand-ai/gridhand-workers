@@ -15,10 +15,24 @@
 
 const { createClient } = require('@supabase/supabase-js')
 const { call }         = require('../../lib/ai-client')
+const exa              = require('../../lib/exa-client')
 
 const SPECIALIST_ID = 'growth-catalyst'
 const DIVISION      = 'acquisition'
 const MODEL         = 'groq/llama-3.3-70b-versatile'
+
+// Vertical-specific SMB growth intelligence
+const VERTICAL_GROWTH_INTEL = {
+  'auto':       'Auto repair shops see highest upsell success after 5-star reviews and oil change completions. Avg ticket $180-$400. Mon/Tue are peak days — reach customers then.',
+  'vehicle':    'Auto repair shops see highest upsell success after 5-star reviews and oil change completions. Avg ticket $180-$400. Mon/Tue are peak days.',
+  'salon':      'Salons: repeat visit cycle is 3-6 weeks. Instagram drives new clients; loyalty programs extend visit frequency. Upsell add-on services at checkout.',
+  'barber':     'Barbershops: 3-4 week repeat cycle. Instagram discovery. Loyalty card programs and referral bonuses drive growth. Upsell premium services.',
+  'restaurant': 'Restaurants: lunch/dinner peaks. Google review response time matters. Delivery apps affect rep. Seasonal promos drive repeat visits.',
+  'gym':        'Gyms: January spike, retention cliff at 90 days. Referral programs outperform ads. Class schedule consistency is key to retention.',
+  'fitness':    'Fitness: January spike, retention cliff at 90 days. Referral programs outperform ads. Class consistency is key.',
+  'retail':     'Retail: foot traffic tied to Google Maps ranking. Seasonal promos essential. Inventory signals (low stock) drive urgency.',
+  'real-estate':'Real estate: long sales cycle (3-7 years). Lead nurture is everything. Market timing matters — strike when rates shift.',
+}
 
 const SPARK_SYSTEM = `<role>
 You are SPARK, the Growth Catalyst for GRIDHAND AI. You mine the existing client base for upsell opportunities and identify new prospect segments worth targeting. You produce specific, actionable targets — not generic recommendations.
@@ -40,8 +54,8 @@ Upsell signals:
 </business>
 
 <rules>
-- upsell mode: identify specific clients ready to upgrade, explain WHY each one is ready, suggest the specific pitch angle
-- outreach mode: based on vertical patterns, surface the 3 most promising new prospect verticals or audience segments to target this month
+- upsell mode: identify specific clients ready to upgrade, explain WHY each one is ready, suggest the specific pitch angle grounded in their vertical's behavior patterns
+- outreach mode: based on vertical patterns and the provided market research, surface the 3 most promising new prospect verticals or audience segments to target this month
 - pipeline mode: combine both — full growth report with upsell queue and outreach targets
 - Output structured JSON only. Be specific and actionable. No generic advice.
 - Never mention Make.com — refer to it as "direct integrations" or "the integration layer"
@@ -53,6 +67,29 @@ opportunities: array of { clientId, businessName, currentPlan, targetPlan, signa
 targets: array of { vertical, segment, reasoning, estimatedReach, suggestedHook }
 summary: one-paragraph growth strategy brief
 </output>`
+
+/**
+ * Fetch live market research for growth opportunities via Exa.
+ * Used to ground outreach recommendations in current trends.
+ */
+async function fetchGrowthIntel(vertical = null) {
+  const query = vertical
+    ? `small business growth opportunities ${vertical} 2025 marketing trends`
+    : 'small business SMB growth trends 2025 marketing automation'
+  try {
+    const results = await exa.search(query, { numResults: 3, maxChars: 1000 })
+    if (!results?.results?.length) {
+      // Self-correction: broaden to SMB generalist research
+      const retry = await exa.search('small business automation growth 2025', { numResults: 3, maxChars: 1000 })
+      if (!retry?.results?.length) return null
+      return retry.results.map(r => r.highlights?.join(' ') || r.title).join('\n').slice(0, 1500)
+    }
+    return results.results.map(r => r.highlights?.join(' ') || r.title).join('\n').slice(0, 1500)
+  } catch (err) {
+    console.warn('[growth-catalyst] Exa growth intel failed (non-blocking):', err.message)
+    return null
+  }
+}
 
 function getSupabase() {
   return createClient(
@@ -143,15 +180,22 @@ async function run({ mode = 'pipeline', vertical = null } = {}) {
     pipeline: 'Produce a full growth report: top upsell candidates AND outreach targets. Include a strategic summary. Output JSON only.',
   }
 
+  // Fetch live market research to ground outreach recommendations
+  const growthIntel   = await fetchGrowthIntel(vertical)
+  const verticalIntel = vertical ? VERTICAL_GROWTH_INTEL[vertical.toLowerCase()] : null
+
   const contextBlock = [
     `MODE: ${mode.toUpperCase()}`,
     vertical ? `VERTICAL FILTER: ${vertical}` : 'VERTICAL: all',
+    '',
+    verticalIntel ? `<vertical_context>\n${verticalIntel}\n</vertical_context>` : '',
+    growthIntel   ? `<market_research source="web_search">\n${growthIntel}\n</market_research>` : '',
     '',
     `INSTRUCTION: ${modeInstructions[mode]}`,
     '',
     'CLIENT SIGNALS:',
     JSON.stringify(annotatedClients.slice(0, 60), null, 2),
-  ].join('\n')
+  ].filter(Boolean).join('\n')
 
   let rawOutput = null
   try {

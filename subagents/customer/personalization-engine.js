@@ -1,8 +1,6 @@
 // Personalization Engine — crafts messages tailored to each specific customer
-const Anthropic = require('@anthropic-ai/sdk');
+const aiClient = require('../../lib/ai-client');
 const customerProfiler = require('./customer-profiler');
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // Replace simple template variables
 function applyTemplateVars(template, vars) {
@@ -43,19 +41,17 @@ async function personalize(baseMessage, clientSlug, customerNumber, businessInfo
     });
 
     try {
-        const response = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 200,
-            system: `You personalize SMS messages for a customer service business.
+        const personalized = await aiClient.call({
+            modelString: 'claude-haiku-4-5-20251001',
+            systemPrompt: `You personalize SMS messages for a customer service business.
 Rewrite the given message to feel personal and tailored to this specific customer.
 Keep the same meaning and length. Don't add fluff. Return ONLY the rewritten message text.`,
             messages: [{
                 role: 'user',
                 content: `Original message: "${withVars}"\n\nCustomer context:\n${context}\n\nRewrite to feel personal:`
-            }]
+            }],
+            maxTokens: 200,
         });
-
-        const personalized = response.content[0]?.text?.trim();
         console.log(`[PersonalizationEngine] Personalized message for ${customerNumber}`);
         return { message: personalized, personalized: true, profile };
     } catch (e) {
@@ -74,14 +70,12 @@ async function detectCommunicationStyle(conversationHistory, clientSlug, custome
         .join(' | ');
 
     try {
-        const response = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 50,
-            system: `Analyze the customer's messages and return ONLY one word: casual, formal, brief, or detailed.`,
-            messages: [{ role: 'user', content: customerMessages }]
-        });
-
-        const style = response.content[0]?.text?.trim().toLowerCase();
+        const style = (await aiClient.call({
+            modelString: 'claude-haiku-4-5-20251001',
+            systemPrompt: `Analyze the customer's messages and return ONLY one word: casual, formal, brief, or detailed.`,
+            messages: [{ role: 'user', content: customerMessages }],
+            maxTokens: 50,
+        }))?.trim().toLowerCase();
         if (['casual', 'formal', 'brief', 'detailed'].includes(style)) {
             customerProfiler.updateProfile(clientSlug, customerNumber, { communicationStyle: style });
             return style;

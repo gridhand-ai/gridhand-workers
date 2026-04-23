@@ -7,11 +7,11 @@
 //   schedule-check    — Every 30min  — Detect overruns, idle techs, bay issues
 //   alert-owner       — On-demand    — Triggered by schedule-check when alert threshold hit
 
-const Bull   = require('bull');
-const twilio = require('twilio');
-const tekmetric = require('./tekmetric');
-const scheduler = require('./scheduler');
-const calendar  = require('./calendar');
+const Bull       = require('bull');
+const tekmetric  = require('./tekmetric');
+const scheduler  = require('./scheduler');
+const calendar   = require('./calendar');
+const twilioLib  = require('../../lib/twilio-client');
 
 // ─── Redis connection ─────────────────────────────────────────────────────────
 const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
@@ -34,26 +34,22 @@ const eodSummaryQueue      = createQueue('bay-boss:eod-summary');
 const scheduleCheckQueue   = createQueue('bay-boss:schedule-check');
 const alertOwnerQueue      = createQueue('bay-boss:alert-owner');
 
-// ─── SMS Sender ───────────────────────────────────────────────────────────────
-function getTwilioClient(config) {
-    const sid   = config.twilioAccountSid   || process.env.TWILIO_ACCOUNT_SID;
-    const token = config.twilioAuthToken    || process.env.TWILIO_AUTH_TOKEN;
-    if (!sid || !token) throw new Error('Twilio credentials missing for Bay Boss');
-    return twilio(sid, token);
-}
+// ─── SMS Sender — routes through lib/twilio-client.js for TCPA + opt-out compliance ──
 
 async function sendSMS(config, to, body) {
-    const client = getTwilioClient(config);
-    const from   = config.twilioFrom || process.env.TWILIO_FROM_NUMBER;
+    const from = config.twilioFrom || process.env.TWILIO_FROM_NUMBER;
+    if (!from) throw new Error('Twilio from number missing for Bay Boss');
 
-    try {
-        const msg = await client.messages.create({ from, to, body });
-        console.log(`[BayBoss] SMS sent to ${to}: "${body.slice(0, 60)}..." (SID: ${msg.sid})`);
-        return msg;
-    } catch (e) {
-        console.error(`[BayBoss] SMS send failed to ${to}: ${e.message}`);
-        throw e;
-    }
+    const result = await twilioLib.sendSMS({
+        from,
+        to,
+        body,
+        clientSlug:     config.clientSlug || null,
+        clientTimezone: config.timezone || 'America/Chicago',
+    });
+
+    console.log(`[BayBoss] SMS sent to ${to.slice(-4)}: "${body.slice(0, 60)}..." (SID: ${result.sid})`);
+    return result;
 }
 
 // ─── Job: Morning Briefing ────────────────────────────────────────────────────

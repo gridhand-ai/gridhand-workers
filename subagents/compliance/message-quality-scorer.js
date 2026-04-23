@@ -1,7 +1,5 @@
 // Message Quality Scorer — rates generated messages before sending, rewrites if needed
-const Anthropic = require('@anthropic-ai/sdk');
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const aiClient = require('../../lib/ai-client');
 
 // Quick rule-based quality checks
 function quickScore(message) {
@@ -54,10 +52,9 @@ async function score(message, context = '') {
     }
 
     try {
-        const response = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 150,
-            system: `You score SMS messages for customer service quality. Return ONLY valid JSON:
+        const raw = await aiClient.call({
+            modelString: 'claude-haiku-4-5-20251001',
+            systemPrompt: `You score SMS messages for customer service quality. Return ONLY valid JSON:
 {
   "score": 0-100,
   "grade": "A|B|C|D|F",
@@ -66,10 +63,11 @@ async function score(message, context = '') {
 }
 Score 90-100=excellent, 80-89=good, 70-79=acceptable, below 70=needs work.
 Judge: clarity, tone, length (ideal 50-180 chars), professionalism, actionability.`,
-            messages: [{ role: 'user', content: `Message: "${message}"\nContext: ${context || 'Business SMS reply'}` }]
+            messages: [{ role: 'user', content: `Message: "${message}"\nContext: ${context || 'Business SMS reply'}` }],
+            maxTokens: 150,
         });
 
-        const result = JSON.parse(response.content[0]?.text?.trim());
+        const result = JSON.parse(raw);
         return { ...result, method: 'claude' };
     } catch (e) {
         return { ...quick, grade: quick.score >= 70 ? 'B' : 'C', recommendation: 'Review before sending', method: 'fallback' };
@@ -85,16 +83,14 @@ async function scoreAndImprove(message, context = '', threshold = 70) {
 
     // Rewrite if below threshold
     try {
-        const response = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 200,
-            system: `Rewrite this SMS message to fix quality issues. Keep the same meaning. Return ONLY the improved message text, nothing else.
+        const improved = await aiClient.call({
+            modelString: 'claude-haiku-4-5-20251001',
+            systemPrompt: `Rewrite this SMS message to fix quality issues. Keep the same meaning. Return ONLY the improved message text, nothing else.
 Issues to fix: ${result.issues.join(', ')}
 Context: ${context || 'Business customer service SMS'}`,
-            messages: [{ role: 'user', content: message }]
+            messages: [{ role: 'user', content: message }],
+            maxTokens: 200,
         });
-
-        const improved = response.content[0]?.text?.trim();
         console.log(`[MessageQualityScorer] Improved message (score was ${result.score})`);
         return { original: message, improved, used: improved, scoreResult: result };
     } catch (e) {

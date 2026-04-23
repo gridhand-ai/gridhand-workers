@@ -169,7 +169,8 @@ async function processClient(client) {
  * @returns {Promise<string|null>}
  */
 async function generateFeedbackRequest(client, completion) {
-  const systemPrompt = `<business>
+  const systemPrompt = `<role>Feedback Collector for GRIDHAND AI — write post-service feedback request SMS messages for small business clients.</role>
+<business>
 Name: ${client.business_name}
 Industry: ${client.industry || 'business'}
 </business>

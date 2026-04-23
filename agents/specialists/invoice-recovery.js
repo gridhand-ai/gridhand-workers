@@ -162,7 +162,8 @@ async function generateChaseMessage(client, invoice, tone, daysOverdue) {
     urgent: 'Urgent. This needs immediate attention. Professional but direct.',
   }
 
-  const systemPrompt = `<business>
+  const systemPrompt = `<role>Invoice Recovery Agent for GRIDHAND AI — write invoice follow-up SMS messages on behalf of small business clients.</role>
+<business>
 Name: ${client.business_name}
 </business>
 

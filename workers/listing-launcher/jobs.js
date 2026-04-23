@@ -17,18 +17,13 @@
 
 const Bull       = require('bull');
 const dayjs      = require('dayjs');
-const twilio     = require('twilio');
 const db         = require('./db');
 const mls        = require('./mls');
 const content    = require('./content');
 const dist       = require('./distribution');
+const twilioLib  = require('../../lib/twilio-client');
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
-
-const twilioClient = twilio(
-    process.env.TWILIO_ACCOUNT_SID,
-    process.env.TWILIO_AUTH_TOKEN
-);
 
 // ─── Queue Setup ──────────────────────────────────────────────────────────────
 
@@ -39,13 +34,18 @@ const priceDropQueue         = new Bull('ll:price-drop-campaign', REDIS_URL);
 const weeklyPerformanceQueue = new Bull('ll:weekly-performance',  REDIS_URL);
 const newListingAlertQueue   = new Bull('ll:new-listing-alert',   REDIS_URL);
 
-// ─── SMS Helper ───────────────────────────────────────────────────────────────
+// ─── SMS Helper — routes through lib/twilio-client.js for TCPA + opt-out compliance ──
 
 async function sendSms(toPhone, body, clientSlug, messageType, listingId = null) {
-    await twilioClient.messages.create({
+    const from = process.env.TWILIO_FROM_NUMBER;
+    if (!from) throw new Error('TWILIO_FROM_NUMBER not set');
+
+    await twilioLib.sendSMS({
+        from,
+        to:             toPhone,
         body,
-        from: process.env.TWILIO_FROM_NUMBER,
-        to:   toPhone,
+        clientSlug:     clientSlug || null,
+        clientTimezone: 'America/Chicago',
     });
     await db.logSms(clientSlug, { toPhone, messageBody: body, messageType, listingId });
 }

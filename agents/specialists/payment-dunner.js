@@ -191,7 +191,8 @@ async function generateDunMessage(client, payment, tone, daysFailed) {
     firm: 'Firmer — acknowledge it\'s been several days. Emphasize they need to update payment to avoid interruption.',
   }
 
-  const systemPrompt = `<business>
+  const systemPrompt = `<role>Payment Dunner for GRIDHAND AI — write payment recovery SMS messages for small business clients.</role>
+<business>
 Name: ${client.business_name}
 </business>
 

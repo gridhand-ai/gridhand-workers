@@ -92,7 +92,7 @@ async function handleVoiceStream(twilioWs, authClaim = null) {
           }
         }
 
-        console.log(`[VoiceBridge] Stream started — streamSid=${streamSid} callSid=${callSid} clientId=${clientId} caller=${caller}`)
+        console.log(`[VoiceBridge] Stream started — streamSid=${streamSid} callSid=${callSid} clientId=${clientId} caller=***${caller.slice(-4)}`)
         started = true
         clearTimeout(startTimeout)
         resolveStart()

@@ -1,8 +1,6 @@
 // Intent Classifier — figures out exactly what the customer wants
 // Returns: intent, confidence, suggestedWorker, extractedData
-const Anthropic = require('@anthropic-ai/sdk');
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const aiClient = require('../../lib/ai-client');
 
 // Fast keyword routing before hitting Claude
 const INTENT_PATTERNS = {
@@ -67,10 +65,9 @@ async function classify(message, availableWorkers = [], conversationHistory = []
         : '';
 
     try {
-        const response = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 200,
-            system: `You are an intent classification engine for SMS customer service. Classify the customer's intent and return ONLY valid JSON:
+        const raw = await aiClient.call({
+            modelString: 'claude-haiku-4-5-20251001',
+            systemPrompt: `You are an intent classification engine for SMS customer service. Classify the customer's intent and return ONLY valid JSON:
 {
   "intent": "book|cancel|reschedule|pay|complain|quote|hours|location|optout|confirm|waitlist|referral|review|general",
   "confidence": 0.0-1.0,
@@ -81,10 +78,10 @@ ${workersContext}`,
             messages: [{
                 role: 'user',
                 content: `Customer message: "${message}"${historyContext}`
-            }]
+            }],
+            maxTokens: 200,
         });
 
-        const raw = response.content[0]?.text?.trim();
         const result = JSON.parse(raw);
         result.method = 'claude';
         console.log(`[IntentClassifier] "${message.slice(0, 30)}..." → ${result.intent} (${Math.round(result.confidence * 100)}%)`);

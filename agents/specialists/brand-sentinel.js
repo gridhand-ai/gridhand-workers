@@ -7,12 +7,13 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 const { createClient } = require('@supabase/supabase-js')
-const aiClient = require('../../lib/ai-client')
-const { sendSMS } = require('../../lib/twilio-client')
-const { validateSMS } = require('../../lib/message-gate')
+const aiClient         = require('../../lib/ai-client')
+const exa              = require('../../lib/exa-client')
+const { sendSMS }      = require('../../lib/twilio-client')
+const { validateSMS }  = require('../../lib/message-gate')
 const { buildClientContext } = require('../../lib/client-context')
-const { fileInteraction } = require('../../lib/memory-client')
-const vault = require('../../lib/memory-vault')
+const { fileInteraction }    = require('../../lib/memory-client')
+const vault                  = require('../../lib/memory-vault')
 
 const AGENT_ID  = 'brand-sentinel'
 const DIVISION  = 'brand'
@@ -25,6 +26,52 @@ const VERTICAL_GUIDANCE = {
   'personal-care':        'Focus on wait time complaints, skill feedback, and atmosphere mentions.',
   'family-entertainment': 'Focus on safety mentions, staff friendliness reviews, and value-for-money sentiment.',
   'general':              'Focus on the most common complaint theme and identify one actionable fix.',
+}
+
+/**
+ * Scan the web for brand mentions beyond in-app reviews via Exa.
+ * Catches Reddit posts, local forums, social mentions, news articles.
+ * Self-corrects: if primary search returns nothing, expands to include abbreviations.
+ */
+async function fetchWebMentions(client) {
+  const name = client.business_name
+  const city  = client.city || client.location || ''
+
+  // Primary search — exact business name + city
+  const primaryQuery = city ? `"${name}" ${city} reviews OR complaints OR mentions` : `"${name}" reviews OR complaints`
+  try {
+    const results = await exa.search(primaryQuery, {
+      numResults:     5,
+      maxChars:       1200,
+      excludeDomains: ['facebook.com', 'instagram.com'], // social auth-walled — exa can't see these
+    })
+
+    if (results?.results?.length) {
+      return results.results.map(r => ({
+        title:      r.title,
+        url:        r.url,
+        highlights: r.highlights?.join(' ') || '',
+        published:  r.published,
+      }))
+    }
+
+    // Self-correction: try without quotes + add misspelling variants
+    console.log(`[${AGENT_ID}] Primary brand scan returned no results — expanding search for ${name}`)
+    const broadQuery = city
+      ? `${name} ${city} customer review experience`
+      : `${name} customer review experience`
+    const broadResults = await exa.search(broadQuery, { numResults: 4, maxChars: 1200 })
+    if (!broadResults?.results?.length) return []
+    return broadResults.results.map(r => ({
+      title:      r.title,
+      url:        r.url,
+      highlights: r.highlights?.join(' ') || '',
+      published:  r.published,
+    }))
+  } catch (err) {
+    console.warn(`[${AGENT_ID}] Exa web mention scan failed (non-blocking):`, err.message)
+    return []
+  }
 }
 
 function getSupabase() {
@@ -97,12 +144,16 @@ async function processClient(client) {
   const negativeCount = recentReviews?.filter(r => r.worker_name === 'review_negative').length || 0
   const totalReviews  = recentReviews?.length || 0
 
+  // Scan the web for brand mentions beyond in-app reviews
+  const webMentions = await fetchWebMentions(client)
+
   // Generate weekly brand briefing
   const briefing = await generateWeeklyBriefing(client, {
     positiveReviews: positiveCount,
     negativeReviews: negativeCount,
     totalReviews,
-    recentReviews: recentReviews?.slice(0, 5) || [],
+    recentReviews:   recentReviews?.slice(0, 5) || [],
+    webMentions,
   })
 
   // Save scan state
@@ -153,16 +204,25 @@ async function processClient(client) {
 }
 
 async function generateWeeklyBriefing(client, metrics) {
-  const ctx = buildClientContext(client)
+  const ctx              = buildClientContext(client)
   const verticalGuidance = VERTICAL_GUIDANCE[ctx.vertical] || VERTICAL_GUIDANCE['general']
 
-  const systemPrompt = `${ctx.xml}
+  // Format web mentions for prompt injection
+  const mentionSummary = metrics.webMentions?.length
+    ? metrics.webMentions.slice(0, 3).map(m => `- ${m.title}: ${m.highlights?.slice(0, 120) || 'no excerpt'}`).join('\n')
+    : null
+
+  const systemPrompt = `<role>Brand Sentinel for GRIDHAND AI — deliver weekly brand health briefings to small business clients via SMS.</role>
+${ctx.xml}
 
 <brand_metrics week="this week">
 Positive reviews: ${metrics.positiveReviews}
 Negative reviews: ${metrics.negativeReviews}
 Total review activity: ${metrics.totalReviews}
 </brand_metrics>
+${mentionSummary ? `<web_mentions source="external_scan">
+${mentionSummary}
+</web_mentions>` : ''}
 
 <vertical_guidance>
 ${verticalGuidance}
@@ -170,13 +230,15 @@ ${verticalGuidance}
 
 <task>
 Write a brief weekly brand health update for the business owner.
-Be honest — if there are issues, name them concisely.
+Be honest — if there are issues (negative reviews, negative web mentions), name them concisely.
+If web mentions surface something notable (positive press or a complaint thread), mention it briefly.
 If things look good, celebrate briefly and give one proactive tip aligned with the vertical guidance above.
 </task>
 
 <rules>
 - 3-4 sentences max
 - Data-driven and practical
+- Reference web mentions only if they are notable and specific
 - End with one actionable recommendation relevant to the vertical
 - Sign off as GRIDHAND
 - Output ONLY the SMS text
@@ -187,7 +249,7 @@ If things look good, celebrate briefly and give one proactive tip aligned with t
     clientApiKeys: {},
     systemPrompt,
     messages: [{ role: 'user', content: 'Write the weekly brand briefing.' }],
-    maxTokens: 200,
+    maxTokens: 220,
     _workerName: AGENT_ID,
   })
 }

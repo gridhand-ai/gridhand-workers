@@ -1,5 +1,6 @@
 /**
  * GRIDHAND Refill Runner — Bull Queue Job Definitions
+ * VERTICAL: Veterinary practices (animal patients only — NOT human healthcare)
  *
  * Jobs:
  *  - refill-check      → Tue+Fri 9am: scan Rx, find those due within 14 days, send reminder SMS

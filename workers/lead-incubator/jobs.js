@@ -18,12 +18,13 @@
 
 'use strict';
 
-const Bull    = require('bull');
-const twilio  = require('twilio');
-const dayjs   = require('dayjs');
-const nurture = require('./nurture');
-const fub     = require('./followupboss');
-const db      = require('./db');
+const Bull           = require('bull');
+const dayjs          = require('dayjs');
+const nurture        = require('./nurture');
+const fub            = require('./followupboss');
+const db             = require('./db');
+const twilioClient   = require('../../lib/twilio-client');
+const { validateSMS } = require('../../lib/message-gate');
 
 // ─── Queue Setup ──────────────────────────────────────────────────────────────
 
@@ -45,25 +46,21 @@ const DRIP_DELAYS = {
 
 const DRIP_MAX_STEPS = 5;
 
-// ─── Twilio Client Factory ────────────────────────────────────────────────────
-
-function getTwilioClient() {
-    const sid   = process.env.TWILIO_ACCOUNT_SID;
-    const token = process.env.TWILIO_AUTH_TOKEN;
-    if (!sid || !token) throw new Error('Twilio credentials not configured');
-    return twilio(sid, token);
-}
-
 /**
- * Send an SMS to a lead. Uses client's twilio_from if set, else env var.
+ * Send an SMS to a lead. Routes through lib/twilio-client.js for TCPA + opt-out compliance.
+ * For AI-generated bodies, call validateSMS() before this function.
  */
 async function sendSms(to, body, client, leadId) {
-    const twilioClient = getTwilioClient();
-    const from         = client?.twilio_from || process.env.TWILIO_FROM_NUMBER;
-
+    const from = client?.twilio_from || process.env.TWILIO_FROM_NUMBER;
     if (!from) throw new Error('No Twilio from number configured');
 
-    const msg = await twilioClient.messages.create({ to, from, body });
+    const result = await twilioClient.sendSMS({
+        from,
+        to,
+        body,
+        clientSlug:      client?.client_slug || null,
+        clientTimezone:  client?.timezone || 'America/Chicago',
+    });
 
     // Log to database
     await db.logSms({
@@ -73,11 +70,11 @@ async function sendSms(to, body, client, leadId) {
         to_number:   to,
         from_number: from,
         body,
-        twilio_sid:  msg.sid,
+        twilio_sid:  result.sid || null,
     });
 
-    console.log(`[SMS] Sent to ${to} — SID: ${msg.sid}`);
-    return msg;
+    console.log(`[SMS] Sent to ${to.slice(-4)} — SID: ${result.sid}`);
+    return result;
 }
 
 // ─── Job: Immediate Response ───────────────────────────────────────────────────
@@ -107,8 +104,15 @@ immediateResponseQueue.process(async (job) => {
 
     const { message } = data;
 
+    // Quality gate — block hallucinated content before it reaches the customer
+    const gate = validateSMS(message);
+    if (!gate.valid) {
+        console.warn(`[ImmediateResponse] SMS blocked by quality gate for lead ${leadId}: ${gate.issues.join('; ')}`);
+        return { leadId, messageSent: null, blocked: true, reason: gate.issues };
+    }
+
     // Send SMS to lead
-    await sendSms(lead.phone, message, client, leadId);
+    await sendSms(lead.phone, gate.text, client, leadId);
 
     // Log conversation
     await db.logConversation({
@@ -250,8 +254,15 @@ dripStepQueue.process(async (job) => {
 
     const { message } = data;
 
+    // Quality gate — block hallucinated content before it reaches the customer
+    const gate = validateSMS(message);
+    if (!gate.valid) {
+        console.warn(`[DripStep] SMS blocked by quality gate (step ${step}, lead ${leadId}): ${gate.issues.join('; ')}`);
+        return { leadId, step, messageSent: null, blocked: true, reason: gate.issues };
+    }
+
     // Send SMS
-    await sendSms(lead.phone, message, client, leadId);
+    await sendSms(lead.phone, gate.text, client, leadId);
 
     // Log conversation
     await db.logConversation({
@@ -312,8 +323,15 @@ morningDigestQueue.process(async (job) => {
 
     const { message } = data;
 
+    // Quality gate — block hallucinated content before it reaches the agent
+    const gate = validateSMS(message);
+    if (!gate.valid) {
+        console.warn(`[MorningDigest] SMS blocked by quality gate for client ${clientId}: ${gate.issues.join('; ')}`);
+        return { clientId, agentPhone, leadCount: leads.length, blocked: true, reason: gate.issues };
+    }
+
     // Send to agent
-    await sendSms(agentPhone, message, client, null);
+    await sendSms(agentPhone, gate.text, client, null);
 
     console.log(`[MorningDigest] Sent to agent ${agentPhone} for client ${clientId} — ${leads.length} leads`);
     return { clientId, agentPhone, leadCount: leads.length };

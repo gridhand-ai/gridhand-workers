@@ -1,8 +1,6 @@
 // FAQ Extractor — reads conversations and auto-builds the FAQ list for each client
-const Anthropic = require('@anthropic-ai/sdk');
+const aiClient = require('../../lib/ai-client');
 const store = require('../store');
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 function getFAQs(clientSlug) {
     return store.readJson('extracted-faqs', clientSlug) || { faqs: [], updatedAt: null };
@@ -41,20 +39,20 @@ async function extractFromConversation(conversationHistory, clientSlug, business
     }
 
     try {
-        const response = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 300,
-            system: `Extract real customer questions from this SMS conversation for ${businessName}. Return ONLY valid JSON:
+        const raw = await aiClient.call({
+            modelString: 'claude-haiku-4-5-20251001',
+            systemPrompt: `Extract real customer questions from this SMS conversation for ${businessName}. Return ONLY valid JSON:
 {
   "questions": [
     { "question": "the customer's question rephrased cleanly", "category": "hours|pricing|services|booking|policy|other" }
   ]
 }
 Only extract genuine questions about the business. Ignore greetings and small talk. Max 3 questions per conversation.`,
-            messages: [{ role: 'user', content: customerMessages }]
+            messages: [{ role: 'user', content: customerMessages }],
+            maxTokens: 300,
         });
 
-        const result = JSON.parse(response.content[0]?.text?.trim());
+        const result = JSON.parse(raw);
         if (!result.questions?.length) return null;
 
         // Merge with existing FAQs

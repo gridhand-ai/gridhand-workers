@@ -16,8 +16,22 @@
 
 const { createClient }    = require('@supabase/supabase-js')
 const aiClient            = require('../../lib/ai-client')
+const exa                 = require('../../lib/exa-client')
 const { fileInteraction } = require('../../lib/memory-client')
 const vault               = require('../../lib/memory-vault')
+
+// ── Vertical knowledge base ───────────────────────────────────────────────────
+const VERTICAL_INTEL = {
+  'auto':          { peakDays: 'Mon/Tue', avgTicket: '$180-$400', reviewPlatforms: 'Yelp + Google', repeatCycle: '3-6 months', shopperBehavior: 'price + trust driven' },
+  'vehicle':       { peakDays: 'Mon/Tue', avgTicket: '$180-$400', reviewPlatforms: 'Yelp + Google', repeatCycle: '3-6 months', shopperBehavior: 'price + trust driven' },
+  'salon':         { peakDays: 'Thu-Sat', avgTicket: '$60-$150', reviewPlatforms: 'Google + Instagram', repeatCycle: '3-6 weeks', shopperBehavior: 'Instagram drives discovery, reviews seal trust' },
+  'barber':        { peakDays: 'Fri-Sat', avgTicket: '$30-$60', reviewPlatforms: 'Google + Instagram', repeatCycle: '3-4 weeks', shopperBehavior: 'Instagram drives discovery, repeat loyalty critical' },
+  'restaurant':    { peakDays: 'Fri-Sun', avgTicket: '$20-$60', reviewPlatforms: 'Google + Yelp', repeatCycle: '2-4 weeks', shopperBehavior: 'Google reviews + response time matter most' },
+  'gym':           { peakDays: 'Mon/Jan spike', avgTicket: '$30-$80/mo', reviewPlatforms: 'Google', repeatCycle: 'monthly', shopperBehavior: 'retention drops at 90 days, referrals work well' },
+  'fitness':       { peakDays: 'Mon/Jan spike', avgTicket: '$30-$80/mo', reviewPlatforms: 'Google', repeatCycle: 'monthly', shopperBehavior: 'retention drops at 90 days, referrals work well' },
+  'retail':        { peakDays: 'Sat-Sun', avgTicket: '$40-$200', reviewPlatforms: 'Google Maps', repeatCycle: '4-8 weeks', shopperBehavior: 'foot traffic + Google Maps visibility critical' },
+  'real-estate':   { peakDays: 'varies', avgTicket: '$5k-$25k commission', reviewPlatforms: 'Google + Zillow', repeatCycle: '3-7 years', shopperBehavior: 'long sales cycle, lead nurture is everything' },
+}
 
 const AGENT_ID   = 'market-pulse'
 const DIVISION   = 'intelligence'
@@ -119,6 +133,33 @@ async function processClient(client) {
 }
 
 /**
+ * Fetch real-time market trends for a client's vertical and city via Exa.
+ * Returns a compact intel string or null if search fails.
+ */
+async function fetchMarketIntel(client) {
+  const industry  = client.industry || 'small business'
+  const city      = client.city     || client.location || ''
+  const query     = city
+    ? `${industry} business trends customer demand ${city} 2025`
+    : `${industry} small business customer demand trends 2025`
+
+  try {
+    const results = await exa.search(query, { numResults: 3, maxChars: 1200 })
+    if (!results?.results?.length) {
+      // Self-correction: retry with broader terms
+      console.log(`[${AGENT_ID}] Exa returned no results — retrying with broader query`)
+      const broad = await exa.search(`${industry} business trends 2025`, { numResults: 3, maxChars: 1200 })
+      if (!broad?.results?.length) return null
+      return broad.results.map(r => r.highlights?.join(' ') || r.title).join('\n').slice(0, 2000)
+    }
+    return results.results.map(r => r.highlights?.join(' ') || r.title).join('\n').slice(0, 2000)
+  } catch (err) {
+    console.warn(`[${AGENT_ID}] Exa search failed (non-blocking):`, err.message)
+    return null
+  }
+}
+
+/**
  * Use Groq to extract demand signals from message corpus.
  * @param {Object} client
  * @param {string} corpus
@@ -126,27 +167,56 @@ async function processClient(client) {
  * @returns {Promise<Object|null>}
  */
 async function analyzeTrends(client, corpus, messageCount) {
-  const systemPrompt = `<business>
+  // Pull real-time market context from the web before generating insights
+  const marketIntel = await fetchMarketIntel(client)
+
+  // Resolve vertical-specific context
+  const industryKey  = Object.keys(VERTICAL_INTEL).find(k =>
+    (client.industry || '').toLowerCase().includes(k)
+  )
+  const verticalData = industryKey ? VERTICAL_INTEL[industryKey] : null
+  const verticalXml  = verticalData
+    ? `<vertical_context industry="${client.industry}">
+Peak days: ${verticalData.peakDays}
+Average ticket: ${verticalData.avgTicket}
+Key review platforms: ${verticalData.reviewPlatforms}
+Repeat visit cycle: ${verticalData.repeatCycle}
+Shopper behavior: ${verticalData.shopperBehavior}
+</vertical_context>`
+    : ''
+
+  const systemPrompt = `<role>Market Pulse Analyst for GRIDHAND AI — identify demand signals and emerging needs from customer message data, enriched with real-time market research.</role>
+<business>
 Name: ${client.business_name}
 Industry: ${client.industry || 'business'}
 </business>
+${verticalXml}
+${marketIntel ? `<market_intel source="web_search">\n${marketIntel}\n</market_intel>` : ''}
 
 <task>
-Analyze these ${messageCount} recent inbound customer messages. Identify:
+Analyze these ${messageCount} recent inbound customer messages. Cross-reference with
+the market intel above if available. Identify:
 1. Recurring demand signals or topics customers keep asking about
-2. Any emerging services or needs not currently being met
-3. The single most important market insight from this data
+2. Any emerging services or needs not currently being met — compare against market trends
+3. The single most important market insight from this combined data
 </task>
 
 <messages>
 ${corpus.slice(0, 3000)}
 </messages>
 
+<self_correction>
+If your signals array is empty after analyzing the messages, re-examine the corpus
+for subtler patterns — frequency of similar words, time-of-day patterns, or
+service type clustering. Only return empty signals if the corpus is genuinely random.
+</self_correction>
+
 <output>
 Return a JSON object with:
 - "signals": array of up to 3 strings (specific recurring topics/demands)
 - "topSignal": the single most important signal as a sentence
 - "insight": 1 actionable sentence for the business owner
+- "marketContext": 1 sentence from web research if available, null otherwise
 
 Return ONLY valid JSON. No other text.
 </output>`
@@ -157,7 +227,7 @@ Return ONLY valid JSON. No other text.
       clientApiKeys: {},
       systemPrompt,
       messages:      [{ role: 'user', content: 'Analyze the message trends.' }],
-      maxTokens:     300,
+      maxTokens:     400,
       _workerName:   AGENT_ID,
     })
     const jsonMatch = raw?.match(/\{[\s\S]*\}/)

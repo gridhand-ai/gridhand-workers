@@ -55,8 +55,6 @@ const INDUSTRY_RETURN_WINDOW_DAYS = {
     'coffee shop':       14,
     'fitness':           21,
     'gym':               21,
-    'dental':            180,
-    'dentist':           180,
     'veterinary':        365,
     'vet':               365,
     'cleaning':          30,
@@ -189,7 +187,8 @@ async function generateRetentionMessage({ clientConfig, customerName, msgType, v
         taskDesc = `Write a "we miss you" SMS. Customer's last service was: ${lastService || 'a while ago'}. ${offerText ? `Include this offer: ${offerText}` : 'Keep it warm and welcoming.'} Goal: invite them back gently without being pushy.`;
     }
 
-    const systemPrompt = `<business>
+    const systemPrompt = `<role>Retention Agent for GRIDHAND AI — write warm, human retention SMS messages on behalf of small business clients.</role>
+<business>
 Name: ${bizName}
 Industry: ${industry}
 </business>

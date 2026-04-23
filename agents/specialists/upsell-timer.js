@@ -226,7 +226,8 @@ async function generateUpsellMessage(client, trigger, currentPlan) {
     'payment_completed': 'They just completed a payment.',
   }
 
-  const systemPrompt = `<business>
+  const systemPrompt = `<role>Upsell Timer Agent for GRIDHAND AI — write natural upgrade SMS messages at the right moment in the client relationship.</role>
+<business>
 Name: ${client.business_name}
 Industry: ${client.industry || 'business'}
 </business>

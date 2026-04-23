@@ -153,7 +153,8 @@ async function processClient(client) {
  * @returns {Promise<string|null>}
  */
 async function generateWinBackMessage(client, lead) {
-  const systemPrompt = `<business>
+  const systemPrompt = `<role>Win-Back Outreach Agent for GRIDHAND AI — write warm, low-pressure re-engagement SMS messages for small business clients.</role>
+<business>
 Name: ${client.business_name}
 Industry: ${client.industry || 'business'}
 </business>

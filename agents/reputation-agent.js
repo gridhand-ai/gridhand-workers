@@ -184,7 +184,8 @@ async function draftReviewResponse(clientConfig, review) {
     const reviewText = review.comment || '(no text)';
     const reviewerName = review.reviewer?.displayName || 'this customer';
 
-    const systemPrompt = `<business>
+    const systemPrompt = `<role>Reputation Agent for GRIDHAND AI — draft professional, warm responses to Google reviews on behalf of small business clients.</role>
+<business>
 Name: ${bizName}
 Industry: ${industry}
 </business>

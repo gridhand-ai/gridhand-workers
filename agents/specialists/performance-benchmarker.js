@@ -15,6 +15,7 @@
 
 const { createClient }    = require('@supabase/supabase-js')
 const aiClient            = require('../../lib/ai-client')
+const exa                 = require('../../lib/exa-client')
 const { fileInteraction } = require('../../lib/memory-client')
 const vault               = require('../../lib/memory-vault')
 
@@ -27,6 +28,43 @@ const BENCHMARKS = {
   avgReviewScore:        4.0,   // out of 5
   responseRatePercent:   60,    // % of leads responded to
   retentionRate30d:      0.8,   // 80% of active clients still active after 30d
+}
+
+// Vertical-specific performance context for richer benchmarking
+const VERTICAL_BENCHMARKS = {
+  'auto':       { industryAvgRating: 4.3, topRatingPlatform: 'Google/Yelp', keyMetric: 'response time to negative reviews', avgTicket: '$180-$400' },
+  'vehicle':    { industryAvgRating: 4.3, topRatingPlatform: 'Google/Yelp', keyMetric: 'response time to negative reviews', avgTicket: '$180-$400' },
+  'salon':      { industryAvgRating: 4.4, topRatingPlatform: 'Google/Instagram', keyMetric: 'rebooking rate (3-6 week cycle)', avgTicket: '$60-$150' },
+  'barber':     { industryAvgRating: 4.5, topRatingPlatform: 'Google/Instagram', keyMetric: 'repeat visit rate (3-4 week cycle)', avgTicket: '$30-$60' },
+  'restaurant': { industryAvgRating: 4.1, topRatingPlatform: 'Google/Yelp', keyMetric: 'review response time (same-day target)', avgTicket: '$20-$60' },
+  'gym':        { industryAvgRating: 4.2, topRatingPlatform: 'Google', keyMetric: '90-day member retention', avgTicket: '$30-$80/mo' },
+  'fitness':    { industryAvgRating: 4.2, topRatingPlatform: 'Google', keyMetric: '90-day member retention', avgTicket: '$30-$80/mo' },
+  'retail':     { industryAvgRating: 4.2, topRatingPlatform: 'Google Maps', keyMetric: 'Google Maps visibility + foot traffic', avgTicket: '$40-$200' },
+  'real-estate':{ industryAvgRating: 4.5, topRatingPlatform: 'Google/Zillow', keyMetric: 'lead response time (first hour critical)', avgTicket: 'commission-based' },
+}
+
+/**
+ * Fetch external competitive benchmarks for a client's vertical via Exa.
+ */
+async function fetchCompetitiveBenchmarks(client) {
+  const industry = client.industry || 'small business'
+  const city     = client.city || client.location || ''
+  const query    = city
+    ? `average Google review rating ${industry} business ${city}`
+    : `${industry} small business Google review benchmarks performance 2025`
+  try {
+    const results = await exa.search(query, { numResults: 3, maxChars: 800 })
+    if (!results?.results?.length) {
+      // Self-correction: retry with vertical + national scope
+      const retry = await exa.search(`${industry} business average review score customer satisfaction benchmark`, { numResults: 3, maxChars: 800 })
+      if (!retry?.results?.length) return null
+      return retry.results.map(r => r.highlights?.join(' ') || r.title).join('\n').slice(0, 1200)
+    }
+    return results.results.map(r => r.highlights?.join(' ') || r.title).join('\n').slice(0, 1200)
+  } catch (err) {
+    console.warn(`[${AGENT_ID}] Exa benchmark search failed (non-blocking):`, err.message)
+    return null
+  }
 }
 
 function getSupabase() {
@@ -151,6 +189,7 @@ async function processClient(client) {
 
 /**
  * Produce a directional recommendation from benchmark gaps via Groq.
+ * Pulls real-time competitive benchmarks from Exa before synthesizing.
  * @param {Object} client
  * @param {Object} metrics
  * @param {Array<string>} gaps
@@ -159,10 +198,29 @@ async function processClient(client) {
 async function synthesizeRecommendation(client, metrics, gaps) {
   if (!gaps.length) return 'Client is performing at or above benchmarks — no action needed.'
 
-  const systemPrompt = `<business>
+  // Enrich with vertical-specific known benchmarks + live web research
+  const industryKey      = Object.keys(VERTICAL_BENCHMARKS).find(k =>
+    (client.industry || '').toLowerCase().includes(k)
+  )
+  const verticalBench    = industryKey ? VERTICAL_BENCHMARKS[industryKey] : null
+  const exaBenchmarks    = await fetchCompetitiveBenchmarks(client)
+
+  const verticalXml = verticalBench
+    ? `<vertical_context industry="${client.industry}">
+Industry avg rating: ${verticalBench.industryAvgRating}/5
+Key review platforms: ${verticalBench.topRatingPlatform}
+Critical performance metric: ${verticalBench.keyMetric}
+Average ticket size: ${verticalBench.avgTicket}
+</vertical_context>`
+    : ''
+
+  const systemPrompt = `<role>Performance Benchmarker for GRIDHAND AI — surface actionable recommendations from client performance gaps, backed by real industry benchmarks.</role>
+<business>
 Name: ${client.business_name}
 Industry: ${client.industry || 'business'}
 </business>
+${verticalXml}
+${exaBenchmarks ? `<market_benchmarks source="web_research">\n${exaBenchmarks}\n</market_benchmarks>` : ''}
 
 <metrics>
 Review score (30d): ${metrics.avgReviewScore ?? 'no data'}
@@ -175,12 +233,13 @@ ${gaps.join('\n')}
 
 <task>
 Write ONE actionable recommendation sentence for the intelligence director.
+Reference specific industry benchmarks where available.
 Specify which division should act and why.
 </task>
 
 <rules>
 - 1 sentence only
-- Specific and actionable
+- Specific and actionable — cite a benchmark number if you have one
 - Output ONLY the recommendation sentence
 </rules>`
 
@@ -190,7 +249,7 @@ Specify which division should act and why.
       clientApiKeys: {},
       systemPrompt,
       messages:      [{ role: 'user', content: 'Provide the performance recommendation.' }],
-      maxTokens:     80,
+      maxTokens:     120,
       _workerName:   AGENT_ID,
     })
     return raw?.trim() || 'Performance gaps detected — review division assignments.'

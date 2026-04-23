@@ -1,8 +1,6 @@
 // Lead Scorer — rates how likely a new lead is to convert (1-100)
-const Anthropic = require('@anthropic-ai/sdk');
+const aiClient = require('../../lib/ai-client');
 const store = require('../store');
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // Scoring signals
 function getBaseScore(message, conversationHistory) {
@@ -33,10 +31,9 @@ async function score(message, conversationHistory = [], clientSlug = null, custo
         : 'No prior history.';
 
     try {
-        const response = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 150,
-            system: `You are a sales lead scoring engine. Score the lead 1-100 and return ONLY valid JSON:
+        const raw = await aiClient.call({
+            modelString: 'claude-haiku-4-5-20251001',
+            systemPrompt: `You are a sales lead scoring engine. Score the lead 1-100 and return ONLY valid JSON:
 {
   "score": 1-100,
   "tier": "hot|warm|cold",
@@ -47,10 +44,11 @@ Scoring guide: 80-100 = hot (ready to buy), 50-79 = warm (interested, nurturing 
             messages: [{
                 role: 'user',
                 content: `Latest message: "${message}"\n\nConversation:\n${historyContext}\n\nBase score hint: ${baseScore}`
-            }]
+            }],
+            maxTokens: 150,
         });
 
-        const result = JSON.parse(response.content[0]?.text?.trim());
+        const result = JSON.parse(raw);
 
         // Save score to profile
         if (clientSlug && customerNumber) {

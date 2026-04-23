@@ -27,6 +27,10 @@ const n8nEngine          = require('./n8n-scenario-engine')
 const competitorMonitor       = require('./specialists/competitor-monitor')
 const marketPulse             = require('./specialists/market-pulse')
 const performanceBenchmarker  = require('./specialists/performance-benchmarker')
+const vanguard                = require('./specialists/vanguard')
+const sentinel                = require('./specialists/sentinel')
+const lumen                   = require('./specialists/lumen')
+const promptEngineer          = require('./specialists/prompt-engineer')
 
 const AGENT_ID   = 'intelligence-director'
 const DIVISION   = 'intelligence'
@@ -64,6 +68,10 @@ async function run(clients = null, situation = null) {
     leadNurtureResult,
     marketPulseResult,
     performanceBenchResult,
+    vanguardResult,
+    sentinelResult,
+    lumenResult,
+    promptEngineerResult,
   ] = await Promise.allSettled([
     workerGuardian.run  ? workerGuardian.run({ quiet: true })         : Promise.resolve(null),
     credentialMonitor.run ? credentialMonitor.run()                   : Promise.resolve(null),
@@ -72,6 +80,10 @@ async function run(clients = null, situation = null) {
     leadNurtureAgent.run ? leadNurtureAgent.run(clientList)           : Promise.resolve(null),
     marketPulse.run(clientList),
     performanceBenchmarker.run(clientList),
+    vanguard.run(clientList),
+    sentinel.run(clientList),
+    lumen.run(clientList),
+    promptEngineer.run(),
   ])
 
   const agentOutputs = {
@@ -82,6 +94,10 @@ async function run(clients = null, situation = null) {
     leadNurture:           leadNurtureResult.status       === 'fulfilled' ? leadNurtureResult.value       : { error: leadNurtureResult.reason?.message },
     marketPulse:           marketPulseResult.status       === 'fulfilled' ? marketPulseResult.value       : { error: marketPulseResult.reason?.message },
     performanceBenchmarks: performanceBenchResult.status  === 'fulfilled' ? performanceBenchResult.value  : { error: performanceBenchResult.reason?.message },
+    vanguard:              vanguardResult.status          === 'fulfilled' ? vanguardResult.value          : { error: vanguardResult.reason?.message },
+    sentinel:              sentinelResult.status          === 'fulfilled' ? sentinelResult.value          : { error: sentinelResult.reason?.message },
+    lumen:                 lumenResult.status             === 'fulfilled' ? lumenResult.value             : { error: lumenResult.reason?.message },
+    promptEngineer:        promptEngineerResult.status    === 'fulfilled' ? promptEngineerResult.value    : { error: promptEngineerResult.reason?.message },
   }
 
   // Pull recent system signals from Supabase
@@ -111,14 +127,18 @@ async function run(clients = null, situation = null) {
     try {
       const opusResponse = await call({
         modelString: OPUS_MODEL,
-        systemPrompt: `You are part of the GRIDHAND collective intelligence. ${vaultContext ? vaultContext + '\n\n' : ''}You are the IntelligenceDirector for GRIDHAND AI. You synthesize operational intelligence and provide strategic assessments to the Commander.
-Output valid JSON with:
-- system_health: "GREEN" | "YELLOW" | "RED"
-- critical_alerts: array of urgent issues requiring immediate action
-- client_risks: array of {clientId, risk, severity} for at-risk clients
-- opportunities: array of strings — patterns or moments to act on
-- recommended_actions: array of specific actions for other directors
-- confidence: 0-100`,
+        systemPrompt: `<role>IntelligenceDirector for GRIDHAND AI — synthesize operational intelligence and provide strategic assessments to the Commander.</role>${vaultContext ? `\n<context>${vaultContext}</context>` : ''}
+<rules>Analyze the intelligence brief and produce a structured strategic assessment. Be direct — surface real risks, not generic observations.</rules>
+<output>Respond with valid JSON only:
+{
+  "system_health": "GREEN",
+  "critical_alerts": ["alert1"],
+  "client_risks": [{"clientId": "id", "risk": "description", "severity": "high"}],
+  "opportunities": ["opportunity1"],
+  "recommended_actions": ["action1"],
+  "confidence": 85
+}
+system_health values: "GREEN" | "YELLOW" | "RED"</output>`,
         messages: [{ role: 'user', content: `INTELLIGENCE BRIEF:\n\n${intelligenceBrief}\n\nProvide strategic assessment as JSON only.` }],
         maxTokens: 1000,
       })

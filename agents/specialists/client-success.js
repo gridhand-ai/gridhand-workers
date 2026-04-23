@@ -157,7 +157,8 @@ async function processClient(client) {
 async function generateMonthlyReport(client, stats) {
   const monthName = new Date().toLocaleString('default', { month: 'long' })
 
-  const systemPrompt = `<business>
+  const systemPrompt = `<role>Client Success Agent for GRIDHAND AI — write warm, concrete monthly success update SMS messages for small business clients.</role>
+<business>
 Name: ${client.business_name}
 Industry: ${client.industry || 'business'}
 </business>

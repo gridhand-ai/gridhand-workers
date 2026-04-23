@@ -1,7 +1,5 @@
 // Objection Handler — specialized responses to "too expensive", "not now", etc.
-const Anthropic = require('@anthropic-ai/sdk');
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const aiClient = require('../../lib/ai-client');
 
 // Detect common objection types
 const OBJECTION_PATTERNS = {
@@ -60,10 +58,9 @@ async function handle(message, businessInfo, customerProfile = null, useQuickRes
         : '';
 
     try {
-        const response = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 120,
-            system: `You are a compassionate sales assistant handling customer objections via SMS for ${businessInfo.name}, a ${businessInfo.industry} business.
+        const reply = await aiClient.call({
+            modelString: 'claude-haiku-4-5-20251001',
+            systemPrompt: `You are a compassionate sales assistant handling customer objections via SMS for ${businessInfo.name}, a ${businessInfo.industry} business.
 The customer has a "${objectionType}" objection. Write a brief, empathetic response that:
 - Acknowledges their concern genuinely (don't dismiss it)
 - Offers a soft path forward (not pushy)
@@ -71,10 +68,9 @@ The customer has a "${objectionType}" objection. Write a brief, empathetic respo
 - Never argues or pressures
 ${profileContext}
 Business phone: ${businessInfo.phone}`,
-            messages: [{ role: 'user', content: `Customer said: "${message}"` }]
+            messages: [{ role: 'user', content: `Customer said: "${message}"` }],
+            maxTokens: 120,
         });
-
-        const reply = response.content[0]?.text?.trim();
         console.log(`[ObjectionHandler] Handled "${objectionType}" objection with Claude`);
         return { objectionType, reply, method: 'claude' };
     } catch (e) {

@@ -143,7 +143,8 @@ async function processClient(client) {
  * @returns {Promise<number>}
  */
 async function forecastRevenue(client, currentMRR, priorMRR, upcomingRenewals, trend) {
-  const systemPrompt = `<business>
+  const systemPrompt = `<role>Revenue Forecaster for GRIDHAND AI — produce 30-day revenue forecasts from MRR trend data for small business clients.</role>
+<business>
 Name: ${client.business_name}
 Industry: ${client.industry || 'business'}
 </business>

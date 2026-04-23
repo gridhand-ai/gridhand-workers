@@ -106,7 +106,8 @@ async function processClient(client) {
 }
 
 async function scoreLead(lead, client) {
-  const systemPrompt = `<business>
+  const systemPrompt = `<role>Lead Qualifier for GRIDHAND AI — score inbound leads on buying intent for small business clients.</role>
+<business>
 Name: ${client.business_name}
 Industry: ${client.industry || 'business'}
 </business>

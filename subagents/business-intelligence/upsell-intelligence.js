@@ -1,8 +1,6 @@
 // Upsell Intelligence — recommends the right upsell for each customer
-const Anthropic = require('@anthropic-ai/sdk');
+const aiClient = require('../../lib/ai-client');
 const customerProfiler = require('../customer/customer-profiler');
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // Rule-based upsell map (can be overridden per client)
 const DEFAULT_UPSELL_LOGIC = {
@@ -42,10 +40,9 @@ async function recommend(clientSlug, customerNumber, availableServices, complete
         const completedContext = completedServiceName ? `Just completed: ${completedServiceName}` : '';
 
         try {
-            const response = await anthropic.messages.create({
-                model: 'claude-haiku-4-5-20251001',
-                max_tokens: 150,
-                system: `You are an upsell recommendation engine for a service business. Return ONLY valid JSON:
+            const raw = await aiClient.call({
+                modelString: 'claude-haiku-4-5-20251001',
+                systemPrompt: `You are an upsell recommendation engine for a service business. Return ONLY valid JSON:
 {
   "recommendedService": "exact service name",
   "reason": "one sentence why this makes sense for this customer",
@@ -56,10 +53,11 @@ Only recommend services the customer does NOT already have. Pick the highest-val
                 messages: [{
                     role: 'user',
                     content: `Available services:\n${servicesContext}\n\n${historyContext}\n${completedContext}\n${clientUpsellLogic ? `Business upsell rules: ${clientUpsellLogic}` : ''}`
-                }]
+                }],
+                maxTokens: 150,
             });
 
-            const result = JSON.parse(response.content[0]?.text?.trim());
+            const result = JSON.parse(raw);
             const matched = availableServices.find(s => s.name === result.recommendedService);
             console.log(`[UpsellIntelligence] Recommending "${result.recommendedService}" for ${customerNumber}`);
             return { ...result, service: matched || { name: result.recommendedService }, method: 'claude' };

@@ -20,11 +20,12 @@
 
 require('dotenv').config();
 
-const Bull    = require('bull');
-const dayjs   = require('dayjs');
-const twilio  = require('twilio');
-const db      = require('./db');
-const followup = require('./followup');
+const Bull            = require('bull');
+const dayjs           = require('dayjs');
+const db              = require('./db');
+const followup        = require('./followup');
+const twilioLib       = require('../../lib/twilio-client');
+const { validateSMS } = require('../../lib/message-gate');
 
 const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
 
@@ -38,26 +39,26 @@ const weekFollowupQueue      = new Bull('oh:week-followup',         REDIS_URL);
 const notifyAgentQueue       = new Bull('oh:notify-agent-interest', REDIS_URL);
 const weeklyReportQueue      = new Bull('oh:weekly-report',         REDIS_URL);
 
-// ─── Twilio Helper ────────────────────────────────────────────────────────────
+// ─── SMS Helper — routes through lib/twilio-client.js for TCPA + opt-out compliance ──
 
 async function sendSms(clientConfig, toNumber, body, meta = {}) {
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken  = process.env.TWILIO_AUTH_TOKEN;
     const fromNumber = clientConfig.twilio_from || process.env.TWILIO_FROM_NUMBER;
 
-    if (!accountSid || !authToken || !fromNumber) {
-        console.warn('[Jobs/SMS] Twilio not configured — skipping send');
+    if (!fromNumber) {
+        console.warn('[Jobs/SMS] No from number configured — skipping send');
         return null;
     }
 
-    const client = twilio(accountSid, authToken);
-
     try {
-        const message = await client.messages.create({
+        const result = await twilioLib.sendSMS({
+            from:           fromNumber,
+            to:             toNumber,
             body,
-            from: fromNumber,
-            to:   toNumber,
+            clientSlug:     clientConfig.client_slug || null,
+            clientTimezone: clientConfig.timezone || 'America/Chicago',
         });
+
+        const sid = result.sid || null;
 
         // Log to DB
         await db.logSms({
@@ -68,7 +69,7 @@ async function sendSms(clientConfig, toNumber, body, meta = {}) {
             to_number:     toNumber,
             from_number:   fromNumber,
             body,
-            twilio_sid:    message.sid,
+            twilio_sid:    sid,
         });
 
         if (meta.visitor_id) {
@@ -78,13 +79,13 @@ async function sendSms(clientConfig, toNumber, body, meta = {}) {
                 client_id:     meta.client_id || null,
                 direction:     'outbound',
                 message:       body,
-                twilio_sid:    message.sid,
+                twilio_sid:    sid,
             });
         }
 
-        return message.sid;
+        return sid;
     } catch (err) {
-        console.error(`[Jobs/SMS] Send failed to ${toNumber}: ${err.message}`);
+        console.error(`[Jobs/SMS] Send failed to ${toNumber.slice(-4)}: ${err.message}`);
         return null;
     }
 }
@@ -119,7 +120,13 @@ sendInvitesQueue.process(async (job) => {
     for (const lead of targets) {
         if (!lead.phone) continue;
 
-        const message = await followup.generateInviteMessage(lead, openHouse, clientConfig);
+        const rawMessage = await followup.generateInviteMessage(lead, openHouse, clientConfig);
+        const inviteGate = validateSMS(rawMessage);
+        if (!inviteGate.valid) {
+            console.warn(`[SendInvites] SMS blocked for lead ${lead.id}: ${inviteGate.issues.join('; ')}`);
+            continue;
+        }
+        const message = inviteGate.text;
 
         const sid = await sendSms(clientConfig, lead.phone, message, {
             client_id:     clientConfig.id,
@@ -207,7 +214,13 @@ postEventThankyouQueue.process(async (job) => {
     let sent = 0;
 
     for (const visitor of pending) {
-        const message = await followup.generatePostEventThankYou(visitor, openHouse, clientConfig);
+        const rawThankYou = await followup.generatePostEventThankYou(visitor, openHouse, clientConfig);
+        const thankYouGate = validateSMS(rawThankYou);
+        if (!thankYouGate.valid) {
+            console.warn(`[PostEventThankYou] SMS blocked for visitor ${visitor.id}: ${thankYouGate.issues.join('; ')}`);
+            continue;
+        }
+        const message = thankYouGate.text;
 
         const sid = await sendSms(clientConfig, visitor.phone, message, {
             client_id:     clientConfig.id,
@@ -264,7 +277,13 @@ dayAfterQueue.process(async (job) => {
     let sent = 0;
 
     for (const visitor of eligible) {
-        const message = await followup.generateDayAfterFollowup(visitor, openHouse, clientConfig);
+        const rawDayAfter = await followup.generateDayAfterFollowup(visitor, openHouse, clientConfig);
+        const dayAfterGate = validateSMS(rawDayAfter);
+        if (!dayAfterGate.valid) {
+            console.warn(`[DayAfterFollowup] SMS blocked for visitor ${visitor.id}: ${dayAfterGate.issues.join('; ')}`);
+            continue;
+        }
+        const message = dayAfterGate.text;
 
         const sid = await sendSms(clientConfig, visitor.phone, message, {
             client_id:     clientConfig.id,
@@ -305,7 +324,13 @@ weekFollowupQueue.process(async (job) => {
     let sent = 0;
 
     for (const visitor of eligible) {
-        const message = await followup.generateWeekFollowup(visitor, openHouse, clientConfig);
+        const rawWeek = await followup.generateWeekFollowup(visitor, openHouse, clientConfig);
+        const weekGate = validateSMS(rawWeek);
+        if (!weekGate.valid) {
+            console.warn(`[WeekFollowup] SMS blocked for visitor ${visitor.id}: ${weekGate.issues.join('; ')}`);
+            continue;
+        }
+        const message = weekGate.text;
 
         const sid = await sendSms(clientConfig, visitor.phone, message, {
             client_id:     clientConfig.id,

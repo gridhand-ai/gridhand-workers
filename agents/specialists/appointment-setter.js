@@ -153,7 +153,8 @@ async function processClient(client) {
  * @returns {Promise<string|null>}
  */
 async function generateBookingMessage(client, lead) {
-  const systemPrompt = `<business>
+  const systemPrompt = `<role>Appointment Setter for GRIDHAND AI — write warm, brief SMS messages inviting qualified leads to book appointments for small business clients.</role>
+<business>
 Name: ${client.business_name}
 Industry: ${client.industry || 'business'}
 </business>

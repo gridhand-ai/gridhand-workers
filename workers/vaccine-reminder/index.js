@@ -1,5 +1,6 @@
 /**
  * GRIDHAND Vaccine Reminder — Main Express Server
+ * VERTICAL: Veterinary practices (animal patients only — NOT human healthcare)
  *
  * A standalone microservice. Runs on its own port.
  *

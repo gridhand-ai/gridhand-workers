@@ -194,7 +194,8 @@ async function generateCelebrationMessage(client, milestone) {
     ? `${milestone.days}-day customer anniversary`
     : `${milestone.visits}th visit`
 
-  const systemPrompt = `<business>
+  const systemPrompt = `<role>Milestone Celebrator for GRIDHAND AI — write warm, personal customer milestone SMS messages for small business clients.</role>
+<business>
 Name: ${client.business_name}
 Industry: ${client.industry || 'business'}
 </business>

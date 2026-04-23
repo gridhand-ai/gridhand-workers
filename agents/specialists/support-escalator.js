@@ -174,7 +174,8 @@ async function processClient(client) {
  * @returns {Promise<string|null>}
  */
 async function generateAcknowledgment(client, ticket) {
-  const systemPrompt = `<business>
+  const systemPrompt = `<role>Support Escalator for GRIDHAND AI — write empathetic, reassuring support acknowledgment SMS messages for small business clients.</role>
+<business>
 Name: ${client.business_name}
 </business>
 

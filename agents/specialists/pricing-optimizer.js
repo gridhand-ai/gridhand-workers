@@ -7,8 +7,10 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 const { createClient } = require('@supabase/supabase-js')
+const { call }         = require('../../lib/ai-client')
+const exa              = require('../../lib/exa-client')
 const { fileInteraction } = require('../../lib/memory-client')
-const vault = require('../../lib/memory-vault')
+const vault            = require('../../lib/memory-vault')
 
 const AGENT_ID  = 'pricing-optimizer'
 const DIVISION  = 'revenue'
@@ -16,6 +18,90 @@ const REPORTS_TO = 'revenue-director'
 
 // Usage threshold above which we flag for upgrade conversation
 const USAGE_THRESHOLD = 0.90
+
+// Known SMB service pricing ranges for validation / context
+const VERTICAL_PRICING = {
+  'auto':       { services: 'oil change $35-$90, brake job $150-$400, tune-up $120-$300' },
+  'vehicle':    { services: 'oil change $35-$90, brake job $150-$400, tune-up $120-$300' },
+  'salon':      { services: 'haircut $35-$120, color $80-$250, highlights $100-$300' },
+  'barber':     { services: 'haircut $25-$55, shave $20-$50, combo $45-$90' },
+  'restaurant': { services: 'lunch $12-$25, dinner $20-$60, catering varies' },
+  'gym':        { services: 'membership $25-$80/mo, personal training $50-$150/session' },
+  'fitness':    { services: 'membership $25-$80/mo, personal training $50-$150/session' },
+  'retail':     { services: 'varies by category — benchmark against top local competitors' },
+}
+
+/**
+ * Fetch local competitor pricing for a client's service via Exa.
+ * Grounds the upgrade recommendation in real market rates.
+ */
+async function fetchCompetitorPricing(client) {
+  const industry = client.industry || 'business'
+  const city     = client.city || client.location || ''
+  const query    = city
+    ? `${industry} pricing rates ${city} local competitors 2025`
+    : `average ${industry} service pricing rates 2025`
+  try {
+    const results = await exa.search(query, { numResults: 3, maxChars: 800 })
+    if (!results?.results?.length) {
+      // Self-correction: retry with service type + national benchmark
+      const retry = await exa.search(`${industry} service average price benchmark United States`, { numResults: 3, maxChars: 800 })
+      if (!retry?.results?.length) return null
+      return retry.results.map(r => r.highlights?.join(' ') || r.title).join('\n').slice(0, 1200)
+    }
+    return results.results.map(r => r.highlights?.join(' ') || r.title).join('\n').slice(0, 1200)
+  } catch (err) {
+    console.warn(`[${AGENT_ID}] Exa pricing search failed (non-blocking):`, err.message)
+    return null
+  }
+}
+
+/**
+ * Generate an AI-powered pricing insight for the upgrade recommendation.
+ */
+async function generatePricingInsight(client, usagePct, competitorPricing) {
+  const industryKey    = Object.keys(VERTICAL_PRICING).find(k =>
+    (client.industry || '').toLowerCase().includes(k)
+  )
+  const verticalData   = industryKey ? VERTICAL_PRICING[industryKey] : null
+
+  const systemPrompt = `<role>Pricing Optimizer for GRIDHAND AI — generate data-backed upgrade recommendations for small business clients.</role>
+<business>
+Name: ${client.business_name}
+Industry: ${client.industry || 'business'}
+Current plan: ${client.plan || 'unknown'}
+Plan usage: ${usagePct}% of limit
+</business>
+${verticalData ? `<vertical_context>\nTypical service pricing in this vertical: ${verticalData.services}\n</vertical_context>` : ''}
+${competitorPricing ? `<competitor_pricing source="web_research">\n${competitorPricing}\n</competitor_pricing>` : ''}
+
+<task>
+Write ONE concise sentence explaining why this business should upgrade their GRIDHAND plan,
+referencing their usage level and any relevant market context.
+Focus on ROI — at their usage rate they are getting good value; the next tier unlocks more automation.
+</task>
+
+<rules>
+- 1 sentence only
+- Reference the ${usagePct}% usage figure
+- Do not invent specific competitor prices not found in the data
+- Output ONLY the recommendation sentence
+</rules>`
+
+  try {
+    const raw = await call({
+      modelString:   'groq/llama-3.3-70b-versatile',
+      clientApiKeys: {},
+      systemPrompt,
+      messages:      [{ role: 'user', content: 'Write the upgrade recommendation.' }],
+      maxTokens:     100,
+      _workerName:   AGENT_ID,
+    })
+    return raw?.trim() || null
+  } catch {
+    return null
+  }
+}
 
 function getSupabase() {
   return createClient(
@@ -91,6 +177,10 @@ async function processClient(client) {
     if (daysSince < 30) return null // Don't re-flag within 30 days
   }
 
+  // Fetch competitor pricing data + generate AI insight before flagging
+  const competitorPricing = await fetchCompetitorPricing(client)
+  const pricingInsight    = await generatePricingInsight(client, usagePct, competitorPricing)
+
   // Flag for upgrade conversation
   await supabase.from('agent_state').upsert({
     agent: 'pricing_optimizer',
@@ -101,7 +191,8 @@ async function processClient(client) {
       usagePct,
       taskCount,
       planLimit,
-      currentPlan: client.plan || 'unknown',
+      currentPlan:    client.plan || 'unknown',
+      pricingInsight: pricingInsight || null,
     },
     updated_at: new Date().toISOString(),
   }, { onConflict: 'agent,client_id,entity_id' })
@@ -110,8 +201,8 @@ async function processClient(client) {
   await supabase.from('activity_log').insert({
     client_id: client.id,
     action: 'upgrade_opportunity_flagged',
-    summary: `Client at ${usagePct}% of plan usage`,
-    metadata: { usagePct, taskCount, planLimit },
+    summary: pricingInsight || `Client at ${usagePct}% of plan usage`,
+    metadata: { usagePct, taskCount, planLimit, pricingInsight },
     created_at: new Date().toISOString(),
   })
 
@@ -120,8 +211,8 @@ async function processClient(client) {
     clientId: client.id,
     timestamp: Date.now(),
     status: 'action_taken',
-    summary: `${client.business_name} at ${usagePct}% plan usage — flagged for upgrade conversation`,
-    data: { usagePct, taskCount, planLimit, currentPlan: client.plan },
+    summary: `${client.business_name} at ${usagePct}% plan usage — flagged for upgrade conversation${pricingInsight ? ': ' + pricingInsight.slice(0, 80) : ''}`,
+    data: { usagePct, taskCount, planLimit, currentPlan: client.plan, pricingInsight },
     requiresDirectorAttention: true, // Always escalate — this is a revenue conversation
   }
 }

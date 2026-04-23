@@ -1,8 +1,6 @@
 // Churn Predictor — identifies customers about to leave before they do
-const Anthropic = require('@anthropic-ai/sdk');
+const aiClient = require('../../lib/ai-client');
 const store = require('../store');
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 function getDaysSince(isoDate) {
     if (!isoDate) return 999;
@@ -53,10 +51,9 @@ Customer profile:
     const recentMessages = conversationHistory.slice(-4).map(h => `${h.role}: ${h.content}`).join('\n') || 'No recent messages.';
 
     try {
-        const response = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 200,
-            system: `You are a customer churn prediction engine. Analyze and return ONLY valid JSON:
+        const raw = await aiClient.call({
+            modelString: 'claude-haiku-4-5-20251001',
+            systemPrompt: `You are a customer churn prediction engine. Analyze and return ONLY valid JSON:
 {
   "risk": "high|medium|low",
   "reason": "one sentence explanation",
@@ -66,10 +63,11 @@ Customer profile:
             messages: [{
                 role: 'user',
                 content: `${profileContext}\n\nRecent messages:\n${recentMessages}\n\nRule-based signals: ${ruleCheck.signals.join(', ') || 'none'}`
-            }]
+            }],
+            maxTokens: 200,
         });
 
-        const result = JSON.parse(response.content[0]?.text?.trim());
+        const result = JSON.parse(raw);
         console.log(`[ChurnPredictor] Risk: ${result.risk} — ${result.reason}`);
         return result;
     } catch (e) {

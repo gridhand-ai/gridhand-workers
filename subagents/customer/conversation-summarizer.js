@@ -1,9 +1,7 @@
 // Conversation Summarizer — condenses long conversations into bullet points
 // Workers use this to get instant context without processing full history
-const Anthropic = require('@anthropic-ai/sdk');
+const aiClient = require('../../lib/ai-client');
 const store = require('../store');
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 function getKey(clientSlug, customerNumber) {
     return `${clientSlug}_${customerNumber.replace(/[^0-9]/g, '')}`;
@@ -24,10 +22,9 @@ async function summarize(conversationHistory, clientSlug, customerNumber, busine
         .join('\n');
 
     try {
-        const response = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 200,
-            system: `You summarize SMS conversations between a business and customer. Return ONLY valid JSON:
+        const raw = await aiClient.call({
+            modelString: 'claude-haiku-4-5-20251001',
+            systemPrompt: `You summarize SMS conversations between a business and customer. Return ONLY valid JSON:
 {
   "customerName": "name if mentioned or null",
   "serviceInterest": "what service they're interested in or null",
@@ -40,10 +37,11 @@ Be concise. keyFacts should be the 2-3 most important things to know about this 
             messages: [{
                 role: 'user',
                 content: `Business: ${businessName}\n\nConversation:\n${formatted}`
-            }]
+            }],
+            maxTokens: 200,
         });
 
-        const summary = JSON.parse(response.content[0]?.text?.trim());
+        const summary = JSON.parse(raw);
         summary.summarizedAt = new Date().toISOString();
         summary.messageCount = conversationHistory.length;
 

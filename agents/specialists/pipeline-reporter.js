@@ -148,7 +148,8 @@ This is an internal GRIDHAND acquisition director report.
 Frame insights for the acquisition director to prioritize follow-up actions across the client portfolio.
 </owner_context>`
 
-  const systemPrompt = `${ownerBlock}
+  const systemPrompt = `<role>Pipeline Reporter for GRIDHAND AI — synthesize actionable lead pipeline insights.</role>
+${ownerBlock}
 
 <business>
 Name: ${client.business_name}

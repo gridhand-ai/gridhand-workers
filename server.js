@@ -34,35 +34,15 @@ const onboardingWorker      = require('./workers/onboarding');
 
 // ─── BENCH: Ready to activate (standalone microservices — NOT loadable into this server) ────
 //
-// These dental/healthcare workers are fully built but run as SEPARATE Express servers
+// These workers are fully built but run as SEPARATE Express servers
 // on their own ports. Each requires external third-party API credentials per client.
 // To deploy, run each as an independent Railway/Render service with its own env vars.
 //
-// workers/recall-commander   — Dental patient recall via SMS (hygiene, exam, x-ray recall)
-//   Needs: Dentrix G6+ API key + secret (api.henryschein.com) OR Open Dental REST API key
-//   Stored per-client in: Supabase rc_connections table
-//   Default port: RECALL_PORT (3007)
-//
-// workers/no-show-nurse      — Medical appointment no-show detection + waitlist slot filling
-//   Needs: Epic FHIR R4 OR Cerner FHIR R4 client credentials (SMART on FHIR)
-//   Stored per-client in: Supabase nsn_connections table
-//   Default port: NSN_PORT (3011)
-//
-// workers/treatment-presenter — Dental treatment plan SMS automation + acceptance tracking
-//   Needs: Dentrix G6+ OR Open Dental PMS API key per practice
-//   Stored per-client in: Supabase tp_connections table
-//   Default port: TP_PORT (3009)
-//
-// workers/prior-auth-bot     — Medical prior authorization automation (Epic/Cerner + payer portals)
-//   Needs: Epic/Cerner FHIR credentials + PAB_API_KEY + PAB_WEBHOOK_SECRET + REDIS_URL
-//   Stored per-client in: Supabase pab_connections table
-//   Default port: PAB_PORT (3010)
-//
-// workers/vaccine-reminder   — Veterinary vaccine reminder (NOT human dental — vet practices only)
+// workers/vaccine-reminder   — Veterinary vaccine reminder (vet practices only)
 //   Needs: EVET_BASE_URL + EVET_API_KEY (eVetPractice) OR PETDESK_API_KEY + REDIS_URL
 //   Default port: 3011
 //
-// workers/rebook-reminder    — Salon/beauty rebooking reminders (NOT dental — salon vertical)
+// workers/rebook-reminder    — Salon/beauty rebooking reminders (salon vertical)
 //   Needs: BOULEVARD_API_KEY + BOULEVARD_BUSINESS_ID OR SQUARE_ACCESS_TOKEN + SQUARE_LOCATION_ID
 //   Default port: 3013
 //
@@ -373,7 +353,7 @@ app.post('/sms', async (req, res) => {
     // Truncate at 1600 chars (10 SMS segments) — prevents AI runaway and Twilio billing surprises
     const message = (req.body.Body?.trim() || '').slice(0, 1600);
 
-    console.log(`[SMS] ${customerNumber} → ${incomingNumber}: "${message}"`);
+    console.log(`[SMS] ${customerNumber.slice(-4)} → ${incomingNumber.slice(-4)}: [${message.length}chars]`);
 
     // Deduplication: drop exact same message from same sender within 30s
     // Uses Upstash Redis when configured, falls back to in-memory Map.

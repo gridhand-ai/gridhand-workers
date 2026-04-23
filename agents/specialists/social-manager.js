@@ -7,13 +7,36 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 const { createClient } = require('@supabase/supabase-js')
-const aiClient = require('../../lib/ai-client')
+const aiClient         = require('../../lib/ai-client')
+const exa              = require('../../lib/exa-client')
 const { fileInteraction } = require('../../lib/memory-client')
-const vault = require('../../lib/memory-vault')
+const vault            = require('../../lib/memory-vault')
 
 const AGENT_ID  = 'social-manager'
 const DIVISION  = 'brand'
 const REPORTS_TO = 'brand-director'
+
+/**
+ * Fetch current trending topics for the client's industry to inform response drafts.
+ * Called once per client run — results shared across all messages for that client.
+ */
+async function fetchIndustryTrends(client) {
+  const industry = client.industry || 'small business'
+  const query    = `trending topics ${industry} small business social media customers 2025`
+  try {
+    const results = await exa.search(query, { numResults: 2, maxChars: 600 })
+    if (!results?.results?.length) {
+      // Self-correction: try just industry + trending to broaden results
+      const retry = await exa.search(`${industry} trends customers 2025`, { numResults: 2, maxChars: 600 })
+      if (!retry?.results?.length) return null
+      return retry.results.map(r => r.highlights?.join(' ') || r.title).join('\n').slice(0, 800)
+    }
+    return results.results.map(r => r.highlights?.join(' ') || r.title).join('\n').slice(0, 800)
+  } catch (err) {
+    console.warn(`[${AGENT_ID}] Exa industry trends failed (non-blocking):`, err.message)
+    return null
+  }
+}
 
 // Items that need human review vs auto-draft
 const HUMAN_REVIEW_TRIGGERS = [
@@ -74,6 +97,9 @@ async function processClient(client) {
 
   if (!messages?.length) return null
 
+  // Research trending topics ONCE per client — injected into all draft generation
+  const industryTrends = await fetchIndustryTrends(client)
+
   let drafted = 0
   let flaggedForHuman = 0
   const handled = []
@@ -96,13 +122,18 @@ async function processClient(client) {
     }
 
     try {
-      const generatedDraft = await generateDraftResponse(client, msg)
+      const generatedDraft = await generateDraftResponse(client, msg, industryTrends)
 
       // Social drafts don't go through SMS validator — different medium
       const draft = generatedDraft
+      // Self-correction: if draft quality check fails, retry once with explicit tone instruction
       if (!draft || draft.length < 5 || draft.includes('{{') || draft.includes('undefined')) {
-        console.warn(`[${AGENT_ID}] draft failed quality check, skipping`)
-        continue
+        console.warn(`[${AGENT_ID}] draft failed quality check, retrying with explicit tone instruction`)
+        const retryDraft = await generateDraftResponse(client, msg, industryTrends, true)
+        if (!retryDraft || retryDraft.length < 5) {
+          console.warn(`[${AGENT_ID}] retry also failed quality check, skipping`)
+          continue
+        }
       }
 
       await supabase.from('social_inbox').update({
@@ -132,11 +163,20 @@ async function processClient(client) {
   }
 }
 
-async function generateDraftResponse(client, msg) {
-  const systemPrompt = `<business>
+async function generateDraftResponse(client, msg, industryTrends = null, retryMode = false) {
+  const toneInstruction = retryMode
+    ? 'IMPORTANT: Write in a warm, conversational tone. Do NOT use corporate language, generic phrases, or placeholder text. Be genuine and specific.'
+    : 'Sound like a real person, not corporate.'
+
+  const systemPrompt = `<role>Social Manager for GRIDHAND AI — draft professional, platform-appropriate responses to social media messages for small business clients.</role>
+<business>
 Name: ${client.business_name}
 Industry: ${client.industry || 'business'}
 </business>
+${industryTrends ? `<industry_context source="web_research">
+${industryTrends}
+Use this context to make responses feel informed and current — not generic.
+</industry_context>` : ''}
 
 <message>
 Platform: ${msg.platform || 'social media'}
@@ -147,13 +187,14 @@ Content: ${msg.content}
 <task>
 Write a professional, friendly draft response for this social media message.
 Match the tone of the platform (Instagram = casual, Google = professional, Facebook = friendly).
+If the message mentions a topic related to the industry context above, weave that awareness naturally into the response.
 </task>
 
 <rules>
 - 2-4 sentences
 - Acknowledge their message specifically
 - End with an invitation to connect further if appropriate
-- Sound like a real person, not corporate
+- ${toneInstruction}
 - Sign off as ${client.business_name}
 - Output ONLY the response text
 </rules>`

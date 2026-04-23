@@ -30,13 +30,14 @@
 
 require('dotenv').config();
 
-const express  = require('express');
-const cron     = require('node-cron');
-const twilio   = require('twilio');
-const calendar = require('./calendar');
-const db       = require('./db');
-const jobs     = require('./jobs');
-const followup = require('./followup');
+const express   = require('express');
+const cron      = require('node-cron');
+const twilio    = require('twilio');
+const calendar  = require('./calendar');
+const db        = require('./db');
+const jobs      = require('./jobs');
+const followup  = require('./followup');
+const twilioLib = require('../../lib/twilio-client');
 
 const app = express();
 
@@ -168,39 +169,44 @@ app.post('/webhooks/twilio', async (req, res) => {
             }
             await db.updateVisitor(visitor.id, updates);
 
-            // Send response via Twilio (new outbound message)
-            const accountSid = process.env.TWILIO_ACCOUNT_SID;
-            const authToken  = process.env.TWILIO_AUTH_TOKEN;
+            // Send response via lib/twilio-client.js (TCPA + opt-out compliance)
             const fromNumber = clientConfig.twilio_from || process.env.TWILIO_FROM_NUMBER;
 
-            if (accountSid && authToken && fromNumber) {
-                const twilioClient = twilio(accountSid, authToken);
-                const msg = await twilioClient.messages.create({
-                    body: response,
-                    from: fromNumber,
-                    to:   fromPhone,
-                });
+            if (fromNumber) {
+                try {
+                    const result = await twilioLib.sendSMS({
+                        from:           fromNumber,
+                        to:             fromPhone,
+                        body:           response,
+                        clientSlug:     clientConfig.client_slug || null,
+                        clientTimezone: clientConfig.timezone || 'America/Chicago',
+                    });
 
-                await db.logSms({
-                    client_id:     clientConfig.id,
-                    visitor_id:    visitor.id,
-                    open_house_id: openHouse.id,
-                    direction:     'outbound',
-                    to_number:     fromPhone,
-                    from_number:   fromNumber,
-                    body:          response,
-                    twilio_sid:    msg.sid,
-                });
+                    const sid = result.sid || null;
 
-                await db.logConversation({
-                    visitor_id:    visitor.id,
-                    open_house_id: openHouse.id,
-                    client_id:     clientConfig.id,
-                    direction:     'outbound',
-                    message:       response,
-                    intent,
-                    twilio_sid:    msg.sid,
-                });
+                    await db.logSms({
+                        client_id:     clientConfig.id,
+                        visitor_id:    visitor.id,
+                        open_house_id: openHouse.id,
+                        direction:     'outbound',
+                        to_number:     fromPhone,
+                        from_number:   fromNumber,
+                        body:          response,
+                        twilio_sid:    sid,
+                    });
+
+                    await db.logConversation({
+                        visitor_id:    visitor.id,
+                        open_house_id: openHouse.id,
+                        client_id:     clientConfig.id,
+                        direction:     'outbound',
+                        message:       response,
+                        intent,
+                        twilio_sid:    sid,
+                    });
+                } catch (smsErr) {
+                    console.warn(`[Webhook/Twilio] Outbound SMS blocked or failed: ${smsErr.message}`);
+                }
             }
 
             // Notify agent immediately if high interest

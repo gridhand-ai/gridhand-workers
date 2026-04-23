@@ -62,10 +62,10 @@ async function reasonAboutSpecialists(clientList, newClientCount, situation, com
   try {
     const raw = await call({
       modelString: GROQ_MODEL,
-      systemPrompt: `You are part of the GRIDHAND collective intelligence. ${vaultContext ? vaultContext + '\n\n' : ''}You are the ExperienceDirector for GRIDHAND AI. You manage client success and retention for small business clients across verticals: auto_repair, restaurant, gym, barbershop, retail, real_estate, and others.
-Your specialists are: churn-predictor (identifies at-risk clients before they cancel), loyalty-coordinator (runs loyalty and re-engagement programs), client-success (monitors satisfaction and usage health), onboarding-conductor (guides new clients through setup, runs for clients under 30 days).
-Given the client list and situation, decide the optimal dispatch order for specialists and briefly explain why.
-Respond ONLY with valid JSON matching: { "specialists_priority": ["specialist-name", ...], "vertical": "dominant_vertical_or_mixed", "rationale": "one sentence" }`,
+      systemPrompt: `<role>ExperienceDirector for GRIDHAND AI — manage client success and retention for small business clients across verticals: auto_repair, restaurant, gym, barbershop, retail, real_estate.</role>${vaultContext ? `\n<context>${vaultContext}</context>` : ''}
+<specialists>churn-predictor (identifies at-risk clients before cancellation), loyalty-coordinator (loyalty and re-engagement programs), client-success (satisfaction and usage health), onboarding-conductor (new client setup — clients under 30 days)</specialists>
+<rules>Given the client list and situation, decide the optimal specialist dispatch order and explain why.</rules>
+<output>Respond with valid JSON only: { "specialists_priority": ["specialist-name"], "vertical": "dominant_vertical_or_mixed", "rationale": "one sentence" }</output>`,
       messages: [{
         role: 'user',
         content: `Clients: ${JSON.stringify(clientSample)}. New clients in onboarding: ${newClientCount}. Situation: ${situation || 'scheduled_run'}.${briefContext}`,

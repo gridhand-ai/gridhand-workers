@@ -6,13 +6,15 @@
 // Runs: on-demand (called by BrandDirector)
 // ──────────────────────────────────────────────────────────────────────────────
 
-const { createClient } = require('@supabase/supabase-js')
-const aiClient = require('../../lib/ai-client')
-const { sendSMS } = require('../../lib/twilio-client')
-const { validateSMS } = require('../../lib/message-gate')
+const { createClient }           = require('@supabase/supabase-js')
+const aiClient                   = require('../../lib/ai-client')
+const { sendSMS }                = require('../../lib/twilio-client')
+const { validateSMS }            = require('../../lib/message-gate')
 const { isHolidayRelevant, buildClientContext } = require('../../lib/client-context')
-const { fileInteraction } = require('../../lib/memory-client')
-const vault = require('../../lib/memory-vault')
+const { fileInteraction }        = require('../../lib/memory-client')
+const vault                      = require('../../lib/memory-vault')
+const { validateAndImprove }     = require('../../lib/offer-validator')
+const { logCampaignResult }      = require('../../lib/campaign-feedback')
 
 const AGENT_ID  = 'campaign-conductor'
 const DIVISION  = 'brand'
@@ -157,6 +159,7 @@ async function processClient(client) {
   const supabase = getSupabase()
   const now = new Date()
   const actionsTaken = []
+  const campaignsSent = []
 
   const ctx = buildClientContext(client)
 
@@ -190,8 +193,29 @@ async function processClient(client) {
     try {
       // Phase 1: Brief the client (7+ days out)
       if (daysUntil >= 7) {
-        const brief = await generateCampaignBrief(client, event, daysUntil, ctx)
-        if (!brief) continue
+        const draft = await generateCampaignBrief(client, event, daysUntil, ctx)
+        if (!draft) continue
+
+        // ── Offer validation gate ─────────────────────────────────────────
+        // Extract the offer concept from the draft brief for validation.
+        // validateAndImprove will rewrite once if the offer scores below 6.
+        const { finalOffer, validation, rewrote } = await validateAndImprove({
+          bizName:   client.business_name,
+          industry:  client.industry || ctx.vertical || 'business',
+          offerText: draft,
+          city:      client.city || client.location || '',
+        })
+
+        if (!validation.approved) {
+          console.warn(`[${AGENT_ID}] Offer validation failed after rewrite for ${event.key} (score: ${validation.score}) — skipping campaign`)
+          continue
+        }
+
+        if (rewrote) {
+          console.log(`[${AGENT_ID}] Offer rewritten for ${event.key} — validation score: ${validation.score}`)
+        }
+
+        const brief = finalOffer
 
         const gateResult = validateSMS(brief, { businessName: client.business_name })
         if (!gateResult.valid) {
@@ -212,11 +236,19 @@ async function processClient(client) {
           agent: 'campaign_conductor',
           client_id: client.id,
           entity_id: `campaign:${event.key}:${now.getFullYear()}`,
-          state: { briefSent: true, briefSentAt: new Date().toISOString(), event: event.name, daysOut: daysUntil },
+          state: {
+            briefSent:        true,
+            briefSentAt:      new Date().toISOString(),
+            event:            event.name,
+            daysOut:          daysUntil,
+            offerScore:       validation.score,
+            offerRewrote:     rewrote,
+          },
           updated_at: new Date().toISOString(),
         }, { onConflict: 'agent,client_id,entity_id' })
 
-        actionsTaken.push(`${event.name} campaign brief sent (${daysUntil} days out)`)
+        actionsTaken.push(`${event.name} campaign brief sent (${daysUntil} days out, offer score: ${validation.score})`)
+        campaignsSent.push({ event: event.name, brief, offerScore: validation.score })
       }
     } catch (err) {
       console.error(`[${AGENT_ID}] Campaign brief failed for ${event.key}:`, err.message)
@@ -224,6 +256,19 @@ async function processClient(client) {
   }
 
   if (!actionsTaken.length) return null
+
+  // ── Compound learning: log campaign dispatch to memory ────────────────────
+  if (campaignsSent.length > 0) {
+    await logCampaignResult({
+      clientId:     client.id,
+      campaignType: 'seasonal_campaign',
+      content:      campaignsSent.map(c => `${c.event}: ${c.brief}`).join(' | '),
+      outcome:      { sent: campaignsSent.length, responded: 0, booked: 0, revenue: 0 },
+      industry:     client.industry || ctx.vertical || 'business',
+      bizName:      client.business_name,
+      agentSource:  AGENT_ID,
+    }).catch(() => {})
+  }
 
   return {
     agentId: AGENT_ID,
@@ -237,7 +282,8 @@ async function processClient(client) {
 }
 
 async function generateCampaignBrief(client, event, daysUntil, ctx) {
-  const systemPrompt = `${ctx.xml}
+  const systemPrompt = `<role>Campaign Conductor for GRIDHAND AI — brief small business clients on targeted campaign opportunities via SMS.</role>
+${ctx.xml}
 
 <campaign>
 Upcoming event: ${event.name}

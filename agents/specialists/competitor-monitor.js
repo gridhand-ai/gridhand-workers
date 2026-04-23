@@ -84,7 +84,7 @@ async function fetchCkanData(endpointKey) {
  * Saves a row to industry_intelligence. Returns the saved record summary.
  *
  * @param {object} params
- * @param {string} params.industry - 'restaurant' | 'auto' | 'salon' | 'retail' | 'medical'
+ * @param {string} params.industry - 'restaurant' | 'auto' | 'salon' | 'retail' | 'cleaning'
  * @param {string} params.city     - e.g. 'Milwaukee'
  * @param {string} params.state    - e.g. 'WI'
  */

@@ -17,10 +17,49 @@
 
 const { createClient }    = require('@supabase/supabase-js')
 const aiClient            = require('../../lib/ai-client')
+const exa                 = require('../../lib/exa-client')
 const { sendSMS }         = require('../../lib/twilio-client')
 const { validateSMS }     = require('../../lib/message-gate')
 const { fileInteraction } = require('../../lib/memory-client')
 const vault               = require('../../lib/memory-vault')
+
+/**
+ * Scan the web for external mentions of the client that may contain complaints or
+ * negative sentiment beyond what's tracked in client_reviews.
+ * Self-corrects: if no results, expands to include abbreviations and misspellings.
+ */
+async function fetchExternalMentions(client) {
+  const name = client.business_name
+  const city  = client.city || client.location || ''
+
+  // Primary: exact name + complaint-signal terms
+  const primaryQuery = city
+    ? `"${name}" ${city} complaint OR "bad experience" OR "disappointed" OR "avoid"`
+    : `"${name}" complaint OR "bad experience" OR "disappointed"`
+
+  try {
+    let results = await exa.search(primaryQuery, { numResults: 4, maxChars: 800 })
+
+    if (!results?.results?.length) {
+      // Self-correction: try without quotes and add misspelling variants
+      console.log(`[${AGENT_ID}] No external complaint mentions found for "${name}" — expanding search`)
+      const broadQuery = city
+        ? `${name} ${city} negative review forum Reddit`
+        : `${name} negative review OR complaint forum`
+      results = await exa.search(broadQuery, { numResults: 4, maxChars: 800 })
+    }
+
+    return (results?.results || []).map(r => ({
+      title:      r.title,
+      url:        r.url,
+      highlights: r.highlights?.join(' ') || '',
+      published:  r.published,
+    }))
+  } catch (err) {
+    console.warn(`[${AGENT_ID}] Exa external mention scan failed (non-blocking):`, err.message)
+    return []
+  }
+}
 
 const AGENT_ID   = 'reputation-defender'
 const DIVISION   = 'brand'
@@ -97,7 +136,33 @@ async function processClient(client) {
     .order('rating', { ascending: true })
     .limit(10)
 
-  if (!reviews?.length) return null
+  // Also scan web for external complaints not captured in client_reviews
+  const externalMentions = await fetchExternalMentions(client)
+  const externalNegative = externalMentions.filter(m =>
+    /complaint|disappoint|avoid|bad|terrible|worst|scam|fraud/i.test(m.highlights + m.title)
+  )
+  if (externalNegative.length > 0) {
+    console.log(`[${AGENT_ID}] Found ${externalNegative.length} external negative mention(s) for ${client.business_name}`)
+    // Store external mentions in vault for director visibility
+    await vault.store(client.id, vault.KEYS.REVIEW_SENTIMENT, {
+      externalNegativeMentions: externalNegative.slice(0, 3),
+      scannedAt: new Date().toISOString(),
+    }, 9, AGENT_ID).catch(() => {})
+  }
+
+  if (!reviews?.length && externalNegative.length === 0) return null
+  if (!reviews?.length) {
+    // Only external mentions found — escalate without reviews
+    return {
+      agentId:                   AGENT_ID,
+      clientId:                  client.id,
+      timestamp:                 Date.now(),
+      status:                    'action_taken',
+      summary:                   `${externalNegative.length} external complaint mention(s) found online for ${client.business_name} — no in-app reviews to handle`,
+      data:                      { responded: 0, escalated: 0, externalNegativeMentions: externalNegative.length, actions: [`External mentions scanned: ${externalNegative.map(m => m.url).join(', ')}`] },
+      requiresDirectorAttention: true,
+    }
+  }
 
   let responded   = 0
   let escalations = 0
@@ -156,9 +221,9 @@ async function processClient(client) {
     clientId:                  client.id,
     timestamp:                 Date.now(),
     status:                    'action_taken',
-    summary:                   `${responded} review response(s) drafted, ${escalations} critical review(s) escalated for ${client.business_name}`,
-    data:                      { responded, escalated: escalations, actions },
-    requiresDirectorAttention: escalations > 0,
+    summary:                   `${responded} review response(s) drafted, ${escalations} critical review(s) escalated, ${externalNegative.length} external mention(s) flagged for ${client.business_name}`,
+    data:                      { responded, escalated: escalations, externalNegativeMentions: externalNegative.length, actions },
+    requiresDirectorAttention: escalations > 0 || externalNegative.length > 0,
   }
 }
 
@@ -169,7 +234,8 @@ async function processClient(client) {
  * @returns {Promise<string|null>}
  */
 async function generateResponseDraft(client, review) {
-  const systemPrompt = `<business>
+  const systemPrompt = `<role>Reputation Defender for GRIDHAND AI — draft professional, empathetic public review responses for small business clients.</role>
+<business>
 Name: ${client.business_name}
 Industry: ${client.industry || 'business'}
 </business>

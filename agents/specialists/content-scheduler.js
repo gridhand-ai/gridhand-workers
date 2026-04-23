@@ -11,13 +11,15 @@
 //
 // @param {Array<Object>} clients - Active client objects from Supabase
 // @returns {Object} Specialist report: actionsCount, escalations, outcomes
-// Tools used: lib/ai-client (groq), lib/memory-client, lib/memory-vault
+// Tools used: lib/content-pipeline (multi-step), lib/campaign-feedback, lib/memory-client, lib/memory-vault
 // ──────────────────────────────────────────────────────────────────────────────
 
-const { createClient }    = require('@supabase/supabase-js')
-const aiClient            = require('../../lib/ai-client')
-const { fileInteraction } = require('../../lib/memory-client')
-const vault               = require('../../lib/memory-vault')
+const { createClient }       = require('@supabase/supabase-js')
+const exa                    = require('../../lib/exa-client')
+const { fileInteraction }    = require('../../lib/memory-client')
+const vault                  = require('../../lib/memory-vault')
+const { runContentPipeline } = require('../../lib/content-pipeline')
+const { logContentBatch }    = require('../../lib/campaign-feedback')
 
 const AGENT_ID   = 'content-scheduler'
 const DIVISION   = 'brand'
@@ -27,6 +29,32 @@ const REPORTS_TO = 'brand-director'
 const CONTENT_BATCH_SIZE = 5
 // Regenerate if content calendar is older than this many days
 const REGEN_AFTER_DAYS   = 6
+
+/**
+ * Fetch trending content topics for a client's industry via Exa.
+ * This keeps content calendars fresh and grounded in what's actually trending.
+ */
+async function fetchTrendingTopics(client) {
+  const industry = client.industry || 'small business'
+  const city     = client.city || client.location || ''
+  const query    = city
+    ? `trending ${industry} content topics social media ${city} 2025`
+    : `trending ${industry} small business social media content ideas 2025`
+  try {
+    const results = await exa.search(query, { numResults: 3, maxChars: 1000 })
+    if (!results?.results?.length) {
+      // Self-correction: broaden search to industry + social media trends
+      console.log(`[${AGENT_ID}] Exa returned no trending topics — retrying with broader terms`)
+      const retry = await exa.search(`${industry} social media content ideas trending`, { numResults: 3, maxChars: 1000 })
+      if (!retry?.results?.length) return null
+      return retry.results.map(r => r.highlights?.join(' ') || r.title).join('\n').slice(0, 1500)
+    }
+    return results.results.map(r => r.highlights?.join(' ') || r.title).join('\n').slice(0, 1500)
+  } catch (err) {
+    console.warn(`[${AGENT_ID}] Exa trending topics failed (non-blocking):`, err.message)
+    return null
+  }
+}
 
 function getSupabase() {
   return createClient(
@@ -64,6 +92,7 @@ async function run(clients = []) {
       await vault.store(r.clientId, vault.KEYS.BRAND_VOICE, {
         lastAction:    'content_batch_generated',
         batchSize:     r.data?.ideas?.length || 0,
+        avgScore:      r.data?.avgScore      || 0,
         summary:       r.summary || 'content scheduler cycle complete',
         timestamp:     Date.now(),
       }, 5, AGENT_ID).catch(() => {})
@@ -75,12 +104,13 @@ async function run(clients = []) {
 
 /**
  * Process a single client — check if content batch is stale, regenerate if needed.
+ * Uses multi-step content pipeline: research → draft → score → refine → image prompts.
  * @param {Object} client
  * @returns {Object|null}
  */
 async function processClient(client) {
-  const supabase   = getSupabase()
-  const now        = Date.now()
+  const supabase    = getSupabase()
+  const now         = Date.now()
   const regenCutoff = new Date(now - REGEN_AFTER_DAYS * 24 * 60 * 60 * 1000).toISOString()
 
   // Check when last content batch was generated
@@ -102,82 +132,56 @@ async function processClient(client) {
   const brandVoiceEntry = await vault.recall(client.id, vault.KEYS.BRAND_VOICE).catch(() => null)
   const brandVoice      = brandVoiceEntry?.voice || null
 
-  const ideas = await generateContentBatch(client, brandVoice)
+  // Optional: fetch live trending topics via Exa to seed the pipeline's research step
+  const trendingTopic = await fetchTrendingTopics(client)
+
+  // ── Multi-step pipeline (research → draft → score → refine → image prompts) ──
+  const { ideas, avgScore, pipelineLog } = await runContentPipeline({
+    client,
+    topic:     trendingTopic || null,
+    type:      'social_post',
+    batchSize: CONTENT_BATCH_SIZE,
+    brandVoice,
+  })
+
   if (!ideas?.length) return null
 
+  console.log(`[${AGENT_ID}] Pipeline complete for ${client.business_name} — ${ideas.length} ideas, avg score ${avgScore}`)
+
   // Log the content batch to activity_log for Social Manager
+  // image_prompt is stored per-idea in metadata for dashboard consumption
   try {
     await supabase.from('activity_log').insert({
-      client_id:   client.id,
-      worker_name: AGENT_ID,
-      worker_id:   AGENT_ID,
-      event_type:  'content_batch',
-      message:     `Generated ${ideas.length} content ideas for week of ${new Date().toDateString()}`,
-      metadata:    { ideas, generatedAt: new Date().toISOString() },
+      client_id:    client.id,
+      worker_name:  AGENT_ID,
+      worker_id:    AGENT_ID,
+      event_type:   'content_batch',
+      message:      `Generated ${ideas.length} content ideas (avg quality ${avgScore}/10) for week of ${new Date().toDateString()}`,
+      metadata:     { ideas, avgScore, pipelineLog, generatedAt: new Date().toISOString() },
       credits_used: 0,
-      created_at:  new Date().toISOString(),
+      created_at:   new Date().toISOString(),
     })
   } catch (err) {
     console.error(`[${AGENT_ID}] Failed to log content batch:`, err.message)
   }
+
+  // ── Compound learning: feed result back to agent_memory ───────────────────
+  await logContentBatch({
+    clientId: client.id,
+    ideas,
+    avgScore,
+    industry: client.industry || 'business',
+    bizName:  client.business_name,
+  }).catch(() => {})
 
   return {
     agentId:                   AGENT_ID,
     clientId:                  client.id,
     timestamp:                 Date.now(),
     status:                    'action_taken',
-    summary:                   `Generated ${ideas.length} content ideas for ${client.business_name}`,
-    data:                      { ideas, batchSize: ideas.length },
+    summary:                   `Generated ${ideas.length} content ideas (avg ${avgScore}/10) for ${client.business_name}`,
+    data:                      { ideas, batchSize: ideas.length, avgScore },
     requiresDirectorAttention: false,
-  }
-}
-
-/**
- * Generate a batch of content ideas via Groq.
- * @param {Object} client
- * @param {string|null} brandVoice
- * @returns {Promise<Array<Object>>}
- */
-async function generateContentBatch(client, brandVoice) {
-  const systemPrompt = `<business>
-Name: ${client.business_name}
-Industry: ${client.industry || 'business'}
-${brandVoice ? `<brand_voice>${brandVoice}</brand_voice>` : ''}
-</business>
-
-<task>
-Generate ${CONTENT_BATCH_SIZE} unique social media content ideas for this week.
-Each idea should be a short-form post (suitable for Instagram, Facebook, or SMS broadcast).
-</task>
-
-<output>
-Return a JSON array of objects. Each object has:
-- "type": one of "tip", "story", "offer", "question", "behind-the-scenes"
-- "hook": the opening line or headline (max 12 words)
-- "angle": 1-sentence description of the content angle
-
-Example:
-[{"type":"tip","hook":"3 things to look for before hiring a contractor","angle":"Position the business as the trustworthy expert by educating on common pitfalls."}]
-
-Return ONLY valid JSON. No other text.
-</output>`
-
-  try {
-    const raw = await aiClient.call({
-      modelString:   'groq/llama-3.3-70b-versatile',
-      clientApiKeys: {},
-      systemPrompt,
-      messages:      [{ role: 'user', content: 'Generate the content batch.' }],
-      maxTokens:     600,
-      _workerName:   AGENT_ID,
-    })
-
-    const jsonMatch = raw?.match(/\[[\s\S]*\]/)
-    if (!jsonMatch) return []
-    return JSON.parse(jsonMatch[0])
-  } catch (err) {
-    console.error(`[${AGENT_ID}] Content generation failed:`, err.message)
-    return []
   }
 }
 

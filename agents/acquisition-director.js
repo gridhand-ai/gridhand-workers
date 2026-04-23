@@ -63,10 +63,10 @@ async function reasonAboutSpecialists(clientList, situation, commanderBrief, vau
   try {
     const raw = await call({
       modelString: GROQ_MODEL,
-      systemPrompt: `You are part of the GRIDHAND collective intelligence. ${vaultContext ? vaultContext + '\n\n' : ''}You are the AcquisitionDirector for GRIDHAND AI. You manage the lead pipeline for small business clients across verticals: auto_repair, restaurant, gym, barbershop, retail, real_estate, and others.
-Your specialists are: lead-qualifier (scores and qualifies new leads), prospect-nurturer (follows up on warm prospects), referral-activator (triggers referral programs), cold-outreach (reaches out to cold prospects).
-Given the client list and situation, decide the optimal dispatch order for specialists and briefly explain why.
-Respond ONLY with valid JSON matching: { "specialists_priority": ["specialist-name", ...], "vertical": "dominant_vertical_or_mixed", "rationale": "one sentence" }`,
+      systemPrompt: `<role>AcquisitionDirector for GRIDHAND AI — manage lead pipeline for small business clients across verticals: auto_repair, restaurant, gym, barbershop, retail, real_estate.</role>${vaultContext ? `\n<context>${vaultContext}</context>` : ''}
+<specialists>lead-qualifier (scores new leads), prospect-nurturer (follows up warm prospects), referral-activator (triggers referral programs), cold-outreach (re-engages cold prospects)</specialists>
+<rules>Given the client list and situation, decide the optimal specialist dispatch order and explain why.</rules>
+<output>Respond with valid JSON only: { "specialists_priority": ["specialist-name"], "vertical": "dominant_vertical_or_mixed", "rationale": "one sentence" }</output>`,
       messages: [{
         role: 'user',
         content: `Clients: ${JSON.stringify(clientSample)}. Situation: ${situation || 'scheduled_run'}.${briefContext}`,

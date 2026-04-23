@@ -1,12 +1,11 @@
 const { createClient } = require('@supabase/supabase-js');
-const twilio = require('twilio');
+const { sendSMS } = require('../lib/twilio-client');
 const aiClient = require('../lib/ai-client');
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
 );
-const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
 const STATUS_MESSAGES = {
   ready:       (name, service, biz) => `Hi ${name}! Your ${service || 'service'} at ${biz} is complete and ready for pickup. Questions? Just reply here.`,
@@ -36,10 +35,12 @@ module.exports = {
       } catch {}
     }
 
-    await twilioClient.messages.create({
+    await sendSMS({
       body,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: customerPhone,
+      clientSlug: context.clientSlug,
+      clientTimezone: context.clientTimezone,
     });
 
     await supabase.from('activity_log').insert({

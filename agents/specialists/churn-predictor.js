@@ -150,7 +150,8 @@ This churn analysis is an internal GRIDHAND health check.
 Flag high-risk clients so the experience director can intervene before cancellation.
 </owner_context>`
 
-  const systemPrompt = `${ownerBlock}
+  const systemPrompt = `<role>Churn Predictor for GRIDHAND AI — score client churn risk based on activity signals and engagement trends.</role>
+${ownerBlock}
 
 <client_context>
   Business: ${client.business_name}

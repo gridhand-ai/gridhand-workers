@@ -2,10 +2,8 @@
 // Requires: Google My Business API (OAuth) or Places API key
 // Config: client.settings.integrations.googleBusiness.placeId + apiKey
 
-const Anthropic = require('@anthropic-ai/sdk');
+const aiClient = require('../../lib/ai-client');
 const store = require('../store');
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 function getKey(clientSlug) { return clientSlug; }
 
@@ -34,10 +32,9 @@ async function generateResponse(review, businessName, businessTone = 'friendly')
     const isPositive = review.rating >= 4;
 
     try {
-        const response = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 150,
-            system: `You write business owner responses to Google reviews for ${businessName}.
+        return await aiClient.call({
+            modelString: 'claude-haiku-4-5-20251001',
+            systemPrompt: `You write business owner responses to Google reviews for ${businessName}.
 ${toneInstruction}
 - Keep responses to 2-3 sentences max.
 - For positive reviews: thank them warmly, mention something specific they said.
@@ -47,10 +44,9 @@ ${toneInstruction}
             messages: [{
                 role: 'user',
                 content: `${isPositive ? 'Positive' : 'Negative'} review (${review.rating}/5 stars):\n"${review.text}"\nFrom: ${review.author_name || 'a customer'}`
-            }]
+            }],
+            maxTokens: 150,
         });
-
-        return response.content[0]?.text?.trim();
     } catch (e) {
         return isPositive
             ? `Thank you so much for your kind words, ${review.author_name || 'valued customer'}! We truly appreciate your support and look forward to seeing you again. — ${businessName}`

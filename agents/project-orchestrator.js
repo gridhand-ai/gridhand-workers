@@ -68,19 +68,14 @@ async function shadowMode({ file, changeDescription, patternType, niche, client_
   try {
     const raw = await call({
       modelString: GROQ_MODEL,
-      systemPrompt: `<role>You are the GRIDHAND SaaS Factory pattern extractor.</role>
-<task>
-Analyze a file change description and extract a reusable, niche-agnostic pattern
-that can be templated for future client deployments.
-
-Extract:
-- A short slug name (snake_case, max 40 chars) — e.g. "hero_with_video_bg"
-- A clean description of the pattern (1-2 sentences)
-- The structural/copy formula (what makes it work, abstracted away from specifics)
-- Any copy formulas used (headline formula, CTA formula, etc.)
-- Conversion principles observed
-
-Respond ONLY with valid JSON:
+      systemPrompt: `<role>ProjectOrchestrator — GRIDHAND SaaS Factory pattern extractor.</role>
+<task>Analyze a file change description and extract a reusable, niche-agnostic pattern that can be templated for future client deployments.</task>
+<rules>
+- Extract: a short slug name (snake_case, max 40 chars), clean description (1-2 sentences), structural/copy formula, any copy formulas, conversion principles observed
+- Never invent specifics — only extract what is described
+- If uncertain, be general
+</rules>
+<output>Respond with valid JSON only:
 {
   "name": "pattern_slug",
   "description": "What this pattern does",
@@ -88,9 +83,7 @@ Respond ONLY with valid JSON:
   "copy_formula": "Headline formula or copy approach, if any",
   "conversion_principle": "Why this converts",
   "tags": ["tag1", "tag2"]
-}
-</task>
-<rules>Never invent specifics. Only extract what's described. If uncertain, be general.</rules>`,
+}</output>`,
       messages: [{
         role: 'user',
         content: `<file>${file}</file>\n<pattern_type>${resolvedType}</pattern_type>\n<niche>${resolvedNiche}</niche>\n<change_description>${changeDescription}</change_description>`,

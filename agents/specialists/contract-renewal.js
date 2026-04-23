@@ -191,7 +191,8 @@ async function generateRenewalReminder(client, sub, daysUntil) {
     : daysUntil <= 14 ? 'moderately urgent — renewal is coming soon'
     : 'friendly heads-up — renewal is in about a month'
 
-  const systemPrompt = `<business>
+  const systemPrompt = `<role>Contract Renewal Specialist for GRIDHAND AI — write subscription renewal reminder SMS messages for small business clients.</role>
+<business>
 Name: ${client.business_name}
 </business>
 

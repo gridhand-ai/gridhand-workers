@@ -1,8 +1,6 @@
 // Sentiment Analyzer — reads customer tone before worker responds
 // Returns: tone, urgency, emotion, readyToBuy, escalate
-const Anthropic = require('@anthropic-ai/sdk');
-
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const aiClient = require('../../lib/ai-client');
 
 // Fast keyword-based pre-check before hitting Claude
 const ANGER_WORDS = ['angry', 'furious', 'pissed', 'disgusted', 'hate', 'terrible', 'horrible', 'worst', 'ridiculous', 'lawsuit', 'refund', 'scam', 'fraud'];
@@ -27,10 +25,9 @@ async function analyze(message, conversationHistory = []) {
         : '';
 
     try {
-        const response = await anthropic.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 150,
-            system: `You are a sentiment analysis engine for SMS customer service. Analyze the customer message and return ONLY valid JSON with these exact fields:
+        const raw = await aiClient.call({
+            modelString: 'claude-haiku-4-5-20251001',
+            systemPrompt: `You are a sentiment analysis engine for SMS customer service. Analyze the customer message and return ONLY valid JSON with these exact fields:
 {
   "tone": "positive|negative|neutral",
   "urgency": "high|medium|low",
@@ -43,10 +40,9 @@ escalate=true means the customer needs a human. Be concise and accurate.`,
             messages: [{
                 role: 'user',
                 content: `Customer message: "${message}"${historyContext}`
-            }]
+            }],
+            maxTokens: 150,
         });
-
-        const raw = response.content[0]?.text?.trim();
         const result = JSON.parse(raw);
         console.log(`[SentimentAnalyzer] "${message.slice(0, 40)}..." → ${result.tone}/${result.emotion} urgency:${result.urgency}`);
         return result;

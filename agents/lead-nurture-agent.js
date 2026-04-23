@@ -166,7 +166,8 @@ async function generateLeadResponse({ clientConfig, leadState, inboundMessage, m
         taskDesc = `Final re-engagement after no response for 7+ days. Very brief. Offer to reconnect if timing wasn't right. Then we won't reach out again.`;
     }
 
-    const systemPrompt = `<business>
+    const systemPrompt = `<role>Lead Nurture Agent for GRIDHAND AI — write personalized, human lead nurture SMS messages on behalf of small business clients.</role>
+<business>
 Name: ${bizName}
 Industry: ${industry}
 ${services ? `Services: ${services}` : ''}
