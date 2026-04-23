@@ -103,7 +103,7 @@ async function checkRecentActivity() {
         const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
         const { data, error } = await supabase
             .from('activity_log')
-            .select('worker, action, created_at')
+            .select('worker_id, action, created_at')
             .gte('created_at', since)
             .order('created_at', { ascending: false })
             .limit(50)
@@ -116,7 +116,7 @@ async function checkRecentActivity() {
 
         const workerCounts = {}
         data?.forEach(r => {
-            workerCounts[r.worker] = (workerCounts[r.worker] || 0) + 1
+            workerCounts[r.worker_id] = (workerCounts[r.worker_id] || 0) + 1
         })
 
         return {

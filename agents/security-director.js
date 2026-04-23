@@ -30,7 +30,7 @@ async function scanAuthAnomalies(supabase) {
     const since = new Date(Date.now() - 30 * 60 * 1000).toISOString()
     const { data } = await supabase
       .from('activity_log')
-      .select('agent_id, client_id, action, created_at')
+      .select('worker_id, client_id, action, created_at')
       .eq('outcome', 'error')
       .gte('created_at', since)
     return data || []
@@ -53,12 +53,12 @@ async function scanWorkerErrors(supabase) {
     const since = new Date(Date.now() - 60 * 60 * 1000).toISOString()
     const { data } = await supabase
       .from('activity_log')
-      .select('agent_id, outcome, created_at')
+      .select('worker_id, outcome, created_at')
       .eq('outcome', 'error')
       .gte('created_at', since)
     const errorsByAgent = {}
     for (const row of data || []) {
-      errorsByAgent[row.agent_id] = (errorsByAgent[row.agent_id] || 0) + 1
+      errorsByAgent[row.worker_id] = (errorsByAgent[row.worker_id] || 0) + 1
     }
     return Object.entries(errorsByAgent)
       .filter(([, count]) => count >= 3)
