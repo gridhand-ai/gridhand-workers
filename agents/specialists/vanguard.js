@@ -179,7 +179,8 @@ async function sendSolicitations(supabase, solicitations, clientMap) {
         worker_id:  SPECIALIST_ID,
         client_id:  sol.clientId,
         action:     'review_solicitation_sent',
-        outcome:    'sent',
+        outcome:    'ok',
+        message:    `Review solicitation sent to ${sol.customerPhone || 'customer'}`,
         metadata:   { customerId: sol.customerId, customerPhone: sol.customerPhone, message: sol.message },
         created_at: new Date().toISOString(),
       })
@@ -201,7 +202,8 @@ async function logResponseDrafts(supabase, responses) {
         worker_id:  SPECIALIST_ID,
         client_id:  resp.clientId,
         action:     'review_response_drafted',
-        outcome:    'drafted',
+        outcome:    'ok',
+        message:    `Review response drafted for rating: ${resp.rating ?? 'unknown'}`,
         metadata:   { reviewId: resp.reviewId, rating: resp.rating, draft: resp.draft },
         created_at: new Date().toISOString(),
       })
@@ -243,7 +245,8 @@ async function detectAndLogReputationAlerts(supabase, clientList, allRecentRevie
         worker_id:  SPECIALIST_ID,
         client_id:  alert.clientId,
         action:     'reputation_alert',
-        outcome:    'flagged',
+        outcome:    'error',
+        message:    `Reputation alert flagged: ${alert.reason || 'negative review spike'}`,
         metadata:   { reason: alert.reason, requiresAttention: true },
         created_at: new Date().toISOString(),
       })

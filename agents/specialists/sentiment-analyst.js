@@ -93,7 +93,8 @@ async function logSentimentResults(supabase, results, clientList) {
         worker_id:  SPECIALIST_ID,
         client_id:  item.clientId,
         action:     'sentiment_escalation',
-        outcome:    'flagged',
+        outcome:    'error',
+        message:    `Sentiment escalation: ${item.sentiment || 'negative'} message detected`,
         metadata:   item,
         created_at: new Date().toISOString(),
       })

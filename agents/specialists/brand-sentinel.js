@@ -135,13 +135,13 @@ async function processClient(client) {
     .from('activity_log')
     .select('action, summary, metadata, created_at')
     .eq('client_id', client.id)
-    .in('worker_name', ['review_received', 'review_positive', 'review_negative'])
+    .in('action', ['review_received', 'review_positive', 'review_negative'])
     .gte('created_at', new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString())
     .order('created_at', { ascending: false })
     .limit(20)
 
-  const positiveCount = recentReviews?.filter(r => r.worker_name === 'review_positive').length || 0
-  const negativeCount = recentReviews?.filter(r => r.worker_name === 'review_negative').length || 0
+  const positiveCount = recentReviews?.filter(r => r.action === 'review_positive').length || 0
+  const negativeCount = recentReviews?.filter(r => r.action === 'review_negative').length || 0
   const totalReviews  = recentReviews?.length || 0
 
   // Scan the web for brand mentions beyond in-app reviews

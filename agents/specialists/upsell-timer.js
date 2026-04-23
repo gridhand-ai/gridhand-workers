@@ -126,9 +126,11 @@ async function processClient(client) {
   if (ninetyDayClients?.length) {
     // 90-day milestone: flag for director review rather than SMS-ing the owner about themselves
     await supabase.from('activity_log').insert({
-      client_id: client.id,
+      client_id:   client.id,
+      worker_id:   AGENT_ID,
       worker_name: AGENT_ID,
-      action: '90_day_upsell_flag',
+      action:      '90_day_upsell_flag',
+      outcome:     null,
       metadata: {
         reason: '90 days on platform',
         currentPlan: currentPlan.name,

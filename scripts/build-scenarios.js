@@ -10,7 +10,7 @@ const MAKE_API_KEY = process.env.MAKE_API_KEY || '3be2c88b-3038-4511-b92d-f92e05
 const MAKE_TEAM_ID = process.env.MAKE_TEAM_ID || '2044683'
 const MAKE_ZONE    = process.env.MAKE_ZONE    || 'us2'
 const BASE_URL     = `https://${MAKE_ZONE}.make.com/api/v2`
-const PORTAL_URL   = 'https://gridhand-portal.vercel.app/api/make/webhook'
+const PORTAL_URL   = process.env.NEXT_PUBLIC_APP_URL ? `${process.env.NEXT_PUBLIC_APP_URL}/api/make/webhook` : 'https://gridhand.ai/api/make/webhook'
 const SECRET       = 'gridhand-make-2026'
 
 async function api(method, path, body) {

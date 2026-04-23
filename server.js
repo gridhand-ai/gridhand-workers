@@ -55,6 +55,7 @@ const leadNurtureAgent  = require('./agents/lead-nurture-agent');
 const credentialMonitor  = require('./agents/credential-monitor');
 const scenarioEngine     = require('./agents/n8n-scenario-engine');
 const industryBuilder    = require('./agents/industry-scenario-builder');
+const competitorMonitor  = require('./agents/specialists/competitor-monitor');
 const gridhandCommander  = require('./agents/gridhand-commander');
 
 // Redis client (Upstash — persistent dedup across Railway cold starts)
@@ -434,6 +435,10 @@ app.post('/sms', async (req, res) => {
                 'reminder':       reminderWorker,
                 'review-requester': reviewRequesterWorker,
                 'referral':       referralWorker,
+                'reactivation':   reactivationWorker,
+                'lead-followup':  leadFollowupWorker,
+                'upsell':         upsellWorker,
+                'onboarding':     onboardingWorker,
             };
             const w = workerMap[intent.suggestedWorker];
             if (w) {
@@ -1452,6 +1457,67 @@ app.post('/provision/update', requireApiKey, async (req, res) => {
         res.status(code).json({ error: code === 409 ? e.message : `Failed to update client: ${e.message}` });
     }
 });
+
+// POST /initialize-client — called by portal provision after new client setup
+// Kicks off Day 0 intelligence seeding: industry-wide competitor scan
+app.post('/initialize-client', requireApiKey, async (req, res) => {
+  const { clientId, industry, slug } = req.body
+
+  if (!clientId || typeof clientId !== 'string') {
+    return res.status(400).json({ error: 'clientId required' })
+  }
+
+  // Respond immediately — initialization runs in background
+  res.json({ ok: true, clientId, message: 'Initialization started' })
+
+  // Fire-and-forget: run competitor intelligence seed in background
+  setImmediate(async () => {
+    try {
+      console.log(`[initialize-client] Starting Day 0 init for client ${clientId}, industry: ${industry}`)
+
+      // Mode A: industry-wide intelligence crawl (no client-specific competitors yet)
+      // This seeds industry_intelligence table with fresh market data
+      await competitorMonitor.runInternal({
+        industry: industry || 'local business',
+        city: 'Milwaukee',   // default city — will be overridden once client sets location
+        state: 'WI',
+      })
+
+      // Log success to activity_log
+      await supabaseAdmin.from('activity_log').insert({
+        client_id:    clientId,
+        worker_id:    'competitor-monitor',
+        worker_name:  'Competitor Monitor',
+        worker_icon:  '🔍',
+        worker_color: '#ef4444',
+        action:       'task_completed',
+        outcome:      'ok',
+        message:      `Initial industry intelligence seeded for ${industry || 'local business'}`,
+        created_at:   new Date().toISOString(),
+      })
+
+      console.log(`[initialize-client] Day 0 init complete for ${clientId}`)
+    } catch (err) {
+      console.error(`[initialize-client] Init failed for ${clientId}:`, err.message)
+      // Log failure but don't crash — this is non-critical
+      try {
+        await supabaseAdmin.from('activity_log').insert({
+          client_id:    clientId,
+          worker_id:    'competitor-monitor',
+          worker_name:  'Competitor Monitor',
+          worker_icon:  '⚠️',
+          worker_color: '#FF453A',
+          action:       'task_failed',
+          outcome:      'error',
+          message:      `Day 0 initialization failed: ${err.message}`,
+          created_at:   new Date().toISOString(),
+        })
+      } catch {
+        // Supabase also down — nothing we can do
+      }
+    }
+  })
+})
 
 // ─── Startup Config Restore — pull worker configs from Supabase ──────────────
 // Railway containers start with an empty /app/clients directory on every deploy.

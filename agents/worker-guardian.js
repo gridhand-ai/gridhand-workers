@@ -26,8 +26,8 @@ const WORKERS_DIR = path.join(__dirname, '../workers')
 const CLIENTS_DIR = path.join(__dirname, '../clients')
 
 const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
 // ─── Core worker files that must always exist ─────────────────────────────────

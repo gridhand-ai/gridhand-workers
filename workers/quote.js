@@ -8,7 +8,8 @@ async function send({ client, customerNumber, customerName, serviceName, quoteAm
     const validPart = validUntil ? ` (valid until ${validUntil})` : '';
     const detailPart = quoteDetails ? ` — ${quoteDetails}` : '';
 
-    const body = `${nameGreet}, here's your quote from ${biz.name}:\n\n${serviceName}: $${quoteAmount}${detailPart}${validPart}\n\nReady to move forward? Call ${biz.phone} or reply with any questions! — ${biz.name}`;
+    const amount = quoteAmount != null ? `$${quoteAmount}` : 'your quote';
+    const body = `${nameGreet}, here's your quote from ${biz.name}:\n\n${serviceName}: ${amount}${detailPart}${validPart}\n\nReady to move forward? Call ${biz.phone} or reply with any questions! — ${biz.name}`;
 
     await sender.sendSMS({
         from: client.twilioNumber,

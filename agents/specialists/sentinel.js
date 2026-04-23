@@ -120,7 +120,8 @@ async function logViolations(supabase, audits) {
         worker_id:  SPECIALIST_ID,
         client_id:  v.clientId,
         action:     'compliance_violation',
-        outcome:    'flagged',
+        outcome:    'error',
+        message:    `Compliance violation: ${v.reason || 'tcpa_risk'}`,
         metadata: {
           messageId:  v.messageId,
           tcpaRisk:   v.tcpaRisk,

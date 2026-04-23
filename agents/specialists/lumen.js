@@ -163,7 +163,8 @@ async function storeInsights(supabase, insights) {
         worker_id:  SPECIALIST_ID,
         client_id:  insight.clientId,
         action:     'weekly_insight',
-        outcome:    'generated',
+        outcome:    'ok',
+        message:    `Weekly insight generated for ${insight.businessName || 'client'}`,
         metadata: {
           summary:    insight.summary,
           highlights: insight.highlights || [],

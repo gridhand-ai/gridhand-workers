@@ -116,13 +116,15 @@ async function processClient(client, isClientContext = false) {
 
   // Log high-risk alert — columns match activity_log schema
   await supabase.from('activity_log').insert({
-    client_id: client.id,
-    worker_id: 'churn_risk',
+    client_id:   client.id,
+    worker_id:   'churn_risk',
     worker_name: 'Churn Predictor',
     worker_icon: '📉',
     worker_color: '#f87171',
-    message: `Churn risk score: ${score}/10`,
-    metadata: { score, signals, event_type: 'churn_risk' },
+    action:      'task_completed',
+    outcome:     'error',
+    message:     `Churn risk score: ${score}/10`,
+    metadata:    { score, signals, event_type: 'churn_risk' },
   })
 
   return {

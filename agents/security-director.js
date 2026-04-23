@@ -98,9 +98,9 @@ async function logSecurityScan(supabase, assessment) {
   try {
     await supabase.from('activity_log').insert({
       worker_id:  AGENT_ID,
-      client_id:  'system',
+      client_id:  null,
       action:     'security_scan',
-      outcome:    assessment.threatLevel === 'critical' || assessment.threatLevel === 'high' ? 'escalated' : 'ok',
+      outcome:    assessment.threatLevel === 'critical' || assessment.threatLevel === 'high' ? 'error' : 'ok',
       metadata:   assessment,
       created_at: new Date().toISOString(),
     })

@@ -44,10 +44,13 @@ module.exports = {
     });
 
     await supabase.from('activity_log').insert({
-      client_id: clientId,
+      client_id:   clientId,
+      worker_id:   'status-updater',
       worker_name: 'status-updater',
+      action:      'message_sent',
+      outcome:     'ok',
       message:     `Status update sent to ${customerName}: "${status}"`,
-      created_at: new Date().toISOString(),
+      created_at:  new Date().toISOString(),
     });
 
     return { success: true, message: body };

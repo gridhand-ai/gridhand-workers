@@ -12,7 +12,7 @@ async function generateWeeklyReport(clientId, businessName) {
 
   const { data: activities } = await supabase
     .from('activity_log')
-    .select('worker, action, result, created_at')
+    .select('worker_name, action, message, created_at')
     .eq('client_id', clientId)
     .gte('created_at', weekAgo)
     .order('created_at', { ascending: false });
@@ -26,9 +26,9 @@ async function generateWeeklyReport(clientId, businessName) {
 
   const workerCounts = {};
   activities.forEach(a => {
-    workerCounts[a.worker] = (workerCounts[a.worker] || 0) + 1;
+    workerCounts[a.worker_name] = (workerCounts[a.worker_name] || 0) + 1;
   });
-  const topWorker = Object.entries(workerCounts).sort((a, b) => b[1] - a[1])[0];
+  const topWorkerEntry = Object.entries(workerCounts).sort((a, b) => b[1] - a[1])[0];
 
   const dayCounts = {};
   activities.forEach(a => {
@@ -38,7 +38,7 @@ async function generateWeeklyReport(clientId, businessName) {
   const busiestDay = Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0];
 
   return {
-    report: `${businessName} — Weekly Report\n\n${activities.length} tasks completed\nTop worker: ${topWorker[0]} (${topWorker[1]} tasks)\nBusiest day: ${busiestDay[0]}\n\nYour AI team handled everything while you focused on your work.\n\n— GRIDHAND AI`,
+    report: `${businessName} — Weekly Report\n\n${activities.length} tasks completed\nTop worker: ${topWorkerEntry?.[0] ?? 'N/A'} (${topWorkerEntry?.[1] ?? 0} tasks)\nBusiest day: ${busiestDay[0]}\n\nYour AI team handled everything while you focused on your work.\n\n— GRIDHAND AI`,
     activityCount: activities.length,
   };
 }

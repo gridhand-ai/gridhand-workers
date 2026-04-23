@@ -199,11 +199,14 @@ async function processClient(client) {
 
   // Log to activity
   await supabase.from('activity_log').insert({
-    client_id: client.id,
-    action: 'upgrade_opportunity_flagged',
-    message: pricingInsight || `Client at ${usagePct}% of plan usage`,
-    metadata: { usagePct, taskCount, planLimit, pricingInsight },
-    created_at: new Date().toISOString(),
+    client_id:   client.id,
+    worker_id:   AGENT_ID,
+    worker_name: AGENT_ID,
+    action:      'upgrade_opportunity_flagged',
+    outcome:     null,
+    message:     pricingInsight || `Client at ${usagePct}% of plan usage`,
+    metadata:    { usagePct, taskCount, planLimit, pricingInsight },
+    created_at:  new Date().toISOString(),
   })
 
   return {

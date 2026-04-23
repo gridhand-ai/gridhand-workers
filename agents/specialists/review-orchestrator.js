@@ -72,7 +72,7 @@ async function processClient(client) {
     .from('activity_log')
     .select('*')
     .eq('client_id', client.id)
-    .in('worker_name', ['appointment_completed', 'service_completed', 'booking_fulfilled', 'task_completed'])
+    .in('action', ['appointment_completed', 'service_completed', 'booking_fulfilled', 'task_completed'])
     .gte('created_at', windowStart)
     .lte('created_at', windowEnd)
     .not('action', 'eq', 'review_requested')  // skip rows already actioned
