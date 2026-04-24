@@ -16,7 +16,7 @@
     "@linear/sdk": "^82.1.0",
     "@mendable/firecrawl-js": "^4.19.0",
     "@sentry/node": "^10.49.0",
-    "@supabase/supabase-js": "^2.100.1",
+    "@supabase/supabase-js": "^2.104.1",
     "@upstash/redis": "^1.37.0",
     "carbonyl": "^0.0.2-next.bacf3db",
     "exa-js": "^2.12.1",
