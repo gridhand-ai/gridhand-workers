@@ -33,6 +33,7 @@ const sender           = require('../workers/twilio-sender');
 const { emit, sendTelegramAlert } = require('../lib/events');
 const optoutManager    = require('../subagents/compliance/optout-manager');
 const tcpaChecker      = require('../subagents/compliance/tcpa-checker');
+const { validateSMS }  = require('../lib/message-gate');
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
@@ -228,6 +229,13 @@ async function sendLeadSMS({ clientConfig, clientLoader, customerPhone, body }) 
     }
 
     const client = clientLoader ? clientLoader(twilioNum) : null;
+
+    // Content gate: block hallucinated amounts, bad URLs, unfilled placeholders
+    const gateResult = validateSMS(body, { businessName: clientConfig.business_name || '' });
+    if (!gateResult.ok) {
+        console.warn(`[LeadNurtureAgent] message-gate blocked SMS: ${gateResult.issues.join('; ')}`);
+        return false;
+    }
 
     await sender.sendSMS({
         from: twilioNum,

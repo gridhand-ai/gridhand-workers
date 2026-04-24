@@ -29,6 +29,7 @@ const sender           = require('../workers/twilio-sender');
 const { emit, sendTelegramAlert } = require('../lib/events');
 const optoutManager    = require('../subagents/compliance/optout-manager');
 const tcpaChecker      = require('../subagents/compliance/tcpa-checker');
+const { validateSMS }  = require('../lib/message-gate');
 const posthog          = require('../lib/posthog-client');
 
 const supabase = createClient(
@@ -241,6 +242,13 @@ async function sendRetentionSMS({ clientConfig, clientLoader, customerPhone, bod
     }
 
     const client = clientLoader ? clientLoader(twilioNum) : null;
+
+    // Content gate
+    const gateResult = validateSMS(body, { businessName: clientConfig.business_name || '' });
+    if (!gateResult.ok) {
+        console.warn(`[RetentionAgent] message-gate blocked SMS: ${gateResult.issues.join('; ')}`);
+        return false;
+    }
 
     await sender.sendSMS({
         from: twilioNum,
