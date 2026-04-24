@@ -25,6 +25,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const { sendCriticalAlert, sendTelegramAlert } = require('../lib/events');
 const { sendSMS } = require('../lib/twilio-client');
+const { validateSMS } = require('../lib/message-gate');
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '',
@@ -69,6 +70,12 @@ async function alertViaSms(message) {
     const from = process.env.TWILIO_FROM_NUMBER || process.env.TWILIO_PHONE_NUMBER;
     if (!from) {
         console.warn('[CredMonitor] TWILIO_FROM_NUMBER not set — cannot send SMS alert');
+        return;
+    }
+
+    const gateResult = validateSMS(message, { businessName: '' });
+    if (!gateResult.ok) {
+        console.warn(`[CredMonitor] message-gate blocked SMS alert: ${gateResult.issues.join('; ')}`);
         return;
     }
 
