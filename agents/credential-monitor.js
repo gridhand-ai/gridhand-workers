@@ -74,7 +74,7 @@ async function alertViaSms(message) {
     }
 
     const gateResult = validateSMS(message, { businessName: '' });
-    if (!gateResult.ok) {
+    if (!gateResult.valid) {
         console.warn(`[CredMonitor] message-gate blocked SMS alert: ${gateResult.issues.join('; ')}`);
         return;
     }

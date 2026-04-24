@@ -245,7 +245,7 @@ async function sendRetentionSMS({ clientConfig, clientLoader, customerPhone, bod
 
     // Content gate
     const gateResult = validateSMS(body, { businessName: clientConfig.business_name || '' });
-    if (!gateResult.ok) {
+    if (!gateResult.valid) {
         console.warn(`[RetentionAgent] message-gate blocked SMS: ${gateResult.issues.join('; ')}`);
         return false;
     }

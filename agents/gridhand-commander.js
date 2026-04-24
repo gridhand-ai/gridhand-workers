@@ -96,8 +96,22 @@ async function run(clients = null) {
     : 'unknown (fallback mode)'
   console.log(`[${AGENT_ID.toUpperCase()}] ${assignedCount} active worker assignment(s) loaded`)
 
+  // ── CROSS-DIRECTOR MEMORY: Load client_knowledge for all active clients ──────
+  // Each client object gets a `clientKnowledge` array attached before directors run.
+  // Directors use this to give specialists relevant historical context per client.
+  console.log(`[${AGENT_ID.toUpperCase()}] Loading client knowledge for ${clientIds.length} client(s)`)
+  const clientKnowledgeMap = await loadClientKnowledge(supabase, clientIds)
+  const knowledgeCount = Object.values(clientKnowledgeMap).reduce((n, arr) => n + arr.length, 0)
+  console.log(`[${AGENT_ID.toUpperCase()}] ${knowledgeCount} client knowledge row(s) loaded`)
+
+  // Attach knowledge to each client object — directors/specialists access via client.clientKnowledge
+  const clientListWithKnowledge = clientList.map(c => ({
+    ...c,
+    clientKnowledge: clientKnowledgeMap[c.id] || [],
+  }))
+
   // Detect situations requiring director action
-  const situations = await detectSituations(supabase, clientList)
+  const situations = await detectSituations(supabase, clientListWithKnowledge)
   console.log(`[${AGENT_ID.toUpperCase()}] ${situations.length} situation(s) detected`)
 
   // ── VAULT: Load shared memory context for all active clients ──────────────
@@ -116,7 +130,7 @@ async function run(clients = null) {
     commandBrief = await scout({
       task: 'Analyze this client portfolio and situations. Identify which divisions need urgent action, which clients are at risk, what opportunities exist, and what the overall health of the business looks like.',
       sources: [
-        { label: 'active_clients', content: clientList },
+        { label: 'active_clients', content: clientListWithKnowledge },
         { label: 'detected_situations', content: situations },
         { label: 'situation_routing_map', content: SITUATION_ROUTING },
         { label: 'memory_briefing', content: memoryBriefing || 'No prior memory available.' },
@@ -172,7 +186,7 @@ mj_alert_reason: null unless something requires MJ's immediate attention</output
   let intelReport = null
   try {
     intelReport = await intelligenceDirector.run(
-      clientList,
+      clientListWithKnowledge,
       situations.filter(s => SITUATION_ROUTING[s.type] === 'intelligence-director'),
     )
     await receive(intelReport)
@@ -240,7 +254,8 @@ mj_alert_reason: null unless something requires MJ's immediate attention</output
           // Filter clients to only those with this director's workers active.
           // This is how the client's dashboard toggle connects to actual work:
           // assigned_workers.active = true → client appears in this director's run.
-          const directorClients = filterClientsForDirector(clientList, assignmentMap, id)
+          // clientListWithKnowledge has clientKnowledge attached per client.
+          const directorClients = filterClientsForDirector(clientListWithKnowledge, assignmentMap, id)
           console.log(`[${AGENT_ID.toUpperCase()}] ${id}: ${directorClients.length}/${clientList.length} clients have active workers`)
           if (!directorClients.length) {
             resolve({ agentId: id, division: id.replace('-director', ''), reportsTo: AGENT_ID, timestamp: Date.now(), actionsCount: 0, escalations: [], outcomes: [] })
@@ -314,6 +329,16 @@ mj_alert_reason: null unless something requires MJ's immediate attention</output
     }
   }
 
+  // ── SELF-CORRECTION LOOP: Reflect on specialist outcomes ─────────────────────
+  // Runs AFTER all directors report. Never blocks the report — errors are swallowed.
+  let reflection = null
+  try {
+    reflection = await reflectOnOutcomes(supabase, directorReports, situations)
+    console.log(`[${AGENT_ID.toUpperCase()}] Reflection: quality=${reflection?.overallQuality}, flagged=${reflection?.flagged?.length || 0}`)
+  } catch (reflectErr) {
+    console.warn(`[${AGENT_ID}] Reflection step failed: ${reflectErr.message}`)
+  }
+
   // Log run to Supabase
   await logRun(supabase, runId, startedAt, severity, {
     situations: situations.length,
@@ -323,6 +348,7 @@ mj_alert_reason: null unless something requires MJ's immediate attention</output
     tokens: tokenSummary.tokens,
     cost_usd: tokenSummary.cost_usd,
     token_warnings: tokenSummary.warnings,
+    reflection: reflection || null,
   }, totalActions)
 
   // Persist token usage for all providers to Supabase
@@ -346,7 +372,64 @@ mj_alert_reason: null unless something requires MJ's immediate attention</output
   }).catch(() => {})
 
   console.log(`[${AGENT_ID.toUpperCase()}] Run ${runId} complete — ${totalActions} total actions, severity: ${severity}`)
-  return { runId, totalActions, severity, escalations: allEscalations.length, tokens: tokenSummary.tokens }
+  return { runId, totalActions, severity, escalations: allEscalations.length, tokens: tokenSummary.tokens, data: { reflection } }
+}
+
+// ── Self-correction: reflect on what specialists did vs what was needed ────────
+// Runs post-Promise.allSettled. Calls Groq to flag misses. Logs to director_reasoning
+// if quality is 'poor' or too many items are flagged.
+async function reflectOnOutcomes(supabase, directorReports, originalSituations) {
+  const summaries = directorReports.map(r => ({
+    agent: r.agentId,
+    actions: r.actionsCount || 0,
+    escalations: (r.escalations || []).length,
+    topOutcome: (r.outcomes || [])[0]?.summary || null,
+    error: r.error || null,
+  }))
+
+  const situationSummary = originalSituations.slice(0, 10).map(s =>
+    `${s.type} (client: ${s.clientId || 'unknown'})`
+  ).join(', ') || 'scheduled_run'
+
+  const raw = await call({
+    modelString: OPUS_MODEL,
+    systemPrompt: `<role>GridHandCommander self-correction module. Review specialist/director outcomes against the original situation and flag quality gaps.</role>
+<rules>Be concise. Only flag genuine misses — not expected no-actions. Return valid JSON only.</rules>
+<output>{ "flagged": [{ "agentId": "string", "reason": "string" }], "overallQuality": "good" }</output>
+overallQuality: "good" | "partial" | "poor"</output>`,
+    messages: [{
+      role: 'user',
+      content: `Original situations: ${situationSummary}\n\nDirector outcomes:\n${JSON.stringify(summaries, null, 2)}\n\nReturn JSON only.`,
+    }],
+    maxTokens: 400,
+    _workerName: 'commander-reflection',
+  })
+
+  let parsed = null
+  try {
+    const match = raw?.match(/\{[\s\S]*\}/)
+    if (match) parsed = JSON.parse(match[0])
+  } catch (_) {}
+
+  if (!parsed) return { flagged: [], overallQuality: 'unknown' }
+
+  // Log to director_reasoning if quality is poor or too many flags
+  if (parsed.overallQuality === 'poor' || (parsed.flagged || []).length > 2) {
+    try {
+      await supabase.from('director_reasoning').insert({
+        director_id: AGENT_ID,
+        reasoning: `Self-correction triggered: ${parsed.overallQuality} quality. ${(parsed.flagged || []).length} agent(s) flagged.`,
+        specialists_chosen: (parsed.flagged || []).map(f => f.agentId),
+        vertical: null,
+        situation: 'self_correction_triggered',
+        created_at: new Date().toISOString(),
+      })
+    } catch (logErr) {
+      console.warn(`[${AGENT_ID}] Reflection log failed: ${logErr.message}`)
+    }
+  }
+
+  return parsed
 }
 
 // ── Situation detection ───────────────────────────────────────────────────────
@@ -549,6 +632,35 @@ async function getActiveClients(supabase) {
     return []
   }
   return data || []
+}
+
+// ── Client knowledge loader ───────────────────────────────────────────────────
+// Batches a query for client_knowledge rows across all active client IDs.
+// Returns a map: clientId → Array<{ category, content, created_at }>
+// Limit 5 most-recent entries per client to keep context compact.
+async function loadClientKnowledge(supabase, clientIds) {
+  if (!clientIds || !clientIds.length) return {}
+  try {
+    const { data, error } = await supabase
+      .from('client_knowledge')
+      .select('client_id, category, content, created_at')
+      .in('client_id', clientIds)
+      .order('created_at', { ascending: false })
+      .limit(clientIds.length * 5) // fetch up to 5 per client
+    if (error) {
+      console.warn(`[${AGENT_ID}] client_knowledge fetch failed: ${error.message}`)
+      return {}
+    }
+    const map = {}
+    for (const row of (data || [])) {
+      if (!map[row.client_id]) map[row.client_id] = []
+      if (map[row.client_id].length < 5) map[row.client_id].push(row)
+    }
+    return map
+  } catch (err) {
+    console.warn(`[${AGENT_ID}] loadClientKnowledge error: ${err.message}`)
+    return {}
+  }
 }
 
 // ── Worker assignment filter ──────────────────────────────────────────────────

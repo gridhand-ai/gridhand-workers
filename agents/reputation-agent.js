@@ -303,7 +303,7 @@ async function sendReviewRequest({ clientConfig, clientLoader, customerPhone, cu
 
     // Content gate
     const gateResult = validateSMS(body, { businessName: clientConfig.business_name || '' });
-    if (!gateResult.ok) {
+    if (!gateResult.valid) {
         console.warn(`[ReputationAgent] message-gate blocked SMS: ${gateResult.issues.join('; ')}`);
         return;
     }

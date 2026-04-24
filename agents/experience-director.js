@@ -46,6 +46,19 @@ function getSupabase() {
   )
 }
 
+// ── Format client_knowledge rows into a compact XML block ─────────────────────
+function formatClientMemory(clientList) {
+  const rows = []
+  for (const c of clientList) {
+    if (!c.clientKnowledge || !c.clientKnowledge.length) continue
+    for (const k of c.clientKnowledge) {
+      rows.push(`[${c.business_name || c.id}] ${k.category}: ${k.content}`)
+    }
+  }
+  if (!rows.length) return ''
+  return `<client_memory>\n${rows.slice(0, 10).join('\n')}\n</client_memory>`
+}
+
 // ── Groq reasoning: decide specialist priority for this client cohort ─────────
 async function reasonAboutSpecialists(clientList, newClientCount, situation, commanderBrief, vaultContext = '') {
   const clientSample = clientList.slice(0, 5).map(c => ({
@@ -59,10 +72,12 @@ async function reasonAboutSpecialists(clientList, newClientCount, situation, com
     ? `\n\nCommander strategic brief:\n${commanderBrief}`
     : ''
 
+  const memoryBlock = formatClientMemory(clientList)
+
   try {
     const raw = await call({
       modelString: GROQ_MODEL,
-      systemPrompt: `<role>ExperienceDirector for GRIDHAND AI — manage client success and retention for small business clients across verticals: auto_repair, restaurant, gym, barbershop, retail, real_estate.</role>${vaultContext ? `\n<context>${vaultContext}</context>` : ''}
+      systemPrompt: `<role>ExperienceDirector for GRIDHAND AI — manage client success and retention for small business clients across verticals: auto_repair, restaurant, gym, barbershop, retail, real_estate.</role>${vaultContext ? `\n<context>${vaultContext}</context>` : ''}${memoryBlock ? `\n${memoryBlock}` : ''}
 <specialists>churn-predictor (identifies at-risk clients before cancellation), loyalty-coordinator (loyalty and re-engagement programs), client-success (satisfaction and usage health), onboarding-conductor (new client setup — clients under 30 days)</specialists>
 <rules>Given the client list and situation, decide the optimal specialist dispatch order and explain why.</rules>
 <output>Respond with valid JSON only: { "specialists_priority": ["specialist-name"], "vertical": "dominant_vertical_or_mixed", "rationale": "one sentence" }</output>`,

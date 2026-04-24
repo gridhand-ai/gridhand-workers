@@ -45,6 +45,18 @@ function getSupabase() {
   )
 }
 
+// ── Format client_knowledge rows into a compact string for Scout sources ──────
+function formatClientMemory(clientList) {
+  const rows = []
+  for (const c of clientList) {
+    if (!c.clientKnowledge || !c.clientKnowledge.length) continue
+    for (const k of c.clientKnowledge) {
+      rows.push(`[${c.business_name || c.id}] ${k.category}: ${k.content}`)
+    }
+  }
+  return rows.slice(0, 15).join('\n') || 'No client knowledge available.'
+}
+
 async function run(clients = null, situation = null) {
   console.log(`[${AGENT_ID.toUpperCase()}] Starting run`)
   const supabase   = getSupabase()
@@ -115,6 +127,7 @@ async function run(clients = null, situation = null) {
         { label: 'system_signals',  content: systemSignals },
         { label: 'active_clients',  content: clientList.map(c => ({ id: c.id, name: c.business_name, plan: c.plan, industry: c.industry })) },
         { label: 'vault_context',   content: vaultContext || 'No vault context yet.' },
+        { label: 'client_memory',   content: formatClientMemory(clientList) },
       ],
       maxTokens: 4000,
     })
@@ -126,9 +139,10 @@ async function run(clients = null, situation = null) {
   let strategicReport = null
   if (intelligenceBrief) {
     try {
+      const clientMemoryBlock = formatClientMemory(clientList)
       const opusResponse = await call({
         modelString: OPUS_MODEL,
-        systemPrompt: `<role>IntelligenceDirector for GRIDHAND AI — synthesize operational intelligence and provide strategic assessments to the Commander.</role>${vaultContext ? `\n<context>${vaultContext}</context>` : ''}
+        systemPrompt: `<role>IntelligenceDirector for GRIDHAND AI — synthesize operational intelligence and provide strategic assessments to the Commander.</role>${vaultContext ? `\n<context>${vaultContext}</context>` : ''}${clientMemoryBlock !== 'No client knowledge available.' ? `\n<client_memory>\n${clientMemoryBlock}\n</client_memory>` : ''}
 <rules>Analyze the intelligence brief and produce a structured strategic assessment. Be direct — surface real risks, not generic observations.</rules>
 <output>Respond with valid JSON only:
 {
@@ -279,7 +293,58 @@ async function runClientMonitoring(clientId, competitors) {
   }
 }
 
-module.exports = { run, report, getBrief, runInternalIntelligence, runClientMonitoring, AGENT_ID, DIVISION, REPORTS_TO, schedule: '0 * * * *', tier: 2 }
+// ── discoverUrl: Mirror Engine entry point ────────────────────────────────────
+// Runs xray-agent on a prospect URL, logs the run to agent_runs, returns manifest.
+// @param {string} url - Prospect website URL
+// @returns {Promise<object>} ClientManifest
+async function discoverUrl(url) {
+  console.log(`[${AGENT_ID.toUpperCase()}] discoverUrl: ${url}`)
+  const supabase = getSupabase()
+  const xray = require('./specialists/xray-agent')
+  const startedAt = new Date().toISOString()
+
+  let manifest = null
+  let runStatus = 'error'
+
+  try {
+    manifest = await xray.discover(url)
+    runStatus = manifest.hipaa_risk ? 'blocked' : 'success'
+  } catch (err) {
+    console.error(`[${AGENT_ID}] discoverUrl failed:`, err.message)
+    manifest = {
+      url,
+      business_name: null,
+      industry: 'unknown',
+      brand_voice: null,
+      services: [],
+      tone: 'professional',
+      social_links: [],
+      phone: null,
+      email: null,
+      recommended_workers: [],
+      knowledge_base_seed: [],
+      hipaa_risk: false,
+      scraped_at: startedAt,
+      error: err.message,
+    }
+  }
+
+  // Log to agent_runs
+  try {
+    await supabase.from('agent_runs').insert({
+      agent_id:  AGENT_ID,
+      status:    runStatus,
+      summary:   `Mirror Engine discovery for ${url} — industry: ${manifest.industry || 'unknown'}, workers: ${manifest.recommended_workers?.length || 0}`,
+      ran_at:    startedAt,
+    })
+  } catch (logErr) {
+    console.warn(`[${AGENT_ID}] agent_runs log failed:`, logErr.message)
+  }
+
+  return manifest
+}
+
+module.exports = { run, report, getBrief, runInternalIntelligence, runClientMonitoring, discoverUrl, AGENT_ID, DIVISION, REPORTS_TO, schedule: '0 * * * *', tier: 2 }
 
 // ── MISSION FILE CONSOLIDATION (weekly) ──────────────────────────────────────
 // Reads ~/.claude/GRIDHAND_MISSION.md, removes duplicates, consolidates similar

@@ -232,7 +232,7 @@ async function sendLeadSMS({ clientConfig, clientLoader, customerPhone, body }) 
 
     // Content gate: block hallucinated amounts, bad URLs, unfilled placeholders
     const gateResult = validateSMS(body, { businessName: clientConfig.business_name || '' });
-    if (!gateResult.ok) {
+    if (!gateResult.valid) {
         console.warn(`[LeadNurtureAgent] message-gate blocked SMS: ${gateResult.issues.join('; ')}`);
         return false;
     }

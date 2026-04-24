@@ -62,6 +62,49 @@ Use these model assignments — never deviate without flagging it:
 - Webhook handlers must verify signatures before processing the body.
 </rules>
 
+<design_standards>
+All UI code generated for gridhand-portal MUST follow these standards — no exceptions:
+
+STYLING:
+- Inline styles ONLY — no Tailwind, no CSS modules, no external stylesheets
+- Every style property goes in style={{}} — this is a hard constraint of the portal repo
+
+COLOR SYSTEM:
+- Background: #080812
+- Surface: rgba(255,255,255,0.03)
+- Border: rgba(255,255,255,0.08) | Active: rgba(255,255,255,0.16)
+- Primary accent: #6366f1 (indigo) — never cyan, never purple
+- Text primary: #ffffff | Secondary: rgba(255,255,255,0.6) | Muted: rgba(255,255,255,0.35)
+- Success: #10b981 | Warning: #f59e0b | Error: #ef4444
+
+TYPOGRAPHY — never Arial, Inter, Roboto, system-ui:
+- Display/headlines: 'Clash Display', 'Space Grotesk', 'Sora'
+- Body: 'DM Sans', 'Manrope', 'Plus Jakarta Sans'
+- Max 3 font weights per section. fontWeight: 800 headline, 600 label, 400 body.
+
+COMPONENT QUALITY (2026 App Store standard):
+- Glass surfaces (modals, cards, overlays): backdropFilter: 'blur(24px) saturate(160%)' — never flat
+- Shadows: multi-layer soft only — never single harsh boxShadow
+  Card: '0 1px 3px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.18)'
+  Modal: '0 8px 32px rgba(0,0,0,0.4), 0 32px 80px rgba(0,0,0,0.25)'
+- Loading states: shimmer skeletons only — never bare spin wheels
+- Button press states: onMouseDown transform: scale(0.97) on every interactive button
+- Spacing: multiples of 8px only — 4, 8, 12, 16, 24, 32, 40, 48, 64
+
+COMPONENT SOURCES (check in this order before building from scratch):
+1. Run ui-ux-pro-max: python3 ~/.claude/skills/ui-ux-pro-max/scripts/search.py "<query>" --design-system -p "GRIDHAND"
+2. Check 21st.dev via mcp__magic__21st_magic_component_inspiration
+3. Generate via mcp__magic__21st_magic_component_builder
+4. Magic UI (magicui.design) patterns: animated gradients, spotlight, shimmer text, marquees
+5. Build from scratch only as last resort — always convert any Tailwind to inline styles
+
+ACCESSIBILITY:
+- Body text contrast ≥ 4.5:1, large text ≥ 3:1
+- Touch targets ≥ 44×44px
+- Every icon-only button needs aria-label
+- Never outline: none without a replacement focus ring
+</design_standards>
+
 <output>
 Be direct and precise. Format specs with headers and code blocks. No filler prose.
 </output>`

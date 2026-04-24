@@ -1519,6 +1519,90 @@ app.post('/initialize-client', requireApiKey, async (req, res) => {
   })
 })
 
+// POST /discover — Mirror Engine: scrape a prospect URL, return a ClientManifest via SSE
+// Auth: requireApiKey (GRIDHAND_API_KEY or WORKERS_API_SECRET)
+// Body: { url: string }
+// Streams Server-Sent Events: thinking × 4, then complete with full manifest JSON.
+// HIPAA block: if URL or scraped content indicates a regulated health industry,
+// an error event is sent immediately before any processing begins.
+app.post('/discover', requireApiKey, async (req, res) => {
+  const { url } = req.body
+
+  if (!url || typeof url !== 'string') {
+    return res.status(400).json({ error: 'url required' })
+  }
+
+  // Validate URL shape
+  let parsedUrl
+  try {
+    parsedUrl = new URL(url)
+  } catch {
+    return res.status(400).json({ error: 'Invalid URL format' })
+  }
+
+  // HIPAA pre-check on the URL itself before opening the SSE stream
+  const HIPAA_URL_KEYWORDS = [
+    'medical', 'dental', 'hipaa', 'healthcare', 'clinic', 'hospital',
+    'physician', 'therapist', 'pharmacy', 'orthodont', 'optometrist',
+  ]
+  const urlLower = parsedUrl.hostname.toLowerCase() + parsedUrl.pathname.toLowerCase()
+  const hipaaInUrl = HIPAA_URL_KEYWORDS.some(kw => urlLower.includes(kw))
+  if (hipaaInUrl) {
+    return res.status(200).json({
+      event: 'error',
+      message: 'This industry requires specialized configuration. Please contact us directly.',
+    })
+  }
+
+  // Open SSE stream
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache')
+  res.setHeader('Connection', 'keep-alive')
+  res.setHeader('X-Accel-Buffering', 'no')
+  res.flushHeaders()
+
+  const send = (event, data) => {
+    res.write(`data: ${JSON.stringify({ event, ...data })}\n\n`)
+  }
+
+  try {
+    send('thinking', { message: 'Scanning brand voice...' })
+
+    const intelligenceDirector = require('./agents/intelligence-director')
+    // Kick off discovery — this takes several seconds
+    const manifestPromise = intelligenceDirector.discoverUrl(url)
+
+    send('thinking', { message: 'Identifying services...' })
+    // Short pause so the client can render the progress messages
+    await new Promise(r => setTimeout(r, 800))
+
+    send('thinking', { message: 'Mapping your AI workforce...' })
+    await new Promise(r => setTimeout(r, 600))
+
+    send('thinking', { message: 'Building knowledge base...' })
+
+    // Await the actual discovery result
+    const manifest = await manifestPromise
+
+    // HIPAA check on the resolved manifest
+    if (manifest.hipaa_risk) {
+      send('error', {
+        message: 'This industry requires specialized configuration. Please contact us directly.',
+      })
+      return res.end()
+    }
+
+    send('complete', { manifest })
+  } catch (err) {
+    console.error('[discover] SSE handler error:', err.message)
+    try {
+      send('error', { message: 'Discovery failed. Please try again.' })
+    } catch { /* stream may already be closed */ }
+  } finally {
+    res.end()
+  }
+})
+
 // ─── Startup Config Restore — pull worker configs from Supabase ──────────────
 // Railway containers start with an empty /app/clients directory on every deploy.
 // This syncs all previously provisioned configs back from Supabase before the
@@ -1706,5 +1790,13 @@ process.on('unhandledRejection', (reason) => {
     const msg = reason instanceof Error ? reason.message : String(reason);
     sendCriticalAlert('server:unhandledRejection', msg, {}).catch(() => {});
     console.error('[FATAL] unhandledRejection:', reason);
+    // Log to agent_runs so MJ sees it in the admin dashboard (not just Telegram)
+    supabaseAdmin.from('agent_runs').insert({
+        agent_id: 'server',
+        status: 'error',
+        summary: `unhandledRejection: ${msg}`,
+        payload: { message: msg, type: 'unhandledRejection' },
+        ran_at: new Date().toISOString(),
+    }).catch(() => {});
     // Do not exit — unhandled rejections are usually recoverable
 });
