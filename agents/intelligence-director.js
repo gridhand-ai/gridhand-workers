@@ -28,10 +28,17 @@ const vanguard                = require('./specialists/vanguard')
 const sentinel                = require('./specialists/sentinel')
 const lumen                   = require('./specialists/lumen')
 const promptEngineer          = require('./specialists/prompt-engineer')
+// Arsenal — MJ's personal reporting toolkit (on-demand, not in automated hourly run)
+const pulse                   = require('./specialists/pulse')  // Monthly Report Generator
 
 const AGENT_ID   = 'intelligence-director'
 const DIVISION   = 'intelligence'
 const REPORTS_TO = 'gridhand-commander'
+
+// Arsenal specialists available to intelligence-director on-demand
+const ARSENAL_SPECIALISTS = {
+  'pulse': pulse,  // Monthly ROI report generator
+}
 const OPUS_MODEL = 'groq/llama-3.3-70b-versatile'
 
 // Module-level cache of the latest strategic assessment — populated by run()
@@ -344,7 +351,7 @@ async function discoverUrl(url) {
   return manifest
 }
 
-module.exports = { run, report, getBrief, runInternalIntelligence, runClientMonitoring, discoverUrl, AGENT_ID, DIVISION, REPORTS_TO, schedule: '0 * * * *', tier: 2 }
+module.exports = { run, report, getBrief, runInternalIntelligence, runClientMonitoring, discoverUrl, AGENT_ID, DIVISION, REPORTS_TO, ARSENAL_SPECIALISTS, schedule: '0 * * * *', tier: 2 }
 
 // ── MISSION FILE CONSOLIDATION (weekly) ──────────────────────────────────────
 // Reads ~/.claude/GRIDHAND_MISSION.md, removes duplicates, consolidates similar

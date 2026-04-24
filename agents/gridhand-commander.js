@@ -693,9 +693,13 @@ const DIRECTOR_WORKER_IDS = {
   'brand-director': [
     'social-manager', 'content-scheduler', 'review-orchestrator',
     'brand-sentinel', 'campaign-conductor', 'reputation-defender',
+    // Arsenal
+    'nova',
   ],
   'acquisition-director': [
     'lead-qualifier', 'prospect-nurturer', 'referral-activator', 'cold-outreach',
+    // Arsenal
+    'echo', 'pathfinder', 'apex', 'launchpad',
   ],
   'revenue-director': [
     'invoice-recovery', 'upsell-timer', 'subscription-guard', 'pricing-optimizer',
@@ -705,7 +709,26 @@ const DIRECTOR_WORKER_IDS = {
     'churn-predictor', 'loyalty-coordinator', 'client-success',
     'onboarding-conductor', 'milestone-celebrator', 'feedback-collector',
   ],
+  'intelligence-director': [
+    // Arsenal
+    'pulse',
+  ],
 }
+
+// ── Arsenal Registry — MJ's personal AI sales tools ─────────────────────────
+// These are on-demand specialists not dispatched during automated runs.
+// They are wired into their respective directors but called explicitly by MJ.
+const ARSENAL_REGISTRY = {
+  'echo':       { director: 'acquisition-director', description: 'Call Script Writer — tailored scripts per prospect stage and industry' },
+  'pathfinder': { director: 'acquisition-director', description: 'Route Optimizer — optimal daily visit order by zone and priority' },
+  'apex':       { director: 'acquisition-director', description: 'Deal Analyst — pipeline review, close/nurture/cut recommendations' },
+  'launchpad':  { director: 'acquisition-director', description: 'Onboarding Coordinator — personalized GRIDHAND client setup plans' },
+  'pulse':      { director: 'intelligence-director', description: 'Monthly Report Generator — ROI summaries per client' },
+  'nova':       { director: 'brand-director',        description: 'Content Creator — Instagram/LinkedIn/TikTok marketing posts' },
+}
+
+// Log Arsenal availability on startup
+console.log(`[GRIDHAND-COMMANDER] Arsenal loaded: ${Object.keys(ARSENAL_REGISTRY).join(', ')}`)
 
 // Given the full client list and the assignment map, return only clients that
 // have at least one of this director's workers toggled on.
@@ -728,6 +751,7 @@ module.exports = {
   AGENT_ID,
   DIVISION,
   SITUATION_ROUTING,
+  ARSENAL_REGISTRY,
   schedule: '*/15 * * * *',
   tier: 1,
   reportsTo: 'MJ',

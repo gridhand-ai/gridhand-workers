@@ -19,6 +19,10 @@ const coldOutreach       = require('./specialists/cold-outreach')
 const appointmentSetter  = require('./specialists/appointment-setter')
 const winBackOutreach    = require('./specialists/win-back-outreach')
 const pipelineReporter   = require('./specialists/pipeline-reporter')
+// Arsenal — MJ's personal sales toolkit
+const echo               = require('./specialists/echo')        // Call Script Writer
+const pathfinder         = require('./specialists/pathfinder')  // Route Optimizer
+const apex               = require('./specialists/apex')        // Deal Analyst
 
 const AGENT_ID   = 'acquisition-director'
 const DIVISION   = 'acquisition'
@@ -29,6 +33,8 @@ const GROQ_MODEL = 'groq/llama-3.3-70b-versatile'
 const ALL_SPECIALISTS = [
   'lead-qualifier', 'prospect-nurturer', 'referral-activator', 'cold-outreach',
   'appointment-setter', 'win-back-outreach', 'pipeline-reporter',
+  // Arsenal specialists (on-demand, not dispatched in automated runs)
+  'echo', 'pathfinder', 'apex',
 ]
 
 const SPECIALIST_MAP = {
@@ -39,6 +45,10 @@ const SPECIALIST_MAP = {
   'appointment-setter': appointmentSetter,
   'win-back-outreach':  winBackOutreach,
   'pipeline-reporter':  pipelineReporter,
+  // Arsenal
+  'echo':               echo,
+  'pathfinder':         pathfinder,
+  'apex':               apex,
 }
 
 function getSupabase() {

@@ -16,6 +16,8 @@ const brandSentinel       = require('./specialists/brand-sentinel')
 const campaignConductor   = require('./specialists/campaign-conductor')
 const contentScheduler    = require('./specialists/content-scheduler')
 const reputationDefender  = require('./specialists/reputation-defender')
+// Arsenal — MJ's personal marketing toolkit
+const nova                = require('./specialists/nova')  // Content Creator
 
 const AGENT_ID   = 'brand-director'
 const DIVISION   = 'brand'
@@ -26,6 +28,8 @@ const GROQ_MODEL = 'groq/llama-3.3-70b-versatile'
 const ALL_SPECIALISTS = [
   'review-orchestrator', 'social-manager', 'brand-sentinel', 'campaign-conductor',
   'content-scheduler', 'reputation-defender',
+  // Arsenal specialists (on-demand, not dispatched in automated runs)
+  'nova',
 ]
 
 const SPECIALIST_MAP = {
@@ -35,6 +39,8 @@ const SPECIALIST_MAP = {
   'campaign-conductor':  campaignConductor,
   'content-scheduler':   contentScheduler,
   'reputation-defender': reputationDefender,
+  // Arsenal
+  'nova':                nova,
 }
 
 function getSupabase() {

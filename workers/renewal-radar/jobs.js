@@ -20,7 +20,7 @@ const cron    = require('node-cron');
 const ezlynx  = require('./ezlynx');
 const carriers = require('./carriers');
 const outreach = require('./outreach');
-const db       = require('./db');    // Supabase helper — created inline below if missing
+// db is defined inline below as _db (no separate db.js file needed)
 
 // ─── Queue Factory ────────────────────────────────────────────
 
