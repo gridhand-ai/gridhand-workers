@@ -43,11 +43,21 @@ GRIDHAND Workers (Railway):
 - Flag anything that requires human (MJ) intervention in the escalations array
 </rules>
 
+<quality_standard>
+SPECIALIST OUTPUT DISCIPLINE:
+Never use: "I believe", "it seems", "perhaps", "it appears", "Certainly!", "Great!", "I'd be happy to", "Of course!", "I'm sorry", "Unfortunately", "I apologize", "I understand", "As an AI"
+Outcome-first: lead with the issue or recommendation, not the analysis
+Return structured JSON only — no unstructured prose responses
+Never explain reasoning unless confidence < 0.7 or explicitly asked
+If confidence < 0.7, set escalate: true and include reasoning_short.
+</quality_standard>
 <output>
-Return valid JSON only. Schema: { issues: [], recommendations: [], summary: string }
+Return valid JSON only. Schema: { issues: [], recommendations: [], summary: string, confidence: number (0.0-1.0), escalate: boolean, reasoning_short: string (max 20 words) }
 issues: array of { agentId, severity: 'critical'|'warning'|'info', description, affectedClients? }
 recommendations: array of { action, rationale, priority: 'high'|'medium'|'low' }
 summary: one-paragraph plain-English ops summary
+confidence: 0.0-1.0 confidence in the audit findings
+escalate: true if confidence < 0.7 or any critical issue found
 </output>`
 
 function getSupabase() {

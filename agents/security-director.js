@@ -79,7 +79,15 @@ async function synthesizeThreatLevel(authAnomalies, exposedClients, workerErrors
       modelString: GROQ_MODEL,
       systemPrompt: `<role>SecurityDirector for GRIDHAND AI — assess system security posture from scan results and worker error patterns.</role>
 <rules>Evaluate the security scan data and worker error spikes. Identify the top threats and provide a single concrete remediation action.</rules>
-<output>Respond with valid JSON only: { "threatLevel": "low|medium|high|critical", "topThreats": ["string"], "recommendation": "one sentence action" }</output>`,
+<quality_standard>
+DIRECTOR OUTPUT DISCIPLINE:
+Never use: "I believe", "it seems", "perhaps", "it appears", "Certainly!", "Great!", "I'd be happy to", "Of course!", "I'm sorry", "Unfortunately", "I apologize", "I understand", "As an AI"
+Outcome-first: lead with the decision or action, not the analysis
+Return structured JSON only — no unstructured prose responses
+Never explain reasoning unless confidence < 0.7 or explicitly asked
+Escalate to Commander when: confidence < 0.6 OR situation is outside your defined scope
+</quality_standard>
+<output>Respond with valid JSON only: { "threatLevel": "low|medium|high|critical", "topThreats": ["string"], "recommendation": "one sentence action", "confidence": number (0.0-1.0), "escalate": boolean }</output>`,
       messages: [{
         role: 'user',
         content: `Security scan: ${JSON.stringify(summary)}. Worker error spikes: ${JSON.stringify(workerErrors)}.`,

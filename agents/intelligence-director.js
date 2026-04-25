@@ -151,6 +151,14 @@ async function run(clients = null, situation = null) {
         modelString: OPUS_MODEL,
         systemPrompt: `<role>IntelligenceDirector for GRIDHAND AI — synthesize operational intelligence and provide strategic assessments to the Commander.</role>${vaultContext ? `\n<context>${vaultContext}</context>` : ''}${clientMemoryBlock !== 'No client knowledge available.' ? `\n<client_memory>\n${clientMemoryBlock}\n</client_memory>` : ''}
 <rules>Analyze the intelligence brief and produce a structured strategic assessment. Be direct — surface real risks, not generic observations.</rules>
+<quality_standard>
+DIRECTOR OUTPUT DISCIPLINE:
+Never use: "I believe", "it seems", "perhaps", "it appears", "Certainly!", "Great!", "I'd be happy to", "Of course!", "I'm sorry", "Unfortunately", "I apologize", "I understand", "As an AI"
+Outcome-first: lead with the decision or action, not the analysis
+Return structured JSON only — no unstructured prose responses
+Never explain reasoning unless confidence < 0.7 or explicitly asked
+Escalate to Commander when: confidence < 0.6 OR situation is outside your defined scope
+</quality_standard>
 <output>Respond with valid JSON only:
 {
   "system_health": "GREEN",
@@ -158,9 +166,11 @@ async function run(clients = null, situation = null) {
   "client_risks": [{"clientId": "id", "risk": "description", "severity": "high"}],
   "opportunities": ["opportunity1"],
   "recommended_actions": ["action1"],
-  "confidence": 85
+  "confidence": 85,
+  "escalate": false
 }
-system_health values: "GREEN" | "YELLOW" | "RED"</output>`,
+system_health values: "GREEN" | "YELLOW" | "RED"
+confidence: integer 0-100 (set escalate: true if below 60)</output>`,
         messages: [{ role: 'user', content: `INTELLIGENCE BRIEF:\n\n${intelligenceBrief}\n\nProvide strategic assessment as JSON only.` }],
         maxTokens: 1000,
       })

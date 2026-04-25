@@ -241,7 +241,14 @@ Specify which division should act and why.
 - 1 sentence only
 - Specific and actionable — cite a benchmark number if you have one
 - Output ONLY the recommendation sentence
-</rules>`
+</rules>
+<quality_standard>
+SPECIALIST OUTPUT DISCIPLINE:
+Never use: "I believe", "it seems", "perhaps", "it appears", "Certainly!", "Great!", "I'd be happy to", "Of course!", "I'm sorry", "Unfortunately", "I apologize", "I understand", "As an AI"
+Outcome-first: lead with the recommended action, not the gap analysis
+Never explain reasoning unless confidence < 0.7 or explicitly asked
+If confidence < 0.7 (no benchmark data, vague gap), escalate for human review by prefixing the sentence with [LOW_CONFIDENCE].
+</quality_standard>`
 
   try {
     const raw = await aiClient.call({

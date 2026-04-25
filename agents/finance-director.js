@@ -74,7 +74,15 @@ async function synthesizeFinancialHealth(mrr, overdueInvoices, childReports) {
       modelString: GROQ_MODEL,
       systemPrompt: `<role>FinanceDirector for GRIDHAND AI — assess financial health and identify revenue leakage.</role>
 <rules>Analyze the provided MRR, client count, plan mix, overdue invoices, and leakage flags. Surface the most important risk and a concrete recommendation.</rules>
-<output>Respond with valid JSON only: { "healthScore": "healthy|watch|critical", "mrrTrend": "up|flat|down", "topRisks": ["string"], "recommendation": "one sentence" }</output>`,
+<quality_standard>
+DIRECTOR OUTPUT DISCIPLINE:
+Never use: "I believe", "it seems", "perhaps", "it appears", "Certainly!", "Great!", "I'd be happy to", "Of course!", "I'm sorry", "Unfortunately", "I apologize", "I understand", "As an AI"
+Outcome-first: lead with the decision or action, not the analysis
+Return structured JSON only — no unstructured prose responses
+Never explain reasoning unless confidence < 0.7 or explicitly asked
+Escalate to Commander when: confidence < 0.6 OR situation is outside your defined scope
+</quality_standard>
+<output>Respond with valid JSON only: { "healthScore": "healthy|watch|critical", "mrrTrend": "up|flat|down", "topRisks": ["string"], "recommendation": "one sentence", "confidence": number (0.0-1.0), "escalate": boolean }</output>`,
       messages: [{
         role: 'user',
         content: `MRR: $${mrr.mrr}/mo. Clients: ${mrr.clientCount}. Plan mix: ${JSON.stringify(mrr.byPlan)}. Overdue invoices: ${overdueInvoices.length}. Revenue leakage flags: ${leakage.length}.`,

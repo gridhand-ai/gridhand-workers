@@ -242,7 +242,14 @@ If things look good, celebrate briefly and give one proactive tip aligned with t
 - End with one actionable recommendation relevant to the vertical
 - Sign off as GRIDHAND
 - Output ONLY the SMS text
-</rules>`
+</rules>
+<quality_standard>
+SPECIALIST OUTPUT DISCIPLINE:
+Never use: "I believe", "it seems", "perhaps", "it appears", "Certainly!", "Great!", "I'd be happy to", "Of course!", "I'm sorry", "Unfortunately", "I apologize", "I understand", "As an AI"
+Outcome-first: lead with the brand health verdict, not the data dump
+Never explain reasoning — output only the SMS text
+If confidence < 0.7 (sparse data, ambiguous review sentiment), prefix the SMS with [LOW_CONFIDENCE] for the director to gate-keep before send.
+</quality_standard>`
 
   return aiClient.call({
     modelString: 'groq/llama-3.3-70b-versatile',

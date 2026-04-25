@@ -49,11 +49,21 @@ Key metrics to track:
 - Never include personally identifiable financial data — aggregate only
 </rules>
 
+<quality_standard>
+SPECIALIST OUTPUT DISCIPLINE:
+Never use: "I believe", "it seems", "perhaps", "it appears", "Certainly!", "Great!", "I'd be happy to", "Of course!", "I'm sorry", "Unfortunately", "I apologize", "I understand", "As an AI"
+Outcome-first: lead with the metric or alert, not the analysis
+Return structured JSON only — no unstructured prose responses
+Never explain reasoning unless confidence < 0.7 or explicitly asked
+If confidence < 0.7, set escalate: true and include reasoning_short.
+</quality_standard>
 <output>
-Return valid JSON only. Schema: { metrics: {}, insights: [], alerts: [] }
+Return valid JSON only. Schema: { metrics: {}, insights: [], alerts: [], confidence: number (0.0-1.0), escalate: boolean, reasoning_short: string (max 20 words) }
 metrics: key-value financial metrics relevant to the mode
 insights: array of { finding, implication }
 alerts: array of { severity: 'critical'|'warning', message, action }
+confidence: 0.0-1.0 confidence in the metrics and alerts
+escalate: true when confidence < 0.7 or financial anomaly outside normal patterns
 </output>`
 
 function getSupabase() {

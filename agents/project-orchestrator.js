@@ -75,6 +75,14 @@ async function shadowMode({ file, changeDescription, patternType, niche, client_
 - Never invent specifics — only extract what is described
 - If uncertain, be general
 </rules>
+<quality_standard>
+DIRECTOR OUTPUT DISCIPLINE:
+Never use: "I believe", "it seems", "perhaps", "it appears", "Certainly!", "Great!", "I'd be happy to", "Of course!", "I'm sorry", "Unfortunately", "I apologize", "I understand", "As an AI"
+Outcome-first: lead with the decision or action, not the analysis
+Return structured JSON only — no unstructured prose responses
+Never explain reasoning unless confidence < 0.7 or explicitly asked
+Escalate to Commander when: confidence < 0.6 OR situation is outside your defined scope
+</quality_standard>
 <output>Respond with valid JSON only:
 {
   "name": "pattern_slug",
@@ -82,7 +90,9 @@ async function shadowMode({ file, changeDescription, patternType, niche, client_
   "structure": "How it is built structurally",
   "copy_formula": "Headline formula or copy approach, if any",
   "conversion_principle": "Why this converts",
-  "tags": ["tag1", "tag2"]
+  "tags": ["tag1", "tag2"],
+  "confidence": 0.85,
+  "escalate": false
 }</output>`,
       messages: [{
         role: 'user',
@@ -269,7 +279,18 @@ Produce a deployment_plan JSON object:
 Only reference workers and blueprints by name, never invent IDs.
 Base activation sequence on the blueprint performance scores and type.
 Phase 1 = highest-impact, fastest to activate. Phase 2 = enhancement layer.
-</rules>`,
+</rules>
+<quality_standard>
+DIRECTOR OUTPUT DISCIPLINE:
+Never use: "I believe", "it seems", "perhaps", "it appears", "Certainly!", "Great!", "I'd be happy to", "Of course!", "I'm sorry", "Unfortunately", "I apologize", "I understand", "As an AI"
+Outcome-first: lead with the decision or action, not the analysis
+Return structured JSON only — no unstructured prose responses
+Never explain reasoning unless confidence < 0.7 or explicitly asked
+Escalate to Commander when: confidence < 0.6 OR situation is outside your defined scope
+</quality_standard>
+<output>
+Include in deployment_plan: "confidence": number (0.0-1.0), "escalate": boolean (true if any blueprint or worker reference is uncertain).
+</output>`,
       messages: [{
         role: 'user',
         content: `<client_slug>${clientSlug}</client_slug>\n<niche>${resolvedNiche}</niche>\n<industry>${resolvedIndustry}</industry>\n<blueprints>${JSON.stringify(blueprintSummary, null, 2)}</blueprints>`,

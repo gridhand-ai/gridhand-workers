@@ -204,7 +204,14 @@ ${taskDesc}
 - Include business name at the end as the sign-off.
 - Include "Reply STOP to opt out" only if this is a promotional message (birthday/loyalty with offer).
 - Output ONLY the SMS text, no labels, no quotes, no preamble.
-</rules>`;
+</rules>
+<quality_standard>
+DIRECTOR OUTPUT DISCIPLINE:
+Never use: "I believe", "it seems", "perhaps", "it appears", "Certainly!", "Great!", "I'd be happy to", "Of course!", "I'm sorry", "Unfortunately", "I apologize", "I understand", "As an AI"
+Outcome-first: lead with warmth and the offer, not preamble
+Never explain reasoning — output only the SMS text
+Escalate to Commander when: contact has explicitly opted out, has a complaint pending, or context suggests SMS is inappropriate
+</quality_standard>`;
 
     const reply = await aiClient.call({
         modelString: 'groq/llama-3.3-70b-versatile',

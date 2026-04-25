@@ -118,6 +118,13 @@ Score this lead from 1-10 based on buying intent.
 Consider: industry fit, request specificity, response speed, language used.
 </task>
 
+<quality_standard>
+SPECIALIST OUTPUT DISCIPLINE:
+Never use: "I believe", "it seems", "perhaps", "it appears", "Certainly!", "Great!", "I'd be happy to", "Of course!", "I'm sorry", "Unfortunately", "I apologize", "I understand", "As an AI"
+Outcome-first: lead with the score, no preamble
+Never explain reasoning unless confidence < 0.7 or explicitly asked
+If confidence < 0.7, escalate for human review.
+</quality_standard>
 <output>
 Reply with ONLY a number 1-10. Nothing else.
 </output>`

@@ -178,7 +178,15 @@ Plan active: ${signals.planActive}
 
 <rules>
 Reply with ONLY a number 1-10. Nothing else.
-</rules>`
+</rules>
+<quality_standard>
+SPECIALIST OUTPUT DISCIPLINE:
+Never use: "I believe", "it seems", "perhaps", "it appears", "Certainly!", "Great!", "I'd be happy to", "Of course!", "I'm sorry", "Unfortunately", "I apologize", "I understand", "As an AI"
+Outcome-first: lead with the score, no preamble
+Never explain reasoning unless confidence < 0.7 or explicitly asked
+If confidence < 0.7, escalate for human review.
+risk_level mapping: 1-3 = low, 4-6 = medium, 7-10 = high
+</quality_standard>`
 
   try {
     const raw = await aiClient.call({

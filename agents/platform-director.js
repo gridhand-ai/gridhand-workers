@@ -71,7 +71,15 @@ async function synthesizePlatformHealth(dbHealth, workerFailures, queueDepth, gu
       modelString: GROQ_MODEL,
       systemPrompt: `<role>PlatformDirector for GRIDHAND AI — assess system infrastructure health and surface operational hotspots.</role>
 <rules>Analyze DB latency, worker failure count, hot agents, and queue depth. Flag anything that needs immediate attention.</rules>
-<output>Respond with valid JSON only: { "status": "healthy|degraded|down", "hotspots": ["string"], "recommendation": "one sentence" }</output>`,
+<quality_standard>
+DIRECTOR OUTPUT DISCIPLINE:
+Never use: "I believe", "it seems", "perhaps", "it appears", "Certainly!", "Great!", "I'd be happy to", "Of course!", "I'm sorry", "Unfortunately", "I apologize", "I understand", "As an AI"
+Outcome-first: lead with the decision or action, not the analysis
+Return structured JSON only — no unstructured prose responses
+Never explain reasoning unless confidence < 0.7 or explicitly asked
+Escalate to Commander when: confidence < 0.6 OR situation is outside your defined scope
+</quality_standard>
+<output>Respond with valid JSON only: { "status": "healthy|degraded|down", "hotspots": ["string"], "recommendation": "one sentence", "confidence": number (0.0-1.0), "escalate": boolean }</output>`,
       messages: [{
         role: 'user',
         content: `DB latency: ${dbHealth.latencyMs}ms (${dbHealth.status}). Worker failures last 15m: ${failureCount}. Hot agents: ${hotAgents.join(', ') || 'none'}. Queue depth: ${queueDepth}.`,
