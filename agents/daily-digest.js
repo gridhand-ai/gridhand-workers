@@ -152,10 +152,11 @@ async function runDailyDigest() {
     return { sent: true, totalTasks, totalErrors, totalCalls, totalUnread }
 }
 
-runDailyDigest().catch(async (err) => {
-    console.error('[daily-digest] Fatal error:', err.message)
-    await sendTelegramAlert(`*Daily Digest FAILED* 🔥\n\`${err.message}\``).catch(() => {})
-    process.exit(1)
-})
+if (require.main === module) {
+    runDailyDigest().catch(async (err) => {
+        console.error('[daily-digest] Fatal error:', err.message)
+        await sendTelegramAlert(`*Daily Digest FAILED* 🔥\n\`${err.message}\``).catch(() => {})
+    })
+}
 
 module.exports = { runDailyDigest }

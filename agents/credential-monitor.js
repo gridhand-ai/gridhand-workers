@@ -25,7 +25,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const { sendCriticalAlert, sendTelegramAlert } = require('../lib/events');
 const { sendSMS } = require('../lib/twilio-client');
-const { validateSMS } = require('../lib/message-gate');
+const { validateInternal } = require('../lib/message-gate');
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '',
@@ -88,9 +88,9 @@ async function alertViaSms(message) {
         return;
     }
 
-    const gateResult = validateSMS(message, { businessName: '' });
+    const gateResult = validateInternal(message);
     if (!gateResult.valid) {
-        console.warn(`[CredMonitor] message-gate blocked SMS alert: ${gateResult.issues.join('; ')}`);
+        console.warn(`[CredMonitor] message-gate blocked SMS alert: ${gateResult.reason}`);
         return;
     }
 
