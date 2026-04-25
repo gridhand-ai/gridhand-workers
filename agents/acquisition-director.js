@@ -10,8 +10,6 @@ const { createClient } = require('@supabase/supabase-js')
 const { call }         = require('../lib/ai-client')
 const vault            = require('../lib/memory-vault')
 
-const exa                = require('../lib/exa-client')
-
 const leadQualifier      = require('./specialists/lead-qualifier')
 const prospectNurturer   = require('./specialists/prospect-nurturer')
 const referralActivator  = require('./specialists/referral-activator')
@@ -133,63 +131,74 @@ async function logReasoning(supabase, reasoning, situation) {
 }
 
 async function run(clients = null, situation = null, commanderBrief = null) {
-  console.log(`[${AGENT_ID.toUpperCase()}] Starting run — situation: ${situation || 'scheduled'}`)
+  try {
+    console.log(`[${AGENT_ID.toUpperCase()}] Starting run — situation: ${situation || 'scheduled'}`)
 
-  const supabase    = getSupabase()
-  const clientList  = clients || await getActiveClients(supabase)
-  if (!clientList.length) return report([])
+    const supabase    = getSupabase()
+    const clientList  = clients || await getActiveClients(supabase)
+    if (!clientList.length) return report([])
 
-  // ── Load shared memory context ────────────────────────────────────────────
-  const clientId   = clientList[0]?.id
-  const vaultContext = clientId ? await vault.getContext(clientId).catch(() => '') : ''
+    // ── Load shared memory context ────────────────────────────────────────────
+    const clientId   = clientList[0]?.id
+    const vaultContext = clientId ? await vault.getContext(clientId).catch(() => '') : ''
 
-  // ── Groq reasoning: determine specialist priority ─────────────────────────
-  const reasoning = await reasonAboutSpecialists(clientList, situation, commanderBrief, vaultContext)
-  await logReasoning(supabase, reasoning, situation)
+    // ── Groq reasoning: determine specialist priority ─────────────────────────
+    const reasoning = await reasonAboutSpecialists(clientList, situation, commanderBrief, vaultContext)
+    await logReasoning(supabase, reasoning, situation)
 
-  // Build ordered specialist list — AI-ranked if available, default otherwise
-  const priorityOrder = (reasoning?.specialists_priority?.length)
-    ? reasoning.specialists_priority.filter(s => SPECIALIST_MAP[s])
-    : ALL_SPECIALISTS
+    // Build ordered specialist list — AI-ranked if available, default otherwise
+    const priorityOrder = (reasoning?.specialists_priority?.length)
+      ? reasoning.specialists_priority.filter(s => SPECIALIST_MAP[s])
+      : ALL_SPECIALISTS
 
-  // Any specialists not mentioned by the AI still run — append to end
-  const remainingSpecialists = ALL_SPECIALISTS.filter(s => !priorityOrder.includes(s))
-  const orderedSpecialists   = [...priorityOrder, ...remainingSpecialists]
+    // Any specialists not mentioned by the AI still run — append to end
+    const remainingSpecialists = ALL_SPECIALISTS.filter(s => !priorityOrder.includes(s))
+    const orderedSpecialists   = [...priorityOrder, ...remainingSpecialists]
 
-  console.log(`[${AGENT_ID.toUpperCase()}] Specialist order (${reasoning?.vertical || 'default'}): ${orderedSpecialists.join(' → ')}`)
-  if (reasoning?.rationale) {
-    console.log(`[${AGENT_ID.toUpperCase()}] Reasoning: ${reasoning.rationale}`)
+    console.log(`[${AGENT_ID.toUpperCase()}] Specialist order (${reasoning?.vertical || 'default'}): ${orderedSpecialists.join(' → ')}`)
+    if (reasoning?.rationale) {
+      console.log(`[${AGENT_ID.toUpperCase()}] Reasoning: ${reasoning.rationale}`)
+    }
+
+    // Run all specialists in parallel (order is for logging priority, not serial blocking)
+    const specialistPromises = orderedSpecialists.map(name => SPECIALIST_MAP[name].run(clientList))
+    const results = await Promise.allSettled(specialistPromises)
+
+    const childReports = results
+      .filter(r => r.status === 'fulfilled' && r.value)
+      .map(r => r.value)
+
+    // Receive reports from each specialist
+    for (const r of childReports) {
+      await receive(r, supabase)
+    }
+
+    // Aggregate totals
+    const totalActions = childReports.reduce((sum, r) => sum + (r.actionsCount || 0), 0)
+    const escalations  = childReports.flatMap(r => r.escalations || [])
+    const hotLeads     = childReports.flatMap(r =>
+      (r.outcomes || []).filter(o => o.requiresDirectorAttention)
+    )
+
+    return report([{
+      agentId:   AGENT_ID,
+      clientId:  'all',
+      timestamp: Date.now(),
+      status:    totalActions > 0 ? 'action_taken' : 'no_action',
+      summary:   `Acquisition: ${totalActions} total actions across ${clientList.length} clients. ${hotLeads.length} hot lead(s) detected.`,
+      data:      { totalActions, hotLeads, childReports, reasoning },
+      requiresDirectorAttention: hotLeads.length > 0,
+    }])
+  } catch (err) {
+    console.error(`[${AGENT_ID}] run() fatal error:`, err.message)
+    return {
+      agentId:      AGENT_ID,
+      division:     DIVISION,
+      actionsCount: 0,
+      escalations:  [],
+      outcomes:     [{ status: 'error', error: err.message }],
+    }
   }
-
-  // Run all specialists in parallel (order is for logging priority, not serial blocking)
-  const specialistPromises = orderedSpecialists.map(name => SPECIALIST_MAP[name].run(clientList))
-  const results = await Promise.allSettled(specialistPromises)
-
-  const childReports = results
-    .filter(r => r.status === 'fulfilled' && r.value)
-    .map(r => r.value)
-
-  // Receive reports from each specialist
-  for (const r of childReports) {
-    await receive(r, supabase)
-  }
-
-  // Aggregate totals
-  const totalActions = childReports.reduce((sum, r) => sum + (r.actionsCount || 0), 0)
-  const escalations  = childReports.flatMap(r => r.escalations || [])
-  const hotLeads     = childReports.flatMap(r =>
-    (r.outcomes || []).filter(o => o.requiresDirectorAttention)
-  )
-
-  return report([{
-    agentId:   AGENT_ID,
-    clientId:  'all',
-    timestamp: Date.now(),
-    status:    totalActions > 0 ? 'action_taken' : 'no_action',
-    summary:   `Acquisition: ${totalActions} total actions across ${clientList.length} clients. ${hotLeads.length} hot lead(s) detected.`,
-    data:      { totalActions, hotLeads, childReports, reasoning },
-    requiresDirectorAttention: hotLeads.length > 0,
-  }])
 }
 
 async function report(outcomes) {

@@ -9,8 +9,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { createClient } = require('@supabase/supabase-js')
-const { call }         = require('../lib/ai-client')
-const vault            = require('../lib/memory-vault')
 
 const churnPredictor   = require('./specialists/churn-predictor')
 const feedbackCollector = require('./specialists/feedback-collector')
@@ -20,7 +18,6 @@ const milestoneC       = require('./specialists/milestone-celebrator')
 const AGENT_ID   = 'client-health-director'
 const DIVISION   = 'client'
 const REPORTS_TO = 'gridhand-commander'
-const GROQ_MODEL = 'groq/llama-3.3-70b-versatile'
 
 const ALL_SPECIALISTS = ['churn-predictor', 'feedback-collector', 'support-escalator', 'milestone-celebrator']
 const SPECIALIST_MAP  = {
@@ -85,35 +82,50 @@ async function scoreAndTriage(healthMap, childReports) {
 }
 
 async function run(clients = null, situation = null) {
-  console.log(`[${AGENT_ID.toUpperCase()}] Building client health scores`)
-  const supabase   = getSupabase()
-  const clientList = clients || await getActiveClients(supabase)
-  if (!clientList.length) return report([])
+  try {
+    console.log(`[${AGENT_ID.toUpperCase()}] Building client health scores`)
+    const supabase   = getSupabase()
+    const clientList = clients || await getActiveClients(supabase)
+    if (!clientList.length) return report([])
 
-  const [healthMap, specialistResults] = await Promise.all([
-    buildClientHealthMap(supabase, clientList),
-    Promise.allSettled(ALL_SPECIALISTS.map(name => SPECIALIST_MAP[name].run(clientList))),
-  ])
+    const [healthMap, specialistResults] = await Promise.all([
+      buildClientHealthMap(supabase, clientList),
+      Promise.allSettled(ALL_SPECIALISTS.map(name => SPECIALIST_MAP[name].run(clientList))),
+    ])
 
-  const childReports = specialistResults
-    .filter(r => r.status === 'fulfilled' && r.value)
-    .map(r => r.value)
+    const childReports = specialistResults
+      .filter(r => r.status === 'fulfilled' && r.value)
+      .map(r => r.value)
 
-  const triage = await scoreAndTriage(healthMap, childReports)
+    const triage = await scoreAndTriage(healthMap, childReports)
 
-  console.log(`[${AGENT_ID.toUpperCase()}] Health: ${triage.healthy.length} healthy / ${triage.watch.length} watch / ${triage.critical.length} critical`)
+    console.log(`[${AGENT_ID.toUpperCase()}] Health: ${triage.healthy.length} healthy / ${triage.watch.length} watch / ${triage.critical.length} critical`)
 
-  const needsEscalation = triage.critical.length > 0
+    const needsEscalation = triage.critical.length > 0
 
-  return report([{
-    agentId:   AGENT_ID,
-    clientId:  'all',
-    timestamp: Date.now(),
-    status:    needsEscalation ? 'escalated' : 'ok',
-    summary:   `Client health: ${triage.healthy.length} healthy, ${triage.watch.length} watch, ${triage.critical.length} critical of ${triage.total}.`,
-    data:      { triage, childReports },
-    requiresDirectorAttention: needsEscalation,
-  }])
+    return report([{
+      agentId:   AGENT_ID,
+      clientId:  'all',
+      timestamp: Date.now(),
+      status:    needsEscalation ? 'escalated' : 'ok',
+      summary:   `Client health: ${triage.healthy.length} healthy, ${triage.watch.length} watch, ${triage.critical.length} critical of ${triage.total}.`,
+      data:      { triage, childReports },
+      requiresDirectorAttention: needsEscalation,
+    }])
+  } catch (err) {
+    console.error(`[${AGENT_ID}] run() fatal error:`, err.message)
+    return {
+      agentId:      AGENT_ID,
+      division:     DIVISION,
+      actionsCount: 0,
+      escalations:  [],
+      outcomes:     [{ status: 'error', error: err.message }],
+    }
+  }
+}
+
+async function receive(childReport, supabase) {
+  console.log(`[${AGENT_ID}] Received child report from ${childReport?.agentId || 'unknown'}`)
 }
 
 function report(outcomes) {
@@ -137,4 +149,4 @@ async function getActiveClients(supabase) {
   return data || []
 }
 
-module.exports = { run, report, AGENT_ID, DIVISION, REPORTS_TO }
+module.exports = { run, receive, report, AGENT_ID, DIVISION, REPORTS_TO }
