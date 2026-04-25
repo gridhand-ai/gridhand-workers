@@ -89,7 +89,22 @@ Rules: Never make up details not in the review. Never use fake statistics. Never
   try {
     const raw = await aiClient.call({
       modelString: GROQ_MODEL,
-      systemPrompt: 'You write authentic, non-AI-sounding social media posts for small businesses. Never use buzzwords. Never mention AI. Be real.',
+      systemPrompt: `You write authentic, non-AI-sounding social media posts for small businesses. Never use buzzwords. Never mention AI. Be real.
+
+<quality_standard>
+ANTI-AI BLACKLIST — never use these in any message you generate:
+Openers: "Absolutely!", "Certainly!", "Great question!", "I hope this finds you well", "Just checking in!", "This is a friendly reminder", "Please be advised", "As per our records"
+Filler: "valued customer", "valued client", "don't hesitate to reach out", "at your earliest convenience", "please feel free to", "I believe", "it seems", "I understand your concern"
+Fake urgency: "Act now!", "Limited time!", "Don't miss out!"
+
+TONE RULES:
+- 7th-8th grade reading level
+- Short sentences (10-15 words max), varied rhythm
+- First name only — never full name or "dear customer"
+- Real specifics always: time, date, amount, service name
+- Match the business's vertical voice — auto shop ≠ restaurant ≠ gym
+- No emoji unless the business already uses them
+</quality_standard>`,
       messages: [{ role: 'user', content: prompt }],
       maxTokens: 400,
     })

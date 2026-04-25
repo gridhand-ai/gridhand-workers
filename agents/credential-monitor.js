@@ -41,6 +41,21 @@ const TWILIO_MIN_BALANCE_USD = 5.00;
 // Minimum ElevenLabs quota remaining (fraction, 0–1) before we alert
 const EL_MIN_QUOTA_FRACTION  = 0.10;
 
+// ─── Alert deduplication ──────────────────────────────────────────────────────
+// Prevents repeated Telegram/SMS alerts for the same ongoing issue.
+// Resets on server restart — acceptable since Railway dynos stay up for days.
+const _alertedAt = new Map(); // issueKey → timestamp
+const ALERT_THROTTLE_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+function _shouldAlert(key) {
+    const last = _alertedAt.get(key);
+    return !last || (Date.now() - last) > ALERT_THROTTLE_MS;
+}
+
+function _markAlerted(key) {
+    _alertedAt.set(key, Date.now());
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
@@ -317,11 +332,17 @@ async function run() {
                 // Already expired — critical alert
                 console.error(`${label} EXPIRED at ${row.token_expires_at}`);
                 results.failed++;
-                await sendCriticalAlert(
-                    'credential-monitor',
-                    `OAuth token EXPIRED for ${row.platform} (client: ${row.client_id})`,
-                    { clientId: row.client_id }
-                );
+                const alertKey = `expired-${row.platform}-${row.client_id}`;
+                if (_shouldAlert(alertKey)) {
+                    await sendCriticalAlert(
+                        'credential-monitor',
+                        `OAuth token EXPIRED for ${row.platform} (client: ${row.client_id})`,
+                        { clientId: row.client_id }
+                    );
+                    _markAlerted(alertKey);
+                } else {
+                    console.log(`[CredMonitor] ${alertKey} — already alerted within 24h, skipping`);
+                }
 
             } else if (isWarning) {
                 const daysLeft = Math.ceil((expiresMs - now) / (24 * 60 * 60 * 1000));
@@ -351,18 +372,30 @@ async function run() {
                         // Refresh failed — escalate as critical
                         console.error(`${label} auto-refresh FAILED: ${refreshErr.message}`);
                         results.failed++;
-                        await sendCriticalAlert(
-                            'credential-monitor',
-                            `Token auto-refresh failed for ${row.platform} (client: ${row.client_id}): ${refreshErr.message}`,
-                            { clientId: row.client_id }
-                        );
+                        const alertKey = `refresh-failed-${row.platform}-${row.client_id}`;
+                        if (_shouldAlert(alertKey)) {
+                            await sendCriticalAlert(
+                                'credential-monitor',
+                                `Token auto-refresh failed for ${row.platform} (client: ${row.client_id}): ${refreshErr.message}`,
+                                { clientId: row.client_id }
+                            );
+                            _markAlerted(alertKey);
+                        } else {
+                            console.log(`[CredMonitor] ${alertKey} — already alerted within 24h, skipping`);
+                        }
                     }
 
                 } else {
                     // No refresh token — SMS MJ
-                    const msg = `[GRIDHAND] OAuth token for ${row.platform} expires in ${daysLeft}d (client: ${row.client_id}). Manual re-auth required.`;
-                    await alertViaSms(msg);
-                    console.warn(`${label} SMS alert sent (no refresh token)`);
+                    const alertKey = `no-refresh-token-${row.platform}-${row.client_id}`;
+                    if (_shouldAlert(alertKey)) {
+                        const msg = `[GRIDHAND] OAuth token for ${row.platform} expires in ${daysLeft}d (client: ${row.client_id}). Manual re-auth required.`;
+                        await alertViaSms(msg);
+                        _markAlerted(alertKey);
+                        console.warn(`${label} SMS alert sent (no refresh token)`);
+                    } else {
+                        console.log(`[CredMonitor] ${alertKey} — already alerted within 24h, skipping`);
+                    }
                 }
 
             } else {
@@ -386,18 +419,33 @@ async function run() {
     if (twilioIssue) {
         infraIssues.push(twilioIssue);
         results.failed++;
+        if (_shouldAlert('twilio-balance')) {
+            _markAlerted('twilio-balance');
+        } else {
+            console.log('[CredMonitor] twilio-balance — already alerted within 24h, will skip in summary');
+        }
     }
 
     const elIssue = await checkElevenLabsQuota();
     if (elIssue) {
         infraIssues.push(elIssue);
         results.failed++;
+        if (_shouldAlert('elevenlabs-quota')) {
+            _markAlerted('elevenlabs-quota');
+        } else {
+            console.log('[CredMonitor] elevenlabs-quota — already alerted within 24h, will skip in summary');
+        }
     }
 
     const groqIssue = await checkGroqApiKey();
     if (groqIssue) {
         infraIssues.push(groqIssue);
-        await sendCriticalAlert('credential-monitor', groqIssue);
+        if (_shouldAlert('groq-key')) {
+            await sendCriticalAlert('credential-monitor', groqIssue);
+            _markAlerted('groq-key');
+        } else {
+            console.log('[CredMonitor] groq-key — already alerted within 24h, skipping');
+        }
     }
 
     // ─── Daily Telegram summary ────────────────────────────────────────────────
@@ -435,7 +483,12 @@ async function run() {
         summaryMsg = lines.join('\n');
     }
 
-    await sendTelegramAlert(summaryMsg);
+    if (allClear) {
+        // All clear — log only, no Telegram spam
+        console.log('[CredMonitor] All clear — no Telegram alert sent');
+    } else {
+        await sendTelegramAlert(summaryMsg);
+    }
 
     const elapsed = Date.now() - startedAt;
     console.log(
