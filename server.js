@@ -263,8 +263,6 @@ async function isSmsDedup(from, to, body) {
 
 // ─── Credential Monitor (every 6 hours) ──────────────────────────────────────
 setInterval(() => credentialMonitor.run().catch(e => console.error('[CredMonitor]', e.message)), 6 * 60 * 60 * 1000);
-// Also run once on startup after 30s (gives server time to fully initialize)
-setTimeout(() => credentialMonitor.run().catch(e => console.error('[CredMonitor]', e.message)), 30000);
 
 // ─── N8N Scenario Engine (daily at 2am) ───────────────────────────────────────
 // 15 domain agents generate automation scenario JSON for the n8n instance.

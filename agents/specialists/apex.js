@@ -14,8 +14,8 @@ const { fileInteraction } = require('../../lib/memory-client')
 const AGENT_ID   = 'apex'
 const DIVISION   = 'acquisition'
 const REPORTS_TO = 'acquisition-director'
-// Claude for strategic judgment — deal analysis requires nuanced reasoning
-const CLAUDE_MODEL = 'claude-sonnet-4-5'
+// quality_escalate: Groq first, escalates to Sonnet only if quality fails
+const GROQ_MODEL = 'groq/llama-3.3-70b-versatile'
 
 /**
  * Analyze the sales pipeline and surface who to close, nurture, or cut.
@@ -94,7 +94,8 @@ Respond with valid JSON only:
 
   try {
     const raw = await aiClient.call({
-      modelString: CLAUDE_MODEL,
+      modelString: GROQ_MODEL,
+      tier: 'quality_escalate',
       clientApiKeys: {},
       systemPrompt,
       messages: [{ role: 'user', content: userMsg }],

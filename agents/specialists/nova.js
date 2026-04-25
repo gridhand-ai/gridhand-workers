@@ -14,8 +14,8 @@ const { fileInteraction } = require('../../lib/memory-client')
 const AGENT_ID   = 'nova'
 const DIVISION   = 'brand'
 const REPORTS_TO = 'brand-director'
-// Claude for creative quality — public-facing content demands polish
-const CLAUDE_MODEL = 'claude-sonnet-4-5'
+// Groq specialist — content generation handles well at this tier
+const GROQ_MODEL = 'groq/llama-3.3-70b-versatile'
 
 const PLATFORM_RULES = {
   instagram: 'Max 2,200 chars. Hook in first line. Emojis OK. Line breaks for readability.',
@@ -93,7 +93,8 @@ Respond with valid JSON only:
 
   try {
     const raw = await aiClient.call({
-      modelString: CLAUDE_MODEL,
+      modelString: GROQ_MODEL,
+      tier: 'specialist',
       clientApiKeys: {},
       systemPrompt,
       messages: [{ role: 'user', content: userMsg }],

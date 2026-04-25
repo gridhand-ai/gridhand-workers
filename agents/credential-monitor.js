@@ -154,7 +154,7 @@ async function checkTwilioBalance() {
 
     try {
         const res = await fetch(
-            `https://api.twilio.com/2010-04-01/Accounts/${sid}.json`,
+            `https://api.twilio.com/2010-04-01/Accounts/${sid}/Balance.json`,
             {
                 headers: {
                     Authorization: `Basic ${Buffer.from(`${sid}:${token}`).toString('base64')}`,
@@ -203,6 +203,11 @@ async function checkElevenLabsQuota() {
             headers: { 'xi-api-key': apiKey },
         });
 
+        if (res.status === 401 || res.status === 403) {
+            // Key exists but lacks user_read scope — not a critical failure, just log and skip
+            console.warn(`[CredMonitor] ElevenLabs key missing user_read permission (HTTP ${res.status}) — skipping quota check`);
+            return null;
+        }
         if (!res.ok) {
             console.error(`[CredMonitor] ElevenLabs quota check HTTP ${res.status}`);
             return `ElevenLabs API returned HTTP ${res.status}`;

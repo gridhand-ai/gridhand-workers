@@ -29,6 +29,7 @@ const brandDirector         = require('./brand-director')
 const intelligenceDirector  = require('./intelligence-director')
 
 const OPUS_MODEL = 'groq/llama-3.3-70b-versatile'
+const REFLECTION_MODEL = 'gemini/gemini-2.5-flash'
 
 const AGENT_ID = 'gridhand-commander'
 const DIVISION = 'command'
@@ -392,7 +393,7 @@ async function reflectOnOutcomes(supabase, directorReports, originalSituations) 
   ).join(', ') || 'scheduled_run'
 
   const raw = await call({
-    modelString: OPUS_MODEL,
+    modelString: REFLECTION_MODEL,
     systemPrompt: `<role>GridHandCommander self-correction module. Review specialist/director outcomes against the original situation and flag quality gaps.</role>
 <rules>Be concise. Only flag genuine misses — not expected no-actions. Return valid JSON only.</rules>
 <output>{ "flagged": [{ "agentId": "string", "reason": "string" }], "overallQuality": "good" }</output>
@@ -752,7 +753,7 @@ module.exports = {
   DIVISION,
   SITUATION_ROUTING,
   ARSENAL_REGISTRY,
-  schedule: '*/15 * * * *',
+  schedule: '0 */12 * * *',
   tier: 1,
   reportsTo: 'MJ',
 }
