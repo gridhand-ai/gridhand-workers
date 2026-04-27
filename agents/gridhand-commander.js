@@ -28,8 +28,8 @@ const experienceDirector    = require('./experience-director')
 const brandDirector         = require('./brand-director')
 const intelligenceDirector  = require('./intelligence-director')
 
-const OPUS_MODEL = 'groq/llama-3.3-70b-versatile'
-const REFLECTION_MODEL = 'gemini/gemini-2.5-flash'
+const OPUS_MODEL = 'deepseek/deepseek-v4-pro'
+const REFLECTION_MODEL = 'deepseek/deepseek-v4-pro'
 
 const AGENT_ID = 'gridhand-commander'
 const DIVISION = 'command'
