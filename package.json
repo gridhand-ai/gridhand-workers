@@ -24,7 +24,7 @@
     "node-cron": "^4.2.1",
     "pixelmatch": "^7.1.0",
     "pngjs": "^7.0.0",
-    "posthog-node": "^5.29.5",
+    "posthog-node": "^5.30.6",
     "puppeteer": "^24.42.0",
     "twilio": "^5.3.3",
     "ws": "^8.20.0"
