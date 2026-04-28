@@ -20,7 +20,7 @@
     "@upstash/redis": "^1.37.0",
     "carbonyl": "^0.0.2-next.bacf3db",
     "exa-js": "^2.12.1",
-    "express": "^4.18.2",
+    "express": "^5.2.1",
     "mem0ai": "^3.0.2",
     "node-cron": "^4.2.1",
     "pixelmatch": "^7.1.0",
