@@ -258,6 +258,7 @@ If confidence < 0.7 (sparse data, ambiguous review sentiment), prefix the SMS wi
     messages: [{ role: 'user', content: 'Write the weekly brand briefing.' }],
     maxTokens: 220,
     _workerName: AGENT_ID,
+    tier: 'specialist',
   })
 }
 

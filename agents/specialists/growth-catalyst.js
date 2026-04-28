@@ -204,6 +204,7 @@ async function run({ mode = 'pipeline', vertical = null } = {}) {
       systemPrompt: SPARK_SYSTEM,
       messages:     [{ role: 'user', content: contextBlock }],
       maxTokens:    2000,
+      tier: 'specialist',
     })
   } catch (err) {
     console.error('[SPARK] call failed:', err.message)

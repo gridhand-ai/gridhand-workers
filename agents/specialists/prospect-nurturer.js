@@ -206,6 +206,7 @@ TONE RULES:
     messages: [{ role: 'user', content: 'Write the follow-up.' }],
     maxTokens: 120,
     _workerName: AGENT_ID,
+    tier: 'specialist',
   })
 }
 

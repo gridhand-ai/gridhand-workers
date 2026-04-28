@@ -102,6 +102,7 @@ Score each message. Output JSON only.`,
       }],
       maxTokens:   1000,
       _workerName: SPECIALIST_ID,
+      tier: 'specialist',
     })
     const match = raw?.match(/\{[\s\S]*\}/)
     if (match) return JSON.parse(match[0])

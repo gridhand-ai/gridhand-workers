@@ -221,6 +221,7 @@ TONE RULES:
     messages: [{ role: 'user', content: 'Write the re-engagement message.' }],
     maxTokens: 120,
     _workerName: AGENT_ID,
+    tier: 'specialist',
   })
 }
 

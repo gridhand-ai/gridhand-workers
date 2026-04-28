@@ -240,6 +240,7 @@ Return ONLY valid JSON. No other text.
       messages:      [{ role: 'user', content: 'Analyze the message trends.' }],
       maxTokens:     400,
       _workerName:   AGENT_ID,
+      tier: 'specialist',
     })
     const jsonMatch = raw?.match(/\{[\s\S]*\}/)
     if (!jsonMatch) return null

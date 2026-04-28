@@ -214,6 +214,7 @@ TONE RULES:
     messages: [{ role: 'user', content: 'Write the referral ask.' }],
     maxTokens: 120,
     _workerName: AGENT_ID,
+    tier: 'specialist',
   })
 }
 

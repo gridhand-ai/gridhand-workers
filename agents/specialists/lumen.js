@@ -151,6 +151,7 @@ Write each summary as if you're reporting to the business owner — warm, specif
       }],
       maxTokens:   1200,
       _workerName: SPECIALIST_ID,
+      tier: 'specialist',
     })
 
     // Groq may return array or object — handle both

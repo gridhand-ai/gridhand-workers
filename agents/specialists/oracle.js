@@ -149,6 +149,7 @@ You have full visibility into GRIDHAND's infrastructure, financials, growth stag
       systemPrompt: systemPromptWithOwner,
       messages: [{ role: 'user', content: userContent }],
       maxTokens: 4000,
+      tier: 'specialist',
     })
   } catch (err) {
     console.error(`[ORACLE] call failed:`, err.message)

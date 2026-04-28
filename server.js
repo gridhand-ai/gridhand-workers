@@ -14,6 +14,7 @@ const { loadClient, loadClientBySlug, loadClientBySupabaseId, NUMBER_MAP } = req
 const aiClientLib = require('./lib/ai-client');
 const { handleVoiceStream } = require('./voice-bridge');
 const deployWatch = require('./lib/deploy-watch');
+const orbHandler = require('./lib/orb-handler');
 
 // Workers
 const afterHoursWorker      = require('./workers/after-hours');
@@ -294,6 +295,16 @@ require('./cron');
 // ─── Public health endpoint (used by Deploy Watch) ────────────────────────────
 app.get('/health', (req, res) => {
     res.json({ ok: true, service: 'gridhand-workers', ts: Date.now() });
+});
+
+// ─── Client Orb — voice AI companion endpoint ─────────────────────────────────
+app.post('/orb', requireApiKey, async (req, res) => {
+    const { clientId, message } = req.body;
+    if (!clientId || !message) {
+        return res.status(400).json({ error: 'clientId and message required' });
+    }
+    const result = await orbHandler.handle(clientId, message);
+    res.json(result);
 });
 
 // ─── Authenticated status ──────────────────────────────────────────────────────

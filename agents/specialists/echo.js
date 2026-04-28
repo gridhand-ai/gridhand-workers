@@ -85,6 +85,7 @@ Last Touchpoint: ${lastTouchpoint || 'none'}`
       messages: [{ role: 'user', content: userMsg }],
       maxTokens: 800,
       _workerName: AGENT_ID,
+      tier: 'specialist',
     })
 
     let parsed

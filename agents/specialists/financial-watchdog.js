@@ -169,6 +169,7 @@ async function run({ mode = 'mrr', period = '30d' } = {}) {
       systemPrompt: LEDGER_SYSTEM,
       messages:     [{ role: 'user', content: contextBlock }],
       maxTokens:    2000,
+      tier: 'specialist',
     })
   } catch (err) {
     console.error('[LEDGER] call failed:', err.message)

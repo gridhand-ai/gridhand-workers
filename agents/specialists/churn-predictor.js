@@ -196,6 +196,7 @@ risk_level mapping: 1-3 = low, 4-6 = medium, 7-10 = high
       messages: [{ role: 'user', content: 'Score the churn risk.' }],
       maxTokens: 5,
       _workerName: AGENT_ID,
+      tier: 'specialist',
     })
     const score = parseInt(raw?.trim(), 10)
     return (isNaN(score) || score < 1 || score > 10) ? 5 : score

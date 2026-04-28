@@ -96,6 +96,7 @@ Respond with valid JSON only:
       messages: [{ role: 'user', content: userMsg }],
       maxTokens: 600,
       _workerName: AGENT_ID,
+      tier: 'specialist',
     })
 
     let parsed

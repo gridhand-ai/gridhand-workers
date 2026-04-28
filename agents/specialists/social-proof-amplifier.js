@@ -107,6 +107,7 @@ TONE RULES:
 </quality_standard>`,
       messages: [{ role: 'user', content: prompt }],
       maxTokens: 400,
+      tier: 'specialist',
     })
 
     const instagramMatch = raw?.match(/INSTAGRAM:\s*(.+?)(?=FACEBOOK:|$)/s)

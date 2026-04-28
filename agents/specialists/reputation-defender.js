@@ -283,6 +283,7 @@ TONE RULES:
       messages:      [{ role: 'user', content: 'Write the review response draft.' }],
       maxTokens:     200,
       _workerName:   AGENT_ID,
+      tier: 'specialist',
     })
   } catch (err) {
     console.error(`[${AGENT_ID}] Response draft AI call failed:`, err.message)
@@ -342,6 +343,7 @@ TONE RULES:
       messages:      [{ role: 'user', content: 'Write the private outreach SMS.' }],
       maxTokens:     130,
       _workerName:   AGENT_ID,
+      tier: 'specialist',
     })
   } catch (err) {
     console.error(`[${AGENT_ID}] Outreach AI call failed:`, err.message)

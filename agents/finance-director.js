@@ -15,6 +15,13 @@ const financialWatchdog  = require('./specialists/financial-watchdog')
 const invoiceRecovery    = require('./specialists/invoice-recovery')
 const revenueForecaster  = require('./specialists/revenue-forecaster')
 
+// ── New Tools Available (2026-04-27) ──────────────────────────────────────────
+// humanizer  — ~/.claude/skills/humanizer/SKILL.md — apply to ALL client-facing copy before sending
+// remotion   — MCP: remotion-video — animated reports, video deliverables, dashboard recordings
+// notebooklm — MCP: notebooklm — internal research only, query GRIDHAND docs and architecture
+// gemini-image — MCP: gemini-image — generate design references, UI mockups, client visual assets
+// Access via TOOL_REGISTRY in gridhand-commander.js
+
 const AGENT_ID   = 'finance-director'
 const DIVISION   = 'finance'
 const REPORTS_TO = 'gridhand-commander'

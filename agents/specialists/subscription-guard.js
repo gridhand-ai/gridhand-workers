@@ -237,6 +237,7 @@ TONE RULES:
     messages: [{ role: 'user', content: 'Write the subscription message.' }],
     maxTokens: 130,
     _workerName: AGENT_ID,
+    tier: 'specialist',
   })
 }
 

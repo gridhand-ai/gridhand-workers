@@ -206,6 +206,7 @@ TONE RULES:
     messages: [{ role: 'user', content: 'Write the monthly report.' }],
     maxTokens: 200,
     _workerName: AGENT_ID,
+    tier: 'specialist',
   })
 }
 

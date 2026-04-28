@@ -216,6 +216,7 @@ TONE RULES:
       messages:      [{ role: 'user', content: 'Write the feedback request SMS.' }],
       maxTokens:     130,
       _workerName:   AGENT_ID,
+      tier: 'specialist',
     })
   } catch (err) {
     console.error(`[${AGENT_ID}] AI call failed:`, err.message)

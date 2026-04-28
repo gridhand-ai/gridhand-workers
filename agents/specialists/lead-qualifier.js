@@ -142,6 +142,7 @@ Days since contact: ${lead.daysSinceContact || 0}`
       messages: [{ role: 'user', content: msg }],
       maxTokens: 5,
       _workerName: AGENT_ID,
+      tier: 'specialist',
     })
     const score = parseInt(raw?.trim(), 10)
     return (isNaN(score) || score < 1 || score > 10) ? 5 : score

@@ -206,6 +206,7 @@ TONE RULES:
     messages: [{ role: 'user', content: 'Write the celebration message.' }],
     maxTokens: 150,
     _workerName: AGENT_ID,
+    tier: 'specialist',
   })
 }
 

@@ -148,6 +148,7 @@ async function run({ mode = 'audit', clientSlug = null, dateRange = '7d' } = {})
       systemPrompt: NEXUS_SYSTEM,
       messages:     [{ role: 'user', content: contextBlock }],
       maxTokens:    2000,
+      tier: 'specialist',
     })
   } catch (err) {
     console.error('[NEXUS] call failed:', err.message)

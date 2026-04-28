@@ -19,6 +19,13 @@ const reputationDefender  = require('./specialists/reputation-defender')
 // Arsenal — MJ's personal marketing toolkit
 const nova                = require('./specialists/nova')  // Content Creator
 
+// ── New Tools Available (2026-04-27) ──────────────────────────────────────────
+// humanizer  — ~/.claude/skills/humanizer/SKILL.md — apply to ALL client-facing copy before sending
+// remotion   — MCP: remotion-video — animated reports, video deliverables, dashboard recordings
+// notebooklm — MCP: notebooklm — internal research only, query GRIDHAND docs and architecture
+// gemini-image — MCP: gemini-image — generate design references, UI mockups, client visual assets
+// Access via TOOL_REGISTRY in gridhand-commander.js
+
 const AGENT_ID   = 'brand-director'
 const DIVISION   = 'brand'
 const REPORTS_TO = 'gridhand-commander'

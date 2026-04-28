@@ -180,6 +180,7 @@ async function run({ mode = 'health', clientSlug = null, issue = null } = {}) {
       systemPrompt: BRIDGE_SYSTEM,
       messages:     [{ role: 'user', content: contextBlock }],
       maxTokens:    2000,
+      tier: 'specialist',
     })
   } catch (err) {
     console.error('[BRIDGE] call failed:', err.message)

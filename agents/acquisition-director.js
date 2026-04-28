@@ -9,6 +9,7 @@
 const { createClient } = require('@supabase/supabase-js')
 const { call }         = require('../lib/ai-client')
 const vault            = require('../lib/memory-vault')
+const { notifyOwner }  = require('../lib/notify-owner')
 
 const leadQualifier      = require('./specialists/lead-qualifier')
 const prospectNurturer   = require('./specialists/prospect-nurturer')
@@ -21,6 +22,13 @@ const pipelineReporter   = require('./specialists/pipeline-reporter')
 const echo               = require('./specialists/echo')        // Call Script Writer
 const pathfinder         = require('./specialists/pathfinder')  // Route Optimizer
 const apex               = require('./specialists/apex')        // Deal Analyst
+
+// ── New Tools Available (2026-04-27) ──────────────────────────────────────────
+// humanizer  — ~/.claude/skills/humanizer/SKILL.md — apply to ALL client-facing copy before sending
+// remotion   — MCP: remotion-video — animated reports, video deliverables, dashboard recordings
+// notebooklm — MCP: notebooklm — internal research only, query GRIDHAND docs and architecture
+// gemini-image — MCP: gemini-image — generate design references, UI mockups, client visual assets
+// Access via TOOL_REGISTRY in gridhand-commander.js
 
 const AGENT_ID   = 'acquisition-director'
 const DIVISION   = 'acquisition'
@@ -179,6 +187,17 @@ async function run(clients = null, situation = null, commanderBrief = null) {
     const hotLeads     = childReports.flatMap(r =>
       (r.outcomes || []).filter(o => o.requiresDirectorAttention)
     )
+
+    // Fire proactive owner notifications for each hot lead — fire-and-forget
+    for (const lead of hotLeads) {
+      if (!lead?.clientId || lead.clientId === 'all') continue
+      const msg = lead.summary || `New hot lead detected — needs immediate attention`
+      notifyOwner({
+        businessId: lead.clientId,
+        eventType:  'hot_lead',
+        message:    msg,
+      }).catch(() => {}) // never block director on notification failure
+    }
 
     return report([{
       agentId:   AGENT_ID,

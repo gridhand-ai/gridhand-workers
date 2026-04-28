@@ -132,6 +132,7 @@ async function run({ mode = 'check', clientSlug = null } = {}) {
       systemPrompt: SHIELD_SYSTEM,
       messages:     [{ role: 'user', content: contextBlock }],
       maxTokens:    2000,
+      tier: 'specialist',
     })
   } catch (err) {
     console.error('[SHIELD] call failed:', err.message)

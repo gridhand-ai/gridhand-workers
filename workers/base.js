@@ -8,6 +8,7 @@ const { stateMachine }  = require('../lib/worker-state');
 const industryLearnings = require('../lib/industry-learnings');
 const clientPrefs       = require('../lib/client-prefs');
 const makeClient        = require('../lib/make-client');
+const mem0Client        = require('../lib/mem0-client');
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
@@ -117,14 +118,18 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
     const clientApiKeys = client.apiKeys || {};
     const fallbackReply = `Thanks for reaching out to ${biz.name}! We'll get back to you shortly.`;
 
-    // Enrich system prompt with industry learnings, client prefs, and knowledge base.
-    // All fetched in parallel. Knowledge search fires only on question-type messages.
-    const [industryCtx, prefsCtx, knowledgeCtx] = await Promise.all([
+    // Enrich system prompt with industry learnings, client prefs, knowledge base,
+    // and Mem0 personalized memory. All fetched in parallel.
+    // Knowledge search fires only on question-type messages.
+    // Mem0 returns persistent per-client facts/preferences (empty string if no key or no memories).
+    const [industryCtx, prefsCtx, knowledgeCtx, mem0Memory] = await Promise.all([
         industryLearnings.get(biz.industry),
         clientPrefs.get(client.clientId, global.tone),
         isLikelyQuestion(message) ? searchKnowledge(client.supabaseClientId, message) : Promise.resolve(''),
+        mem0Client.getClientMemory(client.clientId),
     ]);
-    const enrichedPrompt = systemPrompt + industryCtx + prefsCtx + knowledgeCtx;
+    const memoryCtx = mem0Memory ? `\n\n<memory>\n${mem0Memory}\n</memory>` : '';
+    const enrichedPrompt = systemPrompt + industryCtx + prefsCtx + knowledgeCtx + memoryCtx;
 
     const reply = await withRetry(
         async () => {
@@ -160,6 +165,14 @@ async function run({ client, message, customerNumber, workerName, systemPrompt, 
             customer: { phone: customerNumber },
             data:     { summary: reply.slice(0, 120) },
         }).catch(() => {});
+
+        // Save conversation turn to Mem0 personalized memory (fire-and-forget).
+        // Mem0 extracts facts/preferences automatically — keeps client AI feeling
+        // like it knows them across every future conversation. Never blocks reply.
+        mem0Client.saveConversationMemory(client.clientId, [
+            { role: 'user',      content: message },
+            { role: 'assistant', content: reply   },
+        ]).catch(() => {});
     } else {
         stateMachine.escalate(workerName, clientSlug);
     }

@@ -258,6 +258,7 @@ If confidence < 0.7 (no benchmark data, vague gap), escalate for human review by
       messages:      [{ role: 'user', content: 'Provide the performance recommendation.' }],
       maxTokens:     120,
       _workerName:   AGENT_ID,
+      tier: 'specialist',
     })
     return raw?.trim() || 'Performance gaps detected — review division assignments.'
   } catch {

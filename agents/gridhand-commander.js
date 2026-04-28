@@ -731,6 +731,44 @@ const ARSENAL_REGISTRY = {
 // Log Arsenal availability on startup
 console.log(`[GRIDHAND-COMMANDER] Arsenal loaded: ${Object.keys(ARSENAL_REGISTRY).join(', ')}`)
 
+// ── Tool Registry — Cross-cutting capabilities available to directors ────────
+// These tools are NOT dispatched on a schedule — directors invoke them when
+// their specialist work needs the capability. Commander documents them here so
+// any director (or a future routing layer) can discover and call the right one.
+const TOOL_REGISTRY = {
+  humanizer: {
+    type:        'skill',
+    location:    '~/.claude/skills/humanizer/SKILL.md',
+    purpose:     'Rewrite AI-generated text to sound human. 37 AI-pattern detectors + 5 voice profiles.',
+    useFor:      ['SMS copy', 'email copy', 'review responses', 'client-facing narrative in reports'],
+    invokedBy:   ['reputation-agent', 'retention-agent', 'lead-nurture-agent', 'brand-director', 'revenue-director', 'client-health-director'],
+  },
+  remotion: {
+    type:        'mcp',
+    server:      'remotion-video',
+    purpose:     'Generate videos from React components. Animated reports, brand reels, analytics videos.',
+    useFor:      ['monthly client reports', 'brand video content', 'analytics dashboards as video'],
+    invokedBy:   ['brand-director', 'revenue-director', 'client-health-director', 'executive-assistant', 'finance-director'],
+  },
+  notebooklm: {
+    type:        'mcp',
+    server:      'notebooklm',
+    purpose:     'Query GRIDHAND knowledge bases and research notebooks for context-grounded analysis. Internal research only.',
+    useFor:      ['research grounding', 'industry context', 'client-history retrieval', 'executive summaries'],
+    invokedBy:   ['intelligence-director', 'acquisition-director', 'executive-assistant'],
+  },
+  bananaClaude: {
+    type:        'mcp',
+    server:      'nano-banana',
+    skill:       '~/.claude/skills/banana-claude/SKILL.md',
+    purpose:     'Gemini-powered image generation for brand, marketing, and content assets.',
+    useFor:      ['social-post imagery', 'campaign creative', 'client brand mockups'],
+    invokedBy:   ['brand-director', 'acquisition-director'],
+  },
+}
+
+console.log(`[GRIDHAND-COMMANDER] Tool registry loaded: ${Object.keys(TOOL_REGISTRY).join(', ')}`)
+
 // Given the full client list and the assignment map, return only clients that
 // have at least one of this director's workers toggled on.
 // Falls back to the full list when the map is null (DB error) so the run
@@ -753,6 +791,7 @@ module.exports = {
   DIVISION,
   SITUATION_ROUTING,
   ARSENAL_REGISTRY,
+  TOOL_REGISTRY,
   schedule: '0 */12 * * *',
   tier: 1,
   reportsTo: 'MJ',

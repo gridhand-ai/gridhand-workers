@@ -96,6 +96,7 @@ Focus on ROI — at their usage rate they are getting good value; the next tier 
       messages:      [{ role: 'user', content: 'Write the upgrade recommendation.' }],
       maxTokens:     100,
       _workerName:   AGENT_ID,
+      tier: 'specialist',
     })
     return raw?.trim() || null
   } catch {

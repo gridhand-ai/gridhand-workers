@@ -188,6 +188,7 @@ If confidence < 0.7 (sparse pipeline data, ambiguous signal), escalate by prefix
       messages:      [{ role: 'user', content: 'Provide the pipeline insight.' }],
       maxTokens:     80,
       _workerName:   AGENT_ID,
+      tier: 'specialist',
     })
     return raw?.trim() || 'No insight generated.'
   } catch {

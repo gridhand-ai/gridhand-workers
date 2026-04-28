@@ -157,6 +157,7 @@ Rules:
       }],
       maxTokens:   1200,
       _workerName: SPECIALIST_ID,
+      tier: 'specialist',
     })
     const match = raw?.match(/\{[\s\S]*\}/)
     if (match) return JSON.parse(match[0])

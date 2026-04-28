@@ -221,6 +221,7 @@ TONE RULES:
     messages: [{ role: 'user', content: 'Write the draft response.' }],
     maxTokens: 200,
     _workerName: AGENT_ID,
+    tier: 'specialist',
   })
 }
 

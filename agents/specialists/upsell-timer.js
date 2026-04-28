@@ -278,6 +278,7 @@ TONE RULES:
     messages: [{ role: 'user', content: 'Write the upsell message.' }],
     maxTokens: 140,
     _workerName: AGENT_ID,
+    tier: 'specialist',
   })
 }
 

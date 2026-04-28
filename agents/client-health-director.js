@@ -9,11 +9,19 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { createClient } = require('@supabase/supabase-js')
+const { notifyOwner }  = require('../lib/notify-owner')
 
 const churnPredictor   = require('./specialists/churn-predictor')
 const feedbackCollector = require('./specialists/feedback-collector')
 const supportEscalator = require('./specialists/support-escalator')
 const milestoneC       = require('./specialists/milestone-celebrator')
+
+// ── New Tools Available (2026-04-27) ──────────────────────────────────────────
+// humanizer  — ~/.claude/skills/humanizer/SKILL.md — apply to ALL client-facing copy before sending
+// remotion   — MCP: remotion-video — animated reports, video deliverables, dashboard recordings
+// notebooklm — MCP: notebooklm — internal research only, query GRIDHAND docs and architecture
+// gemini-image — MCP: gemini-image — generate design references, UI mockups, client visual assets
+// Access via TOOL_REGISTRY in gridhand-commander.js
 
 const AGENT_ID   = 'client-health-director'
 const DIVISION   = 'client'
@@ -102,6 +110,18 @@ async function run(clients = null, situation = null) {
     console.log(`[${AGENT_ID.toUpperCase()}] Health: ${triage.healthy.length} healthy / ${triage.watch.length} watch / ${triage.critical.length} critical`)
 
     const needsEscalation = triage.critical.length > 0
+
+    // Fire proactive owner notifications for each critical-health client — fire-and-forget
+    for (const c of triage.critical) {
+      if (!c?.clientId) continue
+      const name = c.businessName || 'your business'
+      const msg = `Urgent: ${name} health score dropped to ${c.finalScore} — ${c.errorsLast7d || 0} errors in last 7d. Action needed.`
+      notifyOwner({
+        businessId: c.clientId,
+        eventType:  'urgent_escalation',
+        message:    msg,
+      }).catch(() => {}) // never block director on notification failure
+    }
 
     return report([{
       agentId:   AGENT_ID,

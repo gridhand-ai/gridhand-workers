@@ -9,6 +9,7 @@
 const { createClient } = require('@supabase/supabase-js')
 const { call }         = require('../lib/ai-client')
 const vault            = require('../lib/memory-vault')
+const { notifyOwner }  = require('../lib/notify-owner')
 
 const invoiceRecovery   = require('./specialists/invoice-recovery')
 const upsellTimer       = require('./specialists/upsell-timer')
@@ -17,6 +18,13 @@ const pricingOptimizer  = require('./specialists/pricing-optimizer')
 const paymentDunner     = require('./specialists/payment-dunner')
 const contractRenewal   = require('./specialists/contract-renewal')
 const revenueForecaster = require('./specialists/revenue-forecaster')
+
+// ── New Tools Available (2026-04-27) ──────────────────────────────────────────
+// humanizer  — ~/.claude/skills/humanizer/SKILL.md — apply to ALL client-facing copy before sending
+// remotion   — MCP: remotion-video — animated reports, video deliverables, dashboard recordings
+// notebooklm — MCP: notebooklm — internal research only, query GRIDHAND docs and architecture
+// gemini-image — MCP: gemini-image — generate design references, UI mockups, client visual assets
+// Access via TOOL_REGISTRY in gridhand-commander.js
 
 const AGENT_ID   = 'revenue-director'
 const DIVISION   = 'revenue'
@@ -156,6 +164,19 @@ async function run(clients = null, situation = null, commanderBrief = null) {
   const escalations  = childReports.flatMap(r => r.escalations || [])
 
   const needsCommanderAlert = totalAtRisk > ESCALATION_REVENUE_THRESHOLD || escalations.length > 0
+
+  // Fire proactive owner notifications for each per-client revenue escalation — fire-and-forget
+  for (const esc of escalations) {
+    if (!esc?.clientId || esc.clientId === 'all') continue
+    const atRisk = esc.data?.totalAtRisk
+    const msg = esc.summary
+      || (atRisk ? `Revenue at risk: $${atRisk} — needs your attention` : `Revenue escalation — needs your attention`)
+    notifyOwner({
+      businessId: esc.clientId,
+      eventType:  'revenue_at_risk',
+      message:    msg,
+    }).catch(() => {}) // never block director on notification failure
+  }
 
   return report([{
     agentId:   AGENT_ID,

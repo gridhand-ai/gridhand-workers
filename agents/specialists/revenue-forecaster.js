@@ -174,6 +174,7 @@ Factor in current MRR, trend direction, and renewal count.
       messages:      [{ role: 'user', content: 'Provide the 30-day revenue forecast.' }],
       maxTokens:     10,
       _workerName:   AGENT_ID,
+      tier: 'specialist',
     })
     const num = parseFloat(raw?.replace(/[^0-9.]/g, '') || '')
     return isNaN(num) ? currentMRR : num

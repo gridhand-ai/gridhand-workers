@@ -148,6 +148,7 @@ Return valid JSON only with these fields:
       systemPrompt: 'You are a market intelligence analyst. Extract structured benchmarks from city open data. Return only valid JSON.',
       messages: [{ role: 'user', content: prompt }],
       maxTokens: 800,
+      tier: 'specialist',
     })
 
     const match = groqResponse?.match(/\{[\s\S]*\}/)
@@ -289,6 +290,7 @@ Return [] if no meaningful insights found.
         systemPrompt: 'You are a competitive intelligence analyst for local businesses. Extract actionable competitor insights. Return only valid JSON.',
         messages: [{ role: 'user', content: prompt }],
         maxTokens: 600,
+        tier: 'specialist',
       })
 
       const match = groqResponse?.match(/\[[\s\S]*\]/)

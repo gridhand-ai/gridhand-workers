@@ -241,6 +241,7 @@ TONE RULES:
     messages: [{ role: 'user', content: 'Write the onboarding message.' }],
     maxTokens: 180,
     _workerName: AGENT_ID,
+    tier: 'specialist',
   })
 }
 

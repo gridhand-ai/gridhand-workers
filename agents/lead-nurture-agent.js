@@ -35,6 +35,13 @@ const optoutManager    = require('../subagents/compliance/optout-manager');
 const tcpaChecker      = require('../subagents/compliance/tcpa-checker');
 const { validateSMS }  = require('../lib/message-gate');
 
+// ── New Tools Available (2026-04-27) ──────────────────────────────────────────
+// humanizer  — ~/.claude/skills/humanizer/SKILL.md — apply to ALL client-facing copy before sending
+// remotion   — MCP: remotion-video — animated reports, video deliverables, dashboard recordings
+// notebooklm — MCP: notebooklm — internal research only, query GRIDHAND docs and architecture
+// gemini-image — MCP: gemini-image — generate design references, UI mockups, client visual assets
+// Access via TOOL_REGISTRY in gridhand-commander.js
+
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -231,6 +238,7 @@ async function sendLeadSMS({ clientConfig, clientLoader, customerPhone, body }) 
     const client = clientLoader ? clientLoader(twilioNum) : null;
 
     // Content gate: block hallucinated amounts, bad URLs, unfilled placeholders
+    // HUMANIZER REQUIRED: run all outbound copy through ~/.claude/skills/humanizer/SKILL.md before sending
     const gateResult = validateSMS(body, { businessName: clientConfig.business_name || '' });
     if (!gateResult.valid) {
         console.warn(`[LeadNurtureAgent] message-gate blocked SMS: ${gateResult.issues.join('; ')}`);

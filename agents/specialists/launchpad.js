@@ -86,6 +86,7 @@ Workers to set up: ${workerCount}`
       messages: [{ role: 'user', content: userMsg }],
       maxTokens: 700,
       _workerName: AGENT_ID,
+      tier: 'specialist',
     })
 
     let parsed

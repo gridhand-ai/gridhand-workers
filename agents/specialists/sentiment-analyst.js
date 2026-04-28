@@ -86,6 +86,7 @@ async function scoreMessages(messages, clientList) {
       }],
       maxTokens: 600,
       _workerName: SPECIALIST_ID,
+      tier: 'specialist',
     })
     const match = raw?.match(/\{[\s\S]*\}/)
     if (match) return JSON.parse(match[0])

@@ -326,6 +326,7 @@ TONE RULES:
     messages: [{ role: 'user', content: 'Write the campaign brief.' }],
     maxTokens: 180,
     _workerName: AGENT_ID,
+    tier: 'specialist',
   })
 }
 

@@ -15,6 +15,13 @@ const { scout }  = require('../lib/scout')
 const { notify } = require('../lib/terminal-notifier')
 const { createClient } = require('@supabase/supabase-js')
 
+// ── New Tools Available (2026-04-27) ──────────────────────────────────────────
+// humanizer  — ~/.claude/skills/humanizer/SKILL.md — apply to ALL client-facing copy before sending
+// remotion   — MCP: remotion-video — animated reports, video deliverables, dashboard recordings
+// notebooklm — MCP: notebooklm — internal research only, query GRIDHAND docs and architecture
+// gemini-image — MCP: gemini-image — generate design references, UI mockups, client visual assets
+// Access via TOOL_REGISTRY in gridhand-commander.js
+
 const AGENT_ID   = 'executive-assistant'
 const EA_MODEL   = 'groq/llama-3.3-70b-versatile'  // routing = Groq (free, subscription-safe)
 const OPUS_MODEL = 'groq/llama-3.3-70b-versatile'  // strategic calls → Groq, heavy work → queue to COO

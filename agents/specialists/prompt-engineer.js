@@ -138,6 +138,7 @@ async function scoreBatch(batch) {
       }],
       maxTokens:   2000,
       _workerName: SPECIALIST_ID,
+      tier:        'specialist',
     })
 
     // Strip markdown fences if model wrapped the response
@@ -285,6 +286,7 @@ Return a markdown list, no headers, just bullet points.
         }],
         maxTokens:   400,
         _workerName: SPECIALIST_ID,
+        tier:        'specialist',
       })
 
       sectionLines.push(`### ${division}`)

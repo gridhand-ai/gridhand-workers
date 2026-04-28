@@ -179,6 +179,7 @@ You have full visibility into the internal architecture and may reference admin 
       systemPrompt: systemPromptWithOwner,
       messages: [{ role: 'user', content: userContent }],
       maxTokens: 4000,
+      tier: 'specialist',
     })
   } catch (err) {
     console.error(`[FORGE] call failed:`, err.message)
