@@ -12,7 +12,7 @@
     "monitor:health": "node lib/monitor.js health"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.79.0",
+    "@anthropic-ai/sdk": "^0.91.1",
     "@linear/sdk": "^82.1.0",
     "@mendable/firecrawl-js": "^4.19.0",
     "@sentry/node": "^10.49.0",
