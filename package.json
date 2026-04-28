@@ -27,7 +27,7 @@
     "pngjs": "^7.0.0",
     "posthog-node": "^5.29.5",
     "puppeteer": "^24.42.0",
-    "twilio": "^5.3.3",
+    "twilio": "^6.0.0",
     "ws": "^8.20.0"
   },
   "devDependencies": {
