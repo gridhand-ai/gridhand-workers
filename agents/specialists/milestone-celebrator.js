@@ -87,6 +87,7 @@ async function processClient(client) {
   const todayEnd   = new Date(now).setHours(23, 59, 59, 999)
 
   // Find customers whose first_purchase_at matches an anniversary window today
+  // Uses milestones_sent JSONB column — keys like 'days_30', 'days_90', 'visits_10'
   const anniversaryMatches = []
   for (const days of ANNIVERSARY_DAYS) {
     const targetDate = new Date(now - days * 24 * 60 * 60 * 1000)
@@ -95,15 +96,16 @@ async function processClient(client) {
 
     const { data } = await supabase
       .from('client_customers')
-      .select('*')
+      .select('id, name, phone, first_purchase_at, visit_count, milestones_sent')
       .eq('client_id', client.id)
       .gte('first_purchase_at', dayStart)
       .lte('first_purchase_at', dayEnd)
-      .is('milestone_sent_days_' + days, null)
-      .limit(5)
+      .limit(20)
 
     if (data?.length) {
-      anniversaryMatches.push(...data.map(c => ({ customer: c, type: 'anniversary', days })))
+      const milestoneKey = `days_${days}`
+      const fresh = data.filter(c => !((c.milestones_sent || {})[milestoneKey]))
+      anniversaryMatches.push(...fresh.map(c => ({ customer: c, type: 'anniversary', days, milestoneKey })))
     }
   }
 
@@ -112,14 +114,15 @@ async function processClient(client) {
   for (const visits of VISIT_MILESTONES) {
     const { data } = await supabase
       .from('client_customers')
-      .select('*')
+      .select('id, name, phone, visit_count, milestones_sent')
       .eq('client_id', client.id)
       .eq('visit_count', visits)
-      .is(`milestone_sent_visits_${visits}`, null)
-      .limit(5)
+      .limit(20)
 
     if (data?.length) {
-      visitMatches.push(...data.map(c => ({ customer: c, type: 'visit', visits })))
+      const milestoneKey = `visits_${visits}`
+      const fresh = data.filter(c => !((c.milestones_sent || {})[milestoneKey]))
+      visitMatches.push(...fresh.map(c => ({ customer: c, type: 'visit', visits, milestoneKey })))
     }
   }
 
@@ -149,15 +152,18 @@ async function processClient(client) {
         body:           message,
         clientApiKeys:  {},
         clientSlug:     client.email,
-        clientTimezone: 'America/Chicago',
+        clientTimezone: client.timezone || process.env.DEFAULT_TIMEZONE || 'America/Chicago',
       })
 
-      // Mark milestone as sent
-      const updateField = milestone.type === 'anniversary'
-        ? { [`milestone_sent_days_${milestone.days}`]: new Date().toISOString() }
-        : { [`milestone_sent_visits_${milestone.visits}`]: new Date().toISOString() }
+      // Mark milestone as sent — merge into milestones_sent JSONB
+      const existingSent = milestone.customer.milestones_sent || {}
+      const nextSent = {
+        ...existingSent,
+        [milestone.milestoneKey]: new Date().toISOString(),
+      }
 
-      await supabase.from('client_customers').update(updateField)
+      await supabase.from('client_customers')
+        .update({ milestones_sent: nextSent })
         .eq('id', milestone.customer.id)
 
       celebrated++

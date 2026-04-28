@@ -200,7 +200,7 @@ ${taskDesc}
 </rules>`;
 
     const reply = await aiClient.call({
-        modelString: 'groq/llama-3.3-70b-versatile',
+        tier: 'quality',
         clientApiKeys: {},
         systemPrompt,
         messages: [{ role: 'user', content: 'Write the lead message.' }],

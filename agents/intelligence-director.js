@@ -155,7 +155,8 @@ async function run(clients = null, situation = null) {
     try {
       const clientMemoryBlock = formatClientMemory(clientList)
       const opusResponse = await call({
-        modelString: OPUS_MODEL,
+        tier: 'standard',
+        _workerName: 'intelligence-director',
         systemPrompt: `<role>IntelligenceDirector for GRIDHAND AI — synthesize operational intelligence and provide strategic assessments to the Commander.</role>${vaultContext ? `\n<context>${vaultContext}</context>` : ''}${clientMemoryBlock !== 'No client knowledge available.' ? `\n<client_memory>\n${clientMemoryBlock}\n</client_memory>` : ''}
 <rules>Analyze the intelligence brief and produce a structured strategic assessment. Be direct — surface real risks, not generic observations.</rules>
 <quality_standard>

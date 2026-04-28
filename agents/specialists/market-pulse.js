@@ -234,13 +234,12 @@ Return ONLY valid JSON. No other text.
 
   try {
     const raw = await aiClient.call({
-      modelString:   'groq/llama-3.3-70b-versatile',
+      tier:          'standard',
       clientApiKeys: {},
       systemPrompt,
       messages:      [{ role: 'user', content: 'Analyze the message trends.' }],
       maxTokens:     400,
       _workerName:   AGENT_ID,
-      tier: 'specialist',
     })
     const jsonMatch = raw?.match(/\{[\s\S]*\}/)
     if (!jsonMatch) return null

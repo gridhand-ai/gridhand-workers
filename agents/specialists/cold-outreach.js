@@ -121,7 +121,7 @@ async function processClient(client, isClientContext = false) {
         body: message,
         clientApiKeys: {},
         clientSlug: client.email,
-        clientTimezone: 'America/Chicago',
+        clientTimezone: client.timezone || process.env.DEFAULT_TIMEZONE || 'America/Chicago',
       })
 
       await supabase.from('agent_state').upsert({
@@ -215,13 +215,12 @@ TONE RULES:
 </quality_standard>`
 
   return aiClient.call({
-    modelString: 'groq/llama-3.3-70b-versatile',
+    tier: 'quality',
     clientApiKeys: {},
     systemPrompt,
     messages: [{ role: 'user', content: 'Write the re-engagement message.' }],
     maxTokens: 120,
     _workerName: AGENT_ID,
-    tier: 'specialist',
   })
 }
 

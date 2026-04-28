@@ -57,7 +57,16 @@ async function run(clients = []) {
 }
 
 async function processClient(client) {
-  const leads = client._pendingLeads || []
+  const supabase = getSupabase()
+  const leads = client._pendingLeads?.length
+    ? client._pendingLeads
+    : (await supabase
+        .from('client_leads')
+        .select('*')
+        .eq('client_id', client.id)
+        .is('qualified_at', null)
+        .limit(20)
+      ).data || []
   if (!leads.length) return null
 
   const scored = []
@@ -72,7 +81,6 @@ async function processClient(client) {
 
   // Persist high-intent leads (score >= 7) to activity_log
   try {
-    const supabase = getSupabase()
     for (const lead of scored.filter(l => l.score >= 7)) {
       await supabase.from('activity_log').insert({
         client_id: client.id,

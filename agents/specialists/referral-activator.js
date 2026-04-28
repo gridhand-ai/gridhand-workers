@@ -65,8 +65,19 @@ async function processClient(client) {
   const supabase = getSupabase()
   const now = Date.now()
 
-  // Look for positive events in the last 2 hours that haven't triggered a referral ask
-  const since = new Date(now - 2 * 60 * 60 * 1000).toISOString()
+  // Cursor-based lookback — survives missed cron runs
+  const { data: cursorState } = await supabase
+    .from('agent_state')
+    .select('state')
+    .eq('agent', 'referral_activator')
+    .eq('client_id', client.id)
+    .eq('entity_id', 'last_run_at')
+    .single()
+
+  const since = cursorState?.state?.last_run_at
+    ? cursorState.state.last_run_at
+    : new Date(now - 2 * 60 * 60 * 1000).toISOString() // first-run fallback
+
   const { data: events } = await supabase
     .from('activity_log')
     .select('*')
@@ -75,7 +86,17 @@ async function processClient(client) {
     .gte('created_at', since)
     .not('action', 'eq', 'referral_ask_sent')  // skip rows already actioned
 
-  if (!events?.length) return null
+  if (!events?.length) {
+    // Update cursor on no-op
+    await supabase.from('agent_state').upsert({
+      agent: 'referral_activator',
+      client_id: client.id,
+      entity_id: 'last_run_at',
+      state: { last_run_at: new Date(now).toISOString() },
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'agent,client_id,entity_id' })
+    return null
+  }
 
   const ctx = buildClientContext(client)
 
@@ -120,7 +141,7 @@ async function processClient(client) {
         body: message,
         clientApiKeys: {},
         clientSlug: client.email,
-        clientTimezone: 'America/Chicago',
+        clientTimezone: client.timezone || process.env.DEFAULT_TIMEZONE || 'America/Chicago',
       })
 
       // Record that we sent the ask
@@ -140,6 +161,15 @@ async function processClient(client) {
       console.error(`[${AGENT_ID}] Ask failed for ${client.id}:`, err.message)
     }
   }
+
+  // Advance cursor regardless of action count
+  await supabase.from('agent_state').upsert({
+    agent: 'referral_activator',
+    client_id: client.id,
+    entity_id: 'last_run_at',
+    state: { last_run_at: new Date(now).toISOString() },
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'agent,client_id,entity_id' })
 
   if (!actionsTaken) return null
 

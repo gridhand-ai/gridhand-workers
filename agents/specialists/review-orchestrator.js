@@ -64,10 +64,24 @@ async function processClient(client) {
   const supabase = getSupabase()
   const now = Date.now()
 
-  const windowStart = new Date(now - REQUEST_DELAY_MAX * 60 * 1000).toISOString()
-  const windowEnd   = new Date(now - REQUEST_DELAY_MIN * 60 * 1000).toISOString()
+  // Cursor-based: pull events older than min-delay, newer than max(last_run, max-delay).
+  // Survives missed cron runs — anything past min-delay is still picked up next tick.
+  const { data: cursorState } = await supabase
+    .from('agent_state')
+    .select('state')
+    .eq('agent', 'review_orchestrator')
+    .eq('client_id', client.id)
+    .eq('entity_id', 'last_run_at')
+    .single()
 
-  // Find positive service completions in the 45-90 min window
+  const cursorStart = cursorState?.state?.last_run_at
+    ? new Date(cursorState.state.last_run_at)
+    : new Date(now - REQUEST_DELAY_MAX * 60 * 1000)
+  const fallbackStart = new Date(now - REQUEST_DELAY_MAX * 60 * 1000)
+  const windowStart   = (cursorStart < fallbackStart ? cursorStart : fallbackStart).toISOString()
+  const windowEnd     = new Date(now - REQUEST_DELAY_MIN * 60 * 1000).toISOString()
+
+  // Find positive service completions past min-delay (since last cursor)
   const { data: serviceEvents } = await supabase
     .from('activity_log')
     .select('*')
@@ -77,7 +91,17 @@ async function processClient(client) {
     .lte('created_at', windowEnd)
     .not('action', 'eq', 'review_requested')  // skip rows already actioned
 
-  if (!serviceEvents?.length) return null
+  if (!serviceEvents?.length) {
+    // Update cursor even on no-op so next run starts here
+    await supabase.from('agent_state').upsert({
+      agent: 'review_orchestrator',
+      client_id: client.id,
+      entity_id: 'last_run_at',
+      state: { last_run_at: new Date(now).toISOString() },
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'agent,client_id,entity_id' })
+    return null
+  }
 
   let actionsTaken = 0
   const requestsSent = []
@@ -116,7 +140,7 @@ async function processClient(client) {
         body: message,
         clientApiKeys: {},
         clientSlug: client.email,
-        clientTimezone: 'America/Chicago',
+        clientTimezone: client.timezone || process.env.DEFAULT_TIMEZONE || 'America/Chicago',
       })
 
       // Update suppression state
@@ -136,6 +160,15 @@ async function processClient(client) {
       console.error(`[${AGENT_ID}] Review request failed:`, err.message)
     }
   }
+
+  // Always advance cursor so next run starts where this one ended
+  await supabase.from('agent_state').upsert({
+    agent: 'review_orchestrator',
+    client_id: client.id,
+    entity_id: 'last_run_at',
+    state: { last_run_at: new Date(now).toISOString() },
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'agent,client_id,entity_id' })
 
   if (!actionsTaken) return null
 

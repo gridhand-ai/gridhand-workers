@@ -196,7 +196,7 @@ async function processClient(client) {
               body:           outreachMsg,
               clientApiKeys:  {},
               clientSlug:     client.email,
-              clientTimezone: 'America/Chicago',
+              clientTimezone: client.timezone || process.env.DEFAULT_TIMEZONE || 'America/Chicago',
             })
             await supabase.from('client_reviews').update({
               outreach_sent_at: new Date().toISOString(),

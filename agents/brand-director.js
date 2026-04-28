@@ -86,7 +86,8 @@ async function reasonAboutSpecialists(clientList, situation, commanderBrief, vau
 
   try {
     const raw = await call({
-      modelString: GROQ_MODEL,
+      tier: 'standard',
+      _workerName: 'brand-director',
       systemPrompt: `<role>BrandDirector for GRIDHAND AI — manage reputation and marketing for small business clients across verticals: auto_repair, restaurant, gym, barbershop, retail, real_estate.</role>${vaultContext ? `\n<context>${vaultContext}</context>` : ''}${memoryBlock ? `\n${memoryBlock}` : ''}
 <specialists>review-orchestrator (review requests and responses), social-manager (social media posting and engagement), brand-sentinel (monitors negative mentions and review spikes), campaign-conductor (runs marketing campaigns)</specialists>
 <brand_standards>GRIDHAND voice: direct, confident, outcome-first. Never "AI software/platform/tool" — always "a worker that handles [specific job]". Never mention Make.com — use "direct integrations". SMS/email: grade 7-8 reading level, plain language, local business owner tone. No fake stats, no invented metrics.</brand_standards>

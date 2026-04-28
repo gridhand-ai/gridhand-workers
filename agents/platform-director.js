@@ -68,7 +68,8 @@ async function synthesizePlatformHealth(dbHealth, workerFailures, queueDepth, gu
 
   try {
     const raw = await call({
-      modelString: GROQ_MODEL,
+      tier: 'standard',
+      _workerName: 'platform-director',
       systemPrompt: `<role>PlatformDirector for GRIDHAND AI — assess system infrastructure health and surface operational hotspots.</role>
 <rules>Analyze DB latency, worker failure count, hot agents, and queue depth. Flag anything that needs immediate attention.</rules>
 <quality_standard>

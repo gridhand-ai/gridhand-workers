@@ -18,11 +18,13 @@ const AGENT_ID  = 'loyalty-coordinator'
 const DIVISION  = 'experience'
 const REPORTS_TO = 'experience-director'
 
+// Trigger fires once threshold reached — `celebrated` set in agent_state prevents re-firing.
+// Removed exact-day windows (d < 31 etc) so a missed cron run doesn't permanently skip a milestone.
 const MILESTONES = [
-  { id: 'day_30',      key: 'day_30',      label: '30-day mark',        check: (d, t) => d >= 30  && d < 31 },
-  { id: 'day_60',      key: 'day_60',      label: '60-day mark',        check: (d, t) => d >= 60  && d < 61 },
-  { id: 'day_90',      key: 'day_90',      label: '90-day mark',        check: (d, t) => d >= 90  && d < 91 },
-  { id: 'day_180',     key: 'day_180',     label: '6-month anniversary', check: (d, t) => d >= 180 && d < 181 },
+  { id: 'day_30',      key: 'day_30',      label: '30-day mark',         check: (d, t) => d >= 30 },
+  { id: 'day_60',      key: 'day_60',      label: '60-day mark',         check: (d, t) => d >= 60 },
+  { id: 'day_90',      key: 'day_90',      label: '90-day mark',         check: (d, t) => d >= 90 },
+  { id: 'day_180',     key: 'day_180',     label: '6-month anniversary', check: (d, t) => d >= 180 },
   { id: 'task_100',    key: 'task_100',    label: '100th task',          check: (d, t) => t >= 100 },
   { id: 'task_500',    key: 'task_500',    label: '500th task',          check: (d, t) => t >= 500 },
   { id: 'revenue_10k', key: 'revenue_10k', label: '$10k value milestone', check: (d, t, rev) => typeof rev === 'number' && rev >= 10000 },
@@ -126,7 +128,7 @@ async function processClient(client) {
         body: message,
         clientApiKeys: {},
         clientSlug: client.email,
-        clientTimezone: 'America/Chicago',
+        clientTimezone: client.timezone || process.env.DEFAULT_TIMEZONE || 'America/Chicago',
       })
 
       // Mark as celebrated

@@ -116,7 +116,7 @@ async function processClient(client) {
         body: message,
         clientApiKeys: {},
         clientSlug: client.email,
-        clientTimezone: 'America/Chicago',
+        clientTimezone: client.timezone || process.env.DEFAULT_TIMEZONE || 'America/Chicago',
       })
 
       // Update state
@@ -200,13 +200,12 @@ TONE RULES:
 </quality_standard>`
 
   return aiClient.call({
-    modelString: 'groq/llama-3.3-70b-versatile',
+    tier: 'quality',
     clientApiKeys: {},
     systemPrompt,
     messages: [{ role: 'user', content: 'Write the follow-up.' }],
     maxTokens: 120,
     _workerName: AGENT_ID,
-    tier: 'specialist',
   })
 }
 

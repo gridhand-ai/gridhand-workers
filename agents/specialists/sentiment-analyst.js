@@ -50,8 +50,28 @@ function getSupabase() {
 
 async function getRecentInbound(supabase, clientList) {
   try {
-    const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
     const clientIds = clientList.map(c => c.id)
+
+    // Cursor-based: pull last_run_at cursors for these clients, use the minimum (oldest)
+    // as the lookback floor so missed cron runs don't drop messages.
+    const fallbackSince = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+    const { data: cursors } = await supabase
+      .from('agent_state')
+      .select('client_id, state')
+      .eq('agent', 'sentiment_analyst')
+      .eq('entity_id', 'last_run_at')
+      .in('client_id', clientIds)
+
+    let since = fallbackSince
+    if (cursors?.length) {
+      const cursorTimes = cursors.map(c => c.state?.last_run_at).filter(Boolean)
+      // If ANY client has no cursor we fall back to the 2h window for safety on first run.
+      if (cursorTimes.length === clientIds.length) {
+        // Use the OLDEST cursor across clients so no client misses messages
+        since = cursorTimes.reduce((a, b) => (a < b ? a : b))
+      }
+    }
+
     const { data } = await supabase
       .from('activity_log')
       .select('id, client_id, action, metadata, created_at')
@@ -62,6 +82,22 @@ async function getRecentInbound(supabase, clientList) {
       .limit(50)
     return data || []
   } catch { return [] }
+}
+
+// Advance per-client cursors after a run completes
+async function advanceCursors(supabase, clientList) {
+  const nowIso = new Date().toISOString()
+  for (const c of clientList) {
+    try {
+      await supabase.from('agent_state').upsert({
+        agent: 'sentiment_analyst',
+        client_id: c.id,
+        entity_id: 'last_run_at',
+        state: { last_run_at: nowIso },
+        updated_at: nowIso,
+      }, { onConflict: 'agent,client_id,entity_id' })
+    } catch {}
+  }
 }
 
 async function scoreMessages(messages, clientList) {
@@ -124,14 +160,16 @@ async function run(clientList = []) {
 
   const messages = await getRecentInbound(supabase, clientList)
   if (!messages.length) {
+    await advanceCursors(supabase, clientList)
     return {
       agentId: SPECIALIST_ID, division: DIVISION, actionsCount: 0,
-      escalations: [], outcomes: [{ status: 'no_messages', summary: 'No inbound messages in last 2 hours' }],
+      escalations: [], outcomes: [{ status: 'no_messages', summary: 'No inbound messages since last run' }],
     }
   }
 
   const results = await scoreMessages(messages, clientList)
   await logSentimentResults(supabase, results, clientList)
+  await advanceCursors(supabase, clientList)
 
   const escalations   = (results.scores || []).filter(s => s.requiresEscalation)
   const referralReady = (results.scores || []).filter(s => s.readyForReferral)

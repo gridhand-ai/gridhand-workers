@@ -227,7 +227,7 @@ Escalate to Commander when: review contains legal threats, accusations of discri
 </quality_standard>`;
 
     const reply = await aiClient.call({
-        modelString: 'groq/llama-3.3-70b-versatile',
+        tier: 'quality',
         clientApiKeys: {},
         systemPrompt,
         messages: [{ role: 'user', content: 'Draft the review response.' }],

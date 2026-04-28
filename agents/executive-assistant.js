@@ -117,7 +117,8 @@ async function processMessage({ text, from = 'MJ', sessionContext = [] }) {
   let response = null
   try {
     response = await call({
-      modelString: EA_MODEL,
+      tier: 'standard',
+      _workerName: 'executive-assistant',
       systemPrompt: EA_SYSTEM,
       messages,
       maxTokens: 400,
@@ -130,7 +131,8 @@ async function processMessage({ text, from = 'MJ', sessionContext = [] }) {
   if (response && (response.includes('[OPUS_NEEDED]') || response.includes('[ESCALATE_MJ]'))) {
     try {
       response = await call({
-        modelString: OPUS_MODEL,
+        tier: 'standard',
+        _workerName: 'executive-assistant/escalated',
         systemPrompt: EA_SYSTEM,
         messages,
         maxTokens: 600,

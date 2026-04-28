@@ -15,6 +15,7 @@
 
 const { createClient } = require('@supabase/supabase-js')
 const { call }         = require('../../lib/ai-client')
+const { getPlanCost, PLAN_NAMES } = require('../../lib/plan-catalog')
 
 const SPECIALIST_ID = 'financial-watchdog'
 const DIVISION      = 'internal'
@@ -27,9 +28,9 @@ You are LEDGER, the Financial Watchdog for GRIDHAND AI. You track MRR trends, ch
 <business>
 GRIDHAND SaaS tiers:
 - Free tier: $0/mo
-- Core: $197/mo
-- Full: $347/mo
-- Enterprise: $497/mo
+- Starter: $197/mo
+- Growth: $347/mo
+- Command: $497/mo
 
 Key metrics to track:
 - MRR: sum of all active subscription revenue
@@ -121,11 +122,9 @@ async function run({ mode = 'mrr', period = '30d' } = {}) {
     .in('type', ['customer.subscription.deleted', 'customer.subscription.updated', 'invoice.payment_failed'])
     .limit(100)
 
-  const PLAN_MRR = { free: 0, core: 197, full: 347, enterprise: 497 }
-
   // Compute basic metrics
   const activeClients  = (clients || []).filter(c => c.stripe_data?.subscription_status === 'active')
-  const currentMRR     = activeClients.reduce((sum, c) => sum + (PLAN_MRR[c.plan] || 0), 0)
+  const currentMRR     = activeClients.reduce((sum, c) => sum + getPlanCost(c.plan), 0)
   const cancelledCount = (stripeEvents || []).filter(e => e.type === 'customer.subscription.deleted').length
   const totalTokenCost = (tokenRows || []).reduce((sum, r) => sum + (r.cost_usd || 0), 0)
 
@@ -146,10 +145,10 @@ async function run({ mode = 'mrr', period = '30d' } = {}) {
     `Current MRR: $${currentMRR.toLocaleString()}`,
     `Cancelled this period: ${cancelledCount}`,
     `Tier breakdown: ${JSON.stringify(
-      Object.entries(PLAN_MRR).map(([plan, arr]) => ({
+      PLAN_NAMES.map(plan => ({
         plan,
         count: activeClients.filter(c => c.plan === plan).length,
-        arr,
+        arr: getPlanCost(plan),
       }))
     )}`,
     '',

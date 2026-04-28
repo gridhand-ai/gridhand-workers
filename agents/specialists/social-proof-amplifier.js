@@ -38,10 +38,10 @@ async function fetchFreshPositiveReviews(supabase, clientId) {
 
   const { data, error } = await supabase
     .from('activity_log')
-    .select('id, details, created_at')
+    .select('id, details, metadata, created_at')
     .eq('client_id', clientId)
     .eq('action', 'review_received')
-    .gte('rating', 4)
+    .gte('metadata->>rating', '4')
     .gte('created_at', since)
     .order('created_at', { ascending: false })
     .limit(3)

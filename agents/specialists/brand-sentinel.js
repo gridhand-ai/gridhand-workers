@@ -182,7 +182,7 @@ async function processClient(client) {
           body: gateResult.text,
           clientApiKeys: {},
           clientSlug: client.email,
-          clientTimezone: 'America/Chicago',
+          clientTimezone: client.timezone || process.env.DEFAULT_TIMEZONE || 'America/Chicago',
         })
       } catch (err) {
         console.error(`[${AGENT_ID}] Briefing SMS failed:`, err.message)

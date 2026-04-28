@@ -9,17 +9,11 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 const { createClient } = require('@supabase/supabase-js')
+const { getPlanCost } = require('../../lib/plan-catalog')
 
 const SPECIALIST_ID = 'roi-reporter'
 const DIVISION      = 'brand'
 const REPORTS_TO    = 'brand-director'
-
-// Plan costs — must stay in sync with Stripe products
-const PLAN_COSTS = {
-  starter: 197,
-  growth:  347,
-  command: 497,
-}
 
 function getSupabase() {
   return createClient(
@@ -78,7 +72,7 @@ async function processClient(client, supabase, thirtyAgo) {
   const leadCount    = leadRes.status   === 'fulfilled'  ? (leadRes.value.count    || 0) : 0
 
   const planKey  = (client.plan || 'starter').toLowerCase()
-  const planCost = PLAN_COSTS[planKey] || PLAN_COSTS.starter
+  const planCost = getPlanCost(planKey) || getPlanCost('starter')
 
   // Value summary — plain language, no invented dollar amounts beyond plan cost
   const summary = buildValueSummary(client, reviewCount, callCount, leadCount, planCost)

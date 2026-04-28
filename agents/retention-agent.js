@@ -221,7 +221,7 @@ Escalate to Commander when: contact has explicitly opted out, has a complaint pe
 </quality_standard>`;
 
     const reply = await aiClient.call({
-        modelString: 'groq/llama-3.3-70b-versatile',
+        tier: 'quality',
         clientApiKeys: {},
         systemPrompt,
         messages: [{ role: 'user', content: 'Write the SMS.' }],

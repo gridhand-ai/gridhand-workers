@@ -102,8 +102,19 @@ async function processClient(client) {
     return null
   }
 
-  // Look for upsell triggers in the last 4 hours
-  const since = new Date(now - 4 * 60 * 60 * 1000).toISOString()
+  // Cursor-based lookback — survives missed cron runs
+  const { data: runCursor } = await supabase
+    .from('agent_state')
+    .select('state')
+    .eq('agent', 'upsell_timer')
+    .eq('client_id', client.id)
+    .eq('entity_id', 'last_run_at')
+    .single()
+
+  const since = runCursor?.state?.last_run_at
+    ? runCursor.state.last_run_at
+    : new Date(now - 4 * 60 * 60 * 1000).toISOString() // first-run fallback
+
   const { data: triggers } = await supabase
     .from('activity_log')
     .select('*')
@@ -186,7 +197,7 @@ async function processClient(client) {
         body: message,
         clientApiKeys: {},
         clientSlug: client.email,
-        clientTimezone: 'America/Chicago',
+        clientTimezone: client.timezone || process.env.DEFAULT_TIMEZONE || 'America/Chicago',
       })
 
       await supabase.from('agent_state').upsert({
@@ -205,6 +216,15 @@ async function processClient(client) {
       console.error(`[${AGENT_ID}] Upsell failed:`, err.message)
     }
   }
+
+  // Advance run cursor (separate from per-customer cooldown above)
+  await supabase.from('agent_state').upsert({
+    agent: 'upsell_timer',
+    client_id: client.id,
+    entity_id: 'last_run_at',
+    state: { last_run_at: new Date(now).toISOString() },
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'agent,client_id,entity_id' })
 
   if (!actionsTaken) return null
 

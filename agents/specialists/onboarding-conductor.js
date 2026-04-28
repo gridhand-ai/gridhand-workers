@@ -132,7 +132,7 @@ async function processClient(client, isClientContext = false) {
         body: message,
         clientApiKeys: {},
         clientSlug: client.email,
-        clientTimezone: 'America/Chicago',
+        clientTimezone: client.timezone || process.env.DEFAULT_TIMEZONE || 'America/Chicago',
       })
 
       const newCompleted = [...completedSteps, step.key]
