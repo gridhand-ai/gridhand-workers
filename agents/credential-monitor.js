@@ -27,6 +27,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { sendCriticalAlert, sendTelegramAlert } = require('../lib/events');
 const { sendSMS } = require('../lib/twilio-client');
 const { validateInternal } = require('../lib/message-gate');
+const { encrypt, decrypt } = require('../lib/crypto');
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '',
@@ -116,9 +117,17 @@ async function refreshGoogleToken(refreshToken) {
         throw new Error('GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set — cannot auto-refresh');
     }
 
+    // Tokens are AES-256-GCM encrypted in the DB — decrypt before sending to Google
+    let plainRefreshToken;
+    try {
+        plainRefreshToken = decrypt(refreshToken);
+    } catch (e) {
+        throw new Error(`Failed to decrypt refresh token: ${e.message}`);
+    }
+
     const body = new URLSearchParams({
         grant_type:    'refresh_token',
-        refresh_token: refreshToken,
+        refresh_token: plainRefreshToken,
         client_id:     clientId,
         client_secret: clientSecret,
     });
@@ -355,10 +364,18 @@ async function run() {
                     try {
                         const { accessToken, expiresAt } = await attemptRefresh(row);
 
+                        // Encrypt new access token before storing — matches portal encryption
+                        let encryptedAccessToken;
+                        try {
+                            encryptedAccessToken = encrypt(accessToken);
+                        } catch (e) {
+                            throw new Error(`Failed to encrypt new access token: ${e.message}`);
+                        }
+
                         const { error: updateErr } = await supabase
                             .from('client_integrations')
                             .update({
-                                access_token:    accessToken,
+                                access_token:    encryptedAccessToken,
                                 token_expires_at: expiresAt,
                                 updated_at:       new Date().toISOString(),
                             })
