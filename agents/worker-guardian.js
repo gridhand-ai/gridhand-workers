@@ -130,6 +130,67 @@ async function checkRecentActivity() {
     }
 }
 
+// ─── Check: Railway deployment health ────────────────────────────────────────
+async function checkRailwayDeployments() {
+    const token       = process.env.RAILWAY_API_TOKEN
+    const serviceId   = process.env.RAILWAY_SERVICE_ID
+    const envId       = process.env.RAILWAY_ENVIRONMENT_ID
+
+    if (!token || !serviceId) {
+        return { ok: true, detail: 'Railway monitor not configured (RAILWAY_API_TOKEN not set)', skipped: true }
+    }
+
+    try {
+        const res = await fetch('https://backboard.railway.com/graphql/v2', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                query: `{
+                    deployments(input: { serviceId: "${serviceId}", environmentId: "${envId}" }) {
+                        edges { node { id status createdAt } }
+                    }
+                }`,
+            }),
+            signal: AbortSignal.timeout(10000),
+        })
+
+        const json = await res.json()
+        const deployments = json.data?.deployments?.edges?.map(e => e.node) || []
+
+        if (!deployments.length) return { ok: true, detail: 'No deployments found' }
+
+        const latest     = deployments[0]
+        const recent5    = deployments.slice(0, 5)
+        const failCount  = recent5.filter(d => d.status === 'FAILED' || d.status === 'CRASHED').length
+        const latestFail = latest.status === 'FAILED' || latest.status === 'CRASHED'
+
+        if (latestFail) {
+            return {
+                ok: false,
+                detail: `Latest deploy FAILED (${new Date(latest.createdAt).toLocaleString('en-US', { timeZone: 'America/Chicago' })} CDT)`,
+                failCount,
+                deploymentId: latest.id,
+            }
+        }
+
+        if (failCount >= 3) {
+            return {
+                ok: false,
+                detail: `${failCount}/5 recent deploys failed — latest OK (${latest.status})`,
+                failCount,
+            }
+        }
+
+        return { ok: true, detail: `Latest deploy: ${latest.status} — ${failCount > 0 ? `${failCount} recent failures` : 'all recent deploys clean'}` }
+
+    } catch (e) {
+        return { ok: false, detail: `Railway API unreachable: ${e.message}` }
+    }
+}
+
 // ─── Check: all client configs are valid ─────────────────────────────────────
 function checkClientConfigs() {
     const results = []
@@ -177,6 +238,9 @@ function formatReport(checks, forceReport) {
     lines.push(checks.supabase.ok ? `✅ Supabase: ${checks.supabase.detail}` : `❌ Supabase: ${checks.supabase.detail}`)
     lines.push(checks.twilio.ok   ? `✅ Twilio: ${checks.twilio.detail}`    : `❌ Twilio: ${checks.twilio.detail}`)
     lines.push(checks.make.ok     ? `✅ Make.com webhook: reachable`          : `❌ Make.com: ${checks.make.detail}`)
+    if (!checks.railway.skipped) {
+        lines.push(checks.railway.ok ? `✅ Railway: ${checks.railway.detail}` : `🚨 Railway Deploy FAILED: ${checks.railway.detail}`)
+    }
     lines.push('')
 
     // Activity
@@ -215,10 +279,11 @@ async function run() {
 
     console.log('[worker-guardian] Running health checks...')
 
-    const [supabaseCheck, activityCheck, makeCheck] = await Promise.all([
+    const [supabaseCheck, activityCheck, makeCheck, railwayCheck] = await Promise.all([
         checkSupabase(),
         checkRecentActivity(),
         checkMakeWebhook(),
+        checkRailwayDeployments(),
     ])
 
     const checks = {
@@ -226,11 +291,12 @@ async function run() {
         twilio:        checkTwilio(),
         make:          makeCheck,
         activity:      activityCheck,
+        railway:       railwayCheck,
         workerFiles:   checkWorkerFiles(),
         clientConfigs: checkClientConfigs(),
     }
 
-    const allOk = checks.supabase.ok && checks.twilio.ok && checks.activity.ok &&
+    const allOk = checks.supabase.ok && checks.twilio.ok && checks.activity.ok && checks.railway.ok &&
         checks.workerFiles.every(r => r.ok) && checks.clientConfigs.every(r => r.ok)
 
     // Console output
@@ -238,6 +304,7 @@ async function run() {
         console.log(`\nSupabase:    ${checks.supabase.ok ? '✓' : '✗'} ${checks.supabase.detail}`)
         console.log(`Twilio:      ${checks.twilio.ok ? '✓' : '✗'} ${checks.twilio.detail}`)
         console.log(`Make.com:    ${checks.make.ok ? '✓' : '✗'} ${checks.make.detail}`)
+        console.log(`Railway:     ${checks.railway.ok ? '✓' : '✗'} ${checks.railway.detail}`)
         console.log(`Activity:    ${checks.activity.ok ? '✓' : '✗'} ${checks.activity.detail}`)
         const missingW = checks.workerFiles.filter(r => !r.ok)
         console.log(`Workers:     ${missingW.length === 0 ? '✓ all present' : `✗ ${missingW.map(r=>r.worker).join(', ')} missing`}`)
