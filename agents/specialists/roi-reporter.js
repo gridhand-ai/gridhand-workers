@@ -1,4 +1,5 @@
 'use strict'
+// tier: standard
 // ── OG GRIDHAND AGENT — TIER 3 ────────────────────────────────────────────────
 // ROIReporter — ROI Snapshot per client
 // Calculates review requests sent, calls handled, leads contacted over last 30 days.

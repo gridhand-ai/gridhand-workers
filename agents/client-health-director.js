@@ -1,4 +1,5 @@
 'use strict'
+// tier: standard
 // ── GRIDHAND AGENT — TIER 1 ───────────────────────────────────────────────────
 // ClientHealthDirector — Unified client health scoring. Combines churn signals,
 // engagement, payment status, and support volume into one score per client.

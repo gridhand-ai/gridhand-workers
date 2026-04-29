@@ -1,3 +1,4 @@
+// tier: simple
 // ─── Worker Guardian ─────────────────────────────────────────────────────────
 // Monitors all GRIDHAND workers. Runs daily (or on-demand).
 // Checks:

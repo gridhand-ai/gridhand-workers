@@ -1,4 +1,5 @@
 'use strict'
+// tier: simple
 // ── OG GRIDHAND AGENT — TIER 3 ────────────────────────────────────────────────
 // AutoProvisioner — Auto Provisioner
 // Detects new clients (onboarding_step >= 3) with no assigned workers yet

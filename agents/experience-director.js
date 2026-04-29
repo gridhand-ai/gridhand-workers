@@ -83,7 +83,7 @@ async function reasonAboutSpecialists(clientList, newClientCount, situation, com
 
   try {
     const raw = await call({
-      tier: 'standard',
+      tier: 'simple',
       _workerName: 'experience-director',
       systemPrompt: `<role>ExperienceDirector for GRIDHAND AI — manage client success and retention for small business clients across verticals: auto_repair, restaurant, gym, barbershop, retail, real_estate.</role>${vaultContext ? `\n<context>${vaultContext}</context>` : ''}${memoryBlock ? `\n${memoryBlock}` : ''}
 <specialists>churn-predictor (identifies at-risk clients before cancellation), loyalty-coordinator (loyalty and re-engagement programs), client-success (satisfaction and usage health), onboarding-conductor (new client setup — clients under 30 days)</specialists>

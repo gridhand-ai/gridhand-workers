@@ -1,4 +1,5 @@
 'use strict'
+// tier: simple
 // ── OG GRIDHAND AGENT — TIER 3 ────────────────────────────────────────────────
 // ReviewVelocity — Review Velocity Tracker
 // Monitors review request success rate per client over the last 7 days.

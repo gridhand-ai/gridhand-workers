@@ -78,7 +78,8 @@ async function synthesizeFinancialHealth(mrr, overdueInvoices, childReports) {
 
   try {
     const raw = await call({
-      modelString: GROQ_MODEL,
+      tier: 'quality',
+      _workerName: 'finance-director',
       systemPrompt: `<role>FinanceDirector for GRIDHAND AI — assess financial health and identify revenue leakage.</role>
 <rules>Analyze the provided MRR, client count, plan mix, overdue invoices, and leakage flags. Surface the most important risk and a concrete recommendation.</rules>
 <quality_standard>

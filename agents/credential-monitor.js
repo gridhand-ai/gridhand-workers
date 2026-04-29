@@ -1,4 +1,5 @@
 'use strict';
+// tier: quality
 
 // ─── Credential Monitor Agent ────────────────────────────────────────────────
 //

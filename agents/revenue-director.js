@@ -70,7 +70,8 @@ async function reasonAboutSpecialists(clientList, situation, commanderBrief, vau
 
   try {
     const raw = await call({
-      modelString: GROQ_MODEL,
+      tier: 'quality',
+      _workerName: 'revenue-director',
       systemPrompt: `<role>RevenueDirector for GRIDHAND AI — manage all money automation for small business clients across verticals: auto_repair, restaurant, gym, barbershop, retail, real_estate.</role>${vaultContext ? `\n<context>${vaultContext}</context>` : ''}
 <specialists>invoice-recovery (overdue invoices and failed payments), upsell-timer (optimal upgrade moment identification), subscription-guard (cancellation risk detection and retention), pricing-optimizer (market and plan-fit pricing analysis)</specialists>
 <rules>Given the client list and situation, decide the optimal specialist dispatch order and explain why.</rules>

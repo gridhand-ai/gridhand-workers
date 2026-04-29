@@ -148,7 +148,8 @@ async function run(clients = null) {
   if (commandBrief) {
     try {
       opusGuidance = await call({
-        modelString: OPUS_MODEL,
+        tier: 'quality',
+        _workerName: 'gridhand-commander',
         systemPrompt: `<role>GridHandCommander — master AI orchestrator for GRIDHAND AI workforce platform serving small businesses.</role>
 <rules>Read the intelligence brief and make strategic decisions about what actions to prioritize this cycle.</rules>
 <output>Respond with valid JSON only:
@@ -393,7 +394,8 @@ async function reflectOnOutcomes(supabase, directorReports, originalSituations) 
   ).join(', ') || 'scheduled_run'
 
   const raw = await call({
-    modelString: REFLECTION_MODEL,
+    tier: 'quality',
+    _workerName: 'commander-reflection',
     systemPrompt: `<role>GridHandCommander self-correction module. Review specialist/director outcomes against the original situation and flag quality gaps.</role>
 <rules>Be concise. Only flag genuine misses — not expected no-actions. Return valid JSON only.</rules>
 <output>{ "flagged": [{ "agentId": "string", "reason": "string" }], "overallQuality": "good" }</output>
@@ -403,7 +405,6 @@ overallQuality: "good" | "partial" | "poor"</output>`,
       content: `Original situations: ${situationSummary}\n\nDirector outcomes:\n${JSON.stringify(summaries, null, 2)}\n\nReturn JSON only.`,
     }],
     maxTokens: 400,
-    _workerName: 'commander-reflection',
   })
 
   let parsed = null

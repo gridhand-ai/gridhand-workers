@@ -16,6 +16,7 @@ const { scout }        = require('../lib/scout')
 const vault            = require('../lib/memory-vault')
 
 const exa                = require('../lib/exa-client')
+const deerflow           = require('../lib/deerflow-client')
 
 const dailyDigest        = require('./daily-digest')
 const credentialMonitor  = require('./credential-monitor')
@@ -36,6 +37,9 @@ const pulse                   = require('./specialists/pulse')  // Monthly Repor
 // remotion   — MCP: remotion-video — animated reports, video deliverables, dashboard recordings
 // notebooklm — MCP: notebooklm — internal research only, query GRIDHAND docs and architecture
 // gemini-image — MCP: gemini-image — generate design references, UI mockups, client visual assets
+// deerflow   — lib/deerflow-client.js — long-horizon deep research via DeerFlow SuperAgent
+//              (Python FastAPI + LangGraph on Railway). Use runDeepResearch(task) for
+//              multi-step investigations that would saturate a single Claude call.
 // Access via TOOL_REGISTRY in gridhand-commander.js
 
 const AGENT_ID   = 'intelligence-director'
@@ -155,7 +159,7 @@ async function run(clients = null, situation = null) {
     try {
       const clientMemoryBlock = formatClientMemory(clientList)
       const opusResponse = await call({
-        tier: 'standard',
+        tier: 'simple',
         _workerName: 'intelligence-director',
         systemPrompt: `<role>IntelligenceDirector for GRIDHAND AI — synthesize operational intelligence and provide strategic assessments to the Commander.</role>${vaultContext ? `\n<context>${vaultContext}</context>` : ''}${clientMemoryBlock !== 'No client knowledge available.' ? `\n<client_memory>\n${clientMemoryBlock}\n</client_memory>` : ''}
 <rules>Analyze the intelligence brief and produce a structured strategic assessment. Be direct — surface real risks, not generic observations.</rules>
@@ -369,7 +373,42 @@ async function discoverUrl(url) {
   return manifest
 }
 
-module.exports = { run, report, getBrief, runInternalIntelligence, runClientMonitoring, discoverUrl, AGENT_ID, DIVISION, REPORTS_TO, ARSENAL_SPECIALISTS, schedule: '0 * * * *', tier: 2 }
+// ── runDeepResearch: long-horizon investigation via DeerFlow ──────────────────
+// Routes a complex research task to the DeerFlow SuperAgent harness (separate
+// Railway service). Use for multi-step investigations that would saturate a
+// single Claude call — competitor deep-dives, market landscape reports,
+// technology evaluations, regulatory research.
+//
+// Does NOT modify or replace the hourly run() synthesizer — purely additive.
+// Returns a structured result so callers can branch on availability/success.
+//
+// @param {string} task - Natural language research task
+// @param {object} [opts] - Forwarded to deerflow-client.researchStructured
+// @returns {Promise<{ ok: boolean, answer: string|null, raw: object|null, reason?: string, source: 'deerflow' }>}
+async function runDeepResearch(task, opts = {}) {
+  console.log(`[${AGENT_ID.toUpperCase()}] runDeepResearch: ${task.slice(0, 80)}${task.length > 80 ? '…' : ''}`)
+  if (!task || typeof task !== 'string') {
+    return { ok: false, answer: null, raw: null, reason: 'invalid_task', source: 'deerflow' }
+  }
+
+  // Availability gate — fail fast if DeerFlow is unreachable rather than wait
+  // out the full timeout on the runs/wait endpoint.
+  const available = await deerflow.isAvailable().catch(() => false)
+  if (!available) {
+    console.warn(`[${AGENT_ID}] DeerFlow unavailable — skipping deep research`)
+    return { ok: false, answer: null, raw: null, reason: 'deerflow_unavailable', source: 'deerflow' }
+  }
+
+  try {
+    const result = await deerflow.researchStructured(task, opts)
+    return { ...result, source: 'deerflow' }
+  } catch (err) {
+    console.error(`[${AGENT_ID}] runDeepResearch failed:`, err.message)
+    return { ok: false, answer: null, raw: null, reason: err.message, source: 'deerflow' }
+  }
+}
+
+module.exports = { run, report, getBrief, runInternalIntelligence, runClientMonitoring, discoverUrl, runDeepResearch, AGENT_ID, DIVISION, REPORTS_TO, ARSENAL_SPECIALISTS, schedule: '0 * * * *', tier: 2 }
 
 // ── MISSION FILE CONSOLIDATION (weekly) ──────────────────────────────────────
 // Reads ~/.claude/GRIDHAND_MISSION.md, removes duplicates, consolidates similar

@@ -86,7 +86,7 @@ async function reasonAboutSpecialists(clientList, situation, commanderBrief, vau
 
   try {
     const raw = await call({
-      tier: 'standard',
+      tier: 'simple',
       _workerName: 'brand-director',
       systemPrompt: `<role>BrandDirector for GRIDHAND AI — manage reputation and marketing for small business clients across verticals: auto_repair, restaurant, gym, barbershop, retail, real_estate.</role>${vaultContext ? `\n<context>${vaultContext}</context>` : ''}${memoryBlock ? `\n${memoryBlock}` : ''}
 <specialists>review-orchestrator (review requests and responses), social-manager (social media posting and engagement), brand-sentinel (monitors negative mentions and review spikes), campaign-conductor (runs marketing campaigns)</specialists>

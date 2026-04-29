@@ -1,4 +1,5 @@
 'use strict'
+// tier: standard
 // ── OG GRIDHAND AGENT — TIER 3 ────────────────────────────────────────────────
 // ContentScheduler — Generates a weekly batch of short-form social content
 // ideas (captions, hooks, topic angles) tailored to the client's industry and

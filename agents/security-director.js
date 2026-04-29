@@ -76,7 +76,8 @@ async function synthesizeThreatLevel(authAnomalies, exposedClients, workerErrors
 
   try {
     const raw = await call({
-      modelString: GROQ_MODEL,
+      tier: 'quality',
+      _workerName: 'security-director',
       systemPrompt: `<role>SecurityDirector for GRIDHAND AI — assess system security posture from scan results and worker error patterns.</role>
 <rules>Evaluate the security scan data and worker error spikes. Identify the top threats and provide a single concrete remediation action.</rules>
 <quality_standard>

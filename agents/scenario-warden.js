@@ -1,3 +1,4 @@
+// tier: simple
 // ─── Scenario Warden ─────────────────────────────────────────────────────────
 // Monitors all GRIDHAND Make.com scenarios. Runs daily (or on-demand).
 // Checks:

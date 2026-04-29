@@ -10,6 +10,7 @@
 const { createClient } = require('@supabase/supabase-js')
 const { call }         = require('../../lib/ai-client')
 const { validateSMS }  = require('../../lib/message-gate')
+const { clean: humanize } = require('../../lib/humanizer')
 const { sendSMS }      = require('../../lib/twilio-client')
 
 const SPECIALIST_ID = 'conv-closer'
@@ -118,7 +119,7 @@ TONE RULES:
       await sendSMS({
         from:         client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
         to:           lead.phone,
-        body:         gateResult.text,
+        body:         humanize(gateResult.text),
         clientApiKeys: client.apiKeys || {},
         clientSlug:   client.slug || client.id,
         clientTimezone: client.timezone || 'America/Chicago',

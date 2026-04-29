@@ -11,6 +11,7 @@ const { createClient }  = require('@supabase/supabase-js')
 const { call }          = require('../../lib/ai-client')
 const { sendSMS }       = require('../../lib/twilio-client')
 const { validateSMS }   = require('../../lib/message-gate')
+const { clean: humanize } = require('../../lib/humanizer')
 
 const SPECIALIST_ID = 'vanguard'
 const DIVISION      = 'intelligence'
@@ -185,7 +186,7 @@ async function sendSolicitations(supabase, solicitations, clientMap) {
       await sendSMS({
         from:           client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
         to:             sol.customerPhone,
-        body:           gateResult.sanitized || sol.message,
+        body:           humanize(gateResult.sanitized || gateResult.text || sol.message),
         clientApiKeys:  {},
         clientSlug:     client.email || client.slug,
         clientTimezone: client.timezone || 'America/Chicago',

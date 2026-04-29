@@ -1,3 +1,5 @@
+// DEV ONLY — not for production dispatch
+// tier: simple
 // ─── GRIDHAND Live End-to-End Test ────────────────────────────────────────────
 // Tests the full chain: worker fires event → Make.com scenario receives it →
 // portal logs it → Supabase activity_log updated.

@@ -10,6 +10,7 @@ const { createClient } = require('@supabase/supabase-js')
 const aiClient = require('../../lib/ai-client')
 const { sendSMS } = require('../../lib/twilio-client')
 const { validateSMS } = require('../../lib/message-gate')
+const { clean: humanize } = require('../../lib/humanizer')
 const { fileInteraction } = require('../../lib/memory-client')
 const vault = require('../../lib/memory-vault')
 
@@ -89,7 +90,7 @@ async function processClient(client) {
             await sendSMS({
               from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
               to: client.owner_cell,
-              body: gateResult.text,
+              body: humanize(gateResult.text),
               clientApiKeys: {},
               clientSlug: client.email,
               clientTimezone: client.timezone || process.env.DEFAULT_TIMEZONE || 'America/Chicago',
@@ -115,7 +116,7 @@ async function processClient(client) {
           await sendSMS({
             from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
             to: client.owner_cell,
-            body: gateResult.text,
+            body: humanize(gateResult.text),
             clientApiKeys: {},
             clientSlug: client.email,
             clientTimezone: client.timezone || process.env.DEFAULT_TIMEZONE || 'America/Chicago',
@@ -143,7 +144,7 @@ async function processClient(client) {
             await sendSMS({
               from: client.twilio_number || process.env.TWILIO_PHONE_NUMBER,
               to: client.owner_cell,
-              body: gateResult.text,
+              body: humanize(gateResult.text),
               clientApiKeys: {},
               clientSlug: client.email,
               clientTimezone: client.timezone || process.env.DEFAULT_TIMEZONE || 'America/Chicago',

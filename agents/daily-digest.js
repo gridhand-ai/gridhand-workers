@@ -1,3 +1,4 @@
+// tier: simple
 /**
  * ── OG GRIDHAND AGENT (Original) ─────────────────────────────────────────────
  * Serves clients directly. Runs on Railway. Active 24/7.

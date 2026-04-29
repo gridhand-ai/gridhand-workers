@@ -1,4 +1,5 @@
 'use strict'
+// tier: simple
 // ── GRIDHAND INTERNAL SPECIALIST ──────────────────────────────────────────────
 // VisualCI — Nightly visual regression monitor for gridhand-portal
 // Division: internal

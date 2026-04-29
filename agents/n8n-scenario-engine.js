@@ -1,3 +1,4 @@
+// tier: standard
 /**
  * n8n-scenario-engine.js
  *

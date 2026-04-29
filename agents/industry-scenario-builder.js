@@ -1,4 +1,5 @@
 'use strict';
+// tier: simple
 
 /**
  * industry-scenario-builder.js

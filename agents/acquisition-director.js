@@ -93,7 +93,8 @@ async function reasonAboutSpecialists(clientList, situation, commanderBrief, vau
 
   try {
     const raw = await call({
-      modelString: GROQ_MODEL,
+      tier: 'quality',
+      _workerName: 'acquisition-director',
       systemPrompt: `<role>AcquisitionDirector for GRIDHAND AI — manage lead pipeline for small business clients across verticals: auto_repair, restaurant, gym, barbershop, retail, real_estate.</role>${vaultContext ? `\n<context>${vaultContext}</context>` : ''}${memoryBlock ? `\n${memoryBlock}` : ''}
 <specialists>lead-qualifier (scores new leads), prospect-nurturer (follows up warm prospects), referral-activator (triggers referral programs), cold-outreach (re-engages cold prospects)</specialists>
 <rules>Given the client list and situation, decide the optimal specialist dispatch order and explain why.</rules>
