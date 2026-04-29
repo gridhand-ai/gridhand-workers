@@ -385,4 +385,4 @@ run().catch(e => {
     process.exit(1)
 })
 
-module.exports = { run, checkSupabase, checkWorkerFiles, checkRecentActivity }
+module.exports = { run, checkSupabase, checkWorkerFiles, checkRecentActivity, checkRailwayDeployments }

@@ -844,6 +844,22 @@ app.post('/events/integration', requireApiKey, async (req, res) => {
     }
 });
 
+// POST /api/email-triage
+// Receives Gmail-watch payloads forwarded from n8n. Lets GRIDHAND auto-detect
+// alert emails (Railway failures, Vercel failures, Make.com errors, Sentry,
+// general system alerts) and Telegram MJ in real-time.
+//
+// Body: { subject, from, body, receivedAt }
+// Auth: WORKERS_API_KEY via x-api-key header (requireApiKey middleware)
+// Returns: { ok: true, received: true } immediately; classification runs
+// fire-and-forget so n8n never sees a slow response.
+app.post('/api/email-triage', requireApiKey, async (req, res) => {
+    res.json({ ok: true, received: true });
+    // fire-and-forget
+    const { run } = require('./agents/email-triage');
+    run(req.body).catch(err => console.error('[email-triage] error:', err.message));
+});
+
 // POST /send-sms
 // General-purpose outbound SMS endpoint called by the portal's cron workers
 // (appointment-reminder, etc.) when they need to send a message on behalf of
