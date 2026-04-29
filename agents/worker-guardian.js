@@ -130,6 +130,53 @@ async function checkRecentActivity() {
     }
 }
 
+// ─── Check: Vercel portal deployment health ───────────────────────────────────
+async function checkVercelDeployments() {
+    const token      = process.env.VERCEL_TOKEN
+    const projectId  = process.env.VERCEL_PROJECT_ID || 'gridhand-portal'
+    const teamSlug   = 'gridhand-ais-projects'
+
+    if (!token) {
+        return { ok: true, detail: 'Vercel monitor not configured (VERCEL_TOKEN not set)', skipped: true }
+    }
+
+    try {
+        const res = await fetch(
+            `https://api.vercel.com/v6/deployments?projectId=${projectId}&teamSlug=${teamSlug}&limit=5&target=production`,
+            {
+                headers: { Authorization: `Bearer ${token}` },
+                signal: AbortSignal.timeout(10000),
+            }
+        )
+
+        const json = await res.json()
+        const deployments = json.deployments || []
+
+        if (!deployments.length) return { ok: true, detail: 'No Vercel deployments found' }
+
+        const latest    = deployments[0]
+        const failCount = deployments.filter(d => d.state === 'ERROR').length
+        const latestErr = latest.state === 'ERROR'
+
+        if (latestErr) {
+            return {
+                ok: false,
+                detail: `Portal deploy FAILED (${new Date(latest.createdAt).toLocaleString('en-US', { timeZone: 'America/Chicago' })} CDT) — ${failCount} of last ${deployments.length} failed`,
+                url: `https://vercel.com/${teamSlug}/gridhand-portal/${latest.uid}`,
+            }
+        }
+
+        if (failCount >= 3) {
+            return { ok: false, detail: `${failCount}/${deployments.length} recent portal deploys failed (latest: ${latest.state})` }
+        }
+
+        return { ok: true, detail: `Portal deploy: ${latest.state} — ${failCount > 0 ? `${failCount} recent failures` : 'all recent deploys clean'}` }
+
+    } catch (e) {
+        return { ok: false, detail: `Vercel API unreachable: ${e.message}` }
+    }
+}
+
 // ─── Check: Railway deployment health ────────────────────────────────────────
 async function checkRailwayDeployments() {
     const token       = process.env.RAILWAY_API_TOKEN
@@ -241,6 +288,9 @@ function formatReport(checks, forceReport) {
     if (!checks.railway.skipped) {
         lines.push(checks.railway.ok ? `✅ Railway: ${checks.railway.detail}` : `🚨 Railway Deploy FAILED: ${checks.railway.detail}`)
     }
+    if (!checks.vercel.skipped) {
+        lines.push(checks.vercel.ok ? `✅ Vercel: ${checks.vercel.detail}` : `🚨 Vercel Deploy FAILED: ${checks.vercel.detail}`)
+    }
     lines.push('')
 
     // Activity
@@ -279,11 +329,12 @@ async function run() {
 
     console.log('[worker-guardian] Running health checks...')
 
-    const [supabaseCheck, activityCheck, makeCheck, railwayCheck] = await Promise.all([
+    const [supabaseCheck, activityCheck, makeCheck, railwayCheck, vercelCheck] = await Promise.all([
         checkSupabase(),
         checkRecentActivity(),
         checkMakeWebhook(),
         checkRailwayDeployments(),
+        checkVercelDeployments(),
     ])
 
     const checks = {
@@ -292,11 +343,13 @@ async function run() {
         make:          makeCheck,
         activity:      activityCheck,
         railway:       railwayCheck,
+        vercel:        vercelCheck,
         workerFiles:   checkWorkerFiles(),
         clientConfigs: checkClientConfigs(),
     }
 
-    const allOk = checks.supabase.ok && checks.twilio.ok && checks.activity.ok && checks.railway.ok &&
+    const allOk = checks.supabase.ok && checks.twilio.ok && checks.activity.ok &&
+        checks.railway.ok && checks.vercel.ok &&
         checks.workerFiles.every(r => r.ok) && checks.clientConfigs.every(r => r.ok)
 
     // Console output
@@ -305,6 +358,7 @@ async function run() {
         console.log(`Twilio:      ${checks.twilio.ok ? '✓' : '✗'} ${checks.twilio.detail}`)
         console.log(`Make.com:    ${checks.make.ok ? '✓' : '✗'} ${checks.make.detail}`)
         console.log(`Railway:     ${checks.railway.ok ? '✓' : '✗'} ${checks.railway.detail}`)
+        console.log(`Vercel:      ${checks.vercel.ok ? '✓' : '✗'} ${checks.vercel.detail}`)
         console.log(`Activity:    ${checks.activity.ok ? '✓' : '✗'} ${checks.activity.detail}`)
         const missingW = checks.workerFiles.filter(r => !r.ok)
         console.log(`Workers:     ${missingW.length === 0 ? '✓ all present' : `✗ ${missingW.map(r=>r.worker).join(', ')} missing`}`)
