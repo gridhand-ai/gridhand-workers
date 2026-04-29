@@ -860,6 +860,24 @@ app.post('/api/email-triage', requireApiKey, async (req, res) => {
     run(req.body).catch(err => console.error('[email-triage] error:', err.message));
 });
 
+// POST /api/credential-activated
+// Notified by the portal when a client connects a BYO API key (Shopify, ServiceTitan, etc).
+// Auth: WORKERS_API_KEY via x-api-key header (requireApiKey middleware)
+// Body: { clientId, tool, connectedAt }
+// Response: { ok: true }
+//
+// Today: logs the activation. Future: trigger tool-specific worker onboarding
+// (sync inventory, pull customer history, configure routing rules, etc.)
+app.post('/api/credential-activated', requireApiKey, async (req, res) => {
+    const { clientId, tool, connectedAt } = req.body || {};
+    if (!clientId || !tool) {
+        return res.status(400).json({ error: 'clientId and tool are required' });
+    }
+    console.log(`[credential-activated] ${tool} connected for client ${clientId} at ${connectedAt || 'now'}`);
+    res.json({ ok: true });
+    // TODO: trigger tool-specific worker onboarding (future)
+});
+
 // POST /send-sms
 // General-purpose outbound SMS endpoint called by the portal's cron workers
 // (appointment-reminder, etc.) when they need to send a message on behalf of
