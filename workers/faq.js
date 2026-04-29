@@ -1,4 +1,5 @@
 const base = require('./base');
+const profileContext = require('./profile-context');
 
 // FAQ worker — answers customer questions using client's FAQ data, services, and hours.
 // Routed here from receptionist when a question is detected.
@@ -6,6 +7,7 @@ const base = require('./base');
 async function run({ client, message, customerNumber }) {
     const biz  = client.business;
     const tone = base.getTone(client);
+    const customerBlock = await profileContext.buildPromptBlock(client.slug, customerNumber);
 
     const systemPrompt = `You are the FAQ assistant for ${biz.name}, a ${biz.industry} business in ${biz.city}.
 You answer customer questions via text message. ${tone}
@@ -33,7 +35,7 @@ ${biz.faqs?.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n') || 'N/A'}
 - Never invent prices or hours not listed above.
 - If they want to book: direct them to call ${biz.phone}${biz.website ? ` or visit ${biz.website}` : ''}.
 - If they want a human: "Happy to connect you with our team — they'll reach out to you shortly."
-</rules>`;
+</rules>${customerBlock}`;
 
     return base.run({ client, message, customerNumber, workerName: 'FAQ', systemPrompt, maxTokens: 200, skipHandoffs: true });
 }

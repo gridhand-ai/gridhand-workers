@@ -21,24 +21,30 @@ function isOptedOut(clientSlug, customerNumber) {
     return !!list[customerNumber];
 }
 
-function optOut(clientSlug, customerNumber, reason = 'STOP') {
+async function optOut(clientSlug, customerNumber, reason = 'STOP') {
     const list = getOptOutList(clientSlug);
     list[customerNumber] = {
         optedOutAt: new Date().toISOString(),
         reason,
     };
     saveOptOutList(clientSlug, list);
-    customerProfiler.markOptedOut(clientSlug, customerNumber);
+    // Profile write is async (Supabase) — don't block the opt-out write itself.
+    // The local opt-out list above is the authoritative guard for outbound sends.
+    customerProfiler.markOptedOut(clientSlug, customerNumber).catch(e =>
+        console.log(`[OptOutManager] profile markOptedOut failed: ${e.message}`)
+    );
     console.log(`[OptOutManager] ${customerNumber} opted out of ${clientSlug} (reason: ${reason})`);
     return true;
 }
 
-function optIn(clientSlug, customerNumber) {
+async function optIn(clientSlug, customerNumber) {
     const list = getOptOutList(clientSlug);
     if (list[customerNumber]) {
         delete list[customerNumber];
         saveOptOutList(clientSlug, list);
-        customerProfiler.updateProfile(clientSlug, customerNumber, { optedOut: false, optedOutAt: null });
+        customerProfiler.updateProfile(clientSlug, customerNumber, { optedOut: false, optedOutAt: null }).catch(e =>
+            console.log(`[OptOutManager] profile optIn failed: ${e.message}`)
+        );
         console.log(`[OptOutManager] ${customerNumber} re-opted-in to ${clientSlug}`);
         return true;
     }
@@ -55,12 +61,12 @@ function checkMessage(message) {
 
 // Process inbound message — call this BEFORE routing to workers
 // Returns: { blocked, action, reply }
-function process(clientSlug, customerNumber, message) {
+async function process(clientSlug, customerNumber, message) {
     // Check if already opted out
     if (isOptedOut(clientSlug, customerNumber)) {
         const check = checkMessage(message);
         if (check.action === 'opt-in') {
-            optIn(clientSlug, customerNumber);
+            await optIn(clientSlug, customerNumber);
             return {
                 blocked: false,
                 action: 'opted-in',
@@ -74,7 +80,7 @@ function process(clientSlug, customerNumber, message) {
     // Check if this message is an opt-out request
     const check = checkMessage(message);
     if (check.action === 'opt-out') {
-        optOut(clientSlug, customerNumber, message.toUpperCase());
+        await optOut(clientSlug, customerNumber, message.toUpperCase());
         return {
             blocked: true,
             action: 'opted-out',

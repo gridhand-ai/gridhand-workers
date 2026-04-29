@@ -129,71 +129,101 @@ async function logReasoning(supabase, reasoning, situation) {
   }
 }
 
+// ── Log run to agent_runs ─────────────────────────────────────────────────────
+async function logRun(supabase, startedAt, actionsCount, status, data) {
+  try {
+    await supabase.from('agent_runs').insert({
+      agent_id: AGENT_ID,
+      status,
+      summary:  `${AGENT_ID} run: ${actionsCount} actions`,
+      payload:  { startedAt, completedAt: new Date().toISOString(), actionsCount, ...data },
+      ran_at:   new Date().toISOString(),
+    })
+  } catch (err) {
+    console.warn(`[${AGENT_ID}] Failed to log run:`, err.message)
+  }
+}
+
 async function run(clients = null, situation = null, commanderBrief = null) {
+  const startedAt = new Date().toISOString()
   console.log(`[${AGENT_ID.toUpperCase()}] Starting run — situation: ${situation || 'scheduled'}`)
 
   const supabase   = getSupabase()
-  const clientList = clients || await getActiveClients(supabase)
-  if (!clientList.length) return report([])
+  try {
+    const clientList = clients || await getActiveClients(supabase)
+    if (!clientList.length) return report([])
 
-  // Separate new clients (< 31 days) for onboarding focus
-  const now = Date.now()
-  const newClients = clientList.filter(c => {
-    const days = (now - new Date(c.created_at).getTime()) / (1000 * 60 * 60 * 24)
-    return days <= 31
-  })
+    // Separate new clients (< 31 days) for onboarding focus
+    const now = Date.now()
+    const newClients = clientList.filter(c => {
+      const days = (now - new Date(c.created_at).getTime()) / (1000 * 60 * 60 * 24)
+      return days <= 31
+    })
 
-  // ── Load shared memory context ────────────────────────────────────────────
-  const clientId     = clientList[0]?.id
-  const vaultContext = clientId ? await vault.getContext(clientId).catch(() => '') : ''
+    // ── Load shared memory context ────────────────────────────────────────────
+    const clientId     = clientList[0]?.id
+    const vaultContext = clientId ? await vault.getContext(clientId).catch(() => '') : ''
 
-  // ── Groq reasoning: determine specialist priority ─────────────────────────
-  const reasoning = await reasonAboutSpecialists(clientList, newClients.length, situation, commanderBrief, vaultContext)
-  await logReasoning(supabase, reasoning, situation)
+    // ── Groq reasoning: determine specialist priority ─────────────────────────
+    const reasoning = await reasonAboutSpecialists(clientList, newClients.length, situation, commanderBrief, vaultContext)
+    await logReasoning(supabase, reasoning, situation)
 
-  // Build ordered specialist list — AI-ranked if available, default otherwise
-  const priorityOrder = (reasoning?.specialists_priority?.length)
-    ? reasoning.specialists_priority.filter(s => SPECIALIST_MAP[s])
-    : ALL_SPECIALISTS
+    // Build ordered specialist list — AI-ranked if available, default otherwise
+    const priorityOrder = (reasoning?.specialists_priority?.length)
+      ? reasoning.specialists_priority.filter(s => SPECIALIST_MAP[s])
+      : ALL_SPECIALISTS
 
-  const remainingSpecialists = ALL_SPECIALISTS.filter(s => !priorityOrder.includes(s))
-  const orderedSpecialists   = [...priorityOrder, ...remainingSpecialists]
+    const remainingSpecialists = ALL_SPECIALISTS.filter(s => !priorityOrder.includes(s))
+    const orderedSpecialists   = [...priorityOrder, ...remainingSpecialists]
 
-  console.log(`[${AGENT_ID.toUpperCase()}] Specialist order (${reasoning?.vertical || 'default'}): ${orderedSpecialists.join(' → ')}`)
-  if (reasoning?.rationale) {
-    console.log(`[${AGENT_ID.toUpperCase()}] Reasoning: ${reasoning.rationale}`)
+    console.log(`[${AGENT_ID.toUpperCase()}] Specialist order (${reasoning?.vertical || 'default'}): ${orderedSpecialists.join(' → ')}`)
+    if (reasoning?.rationale) {
+      console.log(`[${AGENT_ID.toUpperCase()}] Reasoning: ${reasoning.rationale}`)
+    }
+
+    // Run all specialists in parallel, passing newClients to onboarding-conductor
+    const specialistPromises = orderedSpecialists.map(name => {
+      const clientsForSpec = name === 'onboarding-conductor' ? newClients : clientList
+      return SPECIALIST_MAP[name].run(clientsForSpec)
+    })
+    const results = await Promise.allSettled(specialistPromises)
+
+    const childReports = results
+      .filter(r => r.status === 'fulfilled' && r.value)
+      .map(r => r.value)
+
+    for (const r of childReports) {
+      await receive(r, supabase)
+    }
+
+    const totalActions = childReports.reduce((sum, r) => sum + (r.actionsCount || 0), 0)
+    const churnRisks   = childReports
+      .filter(r => r.agentId?.includes('churn'))
+      .flatMap(r => r.escalations || [])
+    const needsAlert   = churnRisks.length > 0
+
+    await logRun(supabase, startedAt, totalActions, 'ok', { churnRisks: churnRisks.length, newClients: newClients.length, clients: clientList.length })
+
+    return report([{
+      agentId:   AGENT_ID,
+      clientId:  'all',
+      timestamp: now,
+      status:    totalActions > 0 ? 'action_taken' : 'no_action',
+      summary:   `Experience: ${totalActions} actions. ${churnRisks.length} churn risk(s) detected. ${newClients.length} client(s) in onboarding.`,
+      data:      { totalActions, churnRisks, newClients: newClients.length, childReports, reasoning },
+      requiresDirectorAttention: needsAlert,
+    }])
+  } catch (err) {
+    console.error(`[${AGENT_ID}] run() fatal error:`, err.message)
+    await logRun(supabase, startedAt, 0, 'error', { error: err.message })
+    return {
+      agentId:      AGENT_ID,
+      division:     DIVISION,
+      actionsCount: 0,
+      escalations:  [],
+      outcomes:     [{ status: 'error', error: err.message }],
+    }
   }
-
-  // Run all specialists in parallel, passing newClients to onboarding-conductor
-  const specialistPromises = orderedSpecialists.map(name => {
-    const clientsForSpec = name === 'onboarding-conductor' ? newClients : clientList
-    return SPECIALIST_MAP[name].run(clientsForSpec)
-  })
-  const results = await Promise.allSettled(specialistPromises)
-
-  const childReports = results
-    .filter(r => r.status === 'fulfilled' && r.value)
-    .map(r => r.value)
-
-  for (const r of childReports) {
-    await receive(r, supabase)
-  }
-
-  const totalActions = childReports.reduce((sum, r) => sum + (r.actionsCount || 0), 0)
-  const churnRisks   = childReports
-    .filter(r => r.agentId?.includes('churn'))
-    .flatMap(r => r.escalations || [])
-  const needsAlert   = churnRisks.length > 0
-
-  return report([{
-    agentId:   AGENT_ID,
-    clientId:  'all',
-    timestamp: now,
-    status:    totalActions > 0 ? 'action_taken' : 'no_action',
-    summary:   `Experience: ${totalActions} actions. ${churnRisks.length} churn risk(s) detected. ${newClients.length} client(s) in onboarding.`,
-    data:      { totalActions, churnRisks, newClients: newClients.length, childReports, reasoning },
-    requiresDirectorAttention: needsAlert,
-  }])
 }
 
 async function report(outcomes) {

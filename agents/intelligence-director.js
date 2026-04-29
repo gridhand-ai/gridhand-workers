@@ -75,11 +75,29 @@ function formatClientMemory(clientList) {
   return rows.slice(0, 15).join('\n') || 'No client knowledge available.'
 }
 
+// ── Log run to agent_runs ─────────────────────────────────────────────────────
+async function logRun(supabase, startedAt, actionsCount, status, data) {
+  try {
+    await supabase.from('agent_runs').insert({
+      agent_id: AGENT_ID,
+      status,
+      summary:  `${AGENT_ID} run: ${actionsCount} actions`,
+      payload:  { startedAt, completedAt: new Date().toISOString(), actionsCount, ...data },
+      ran_at:   new Date().toISOString(),
+    })
+  } catch (err) {
+    console.warn(`[${AGENT_ID}] Failed to log run:`, err.message)
+  }
+}
+
 async function run(clients = null, situation = null) {
+  const startedAt = new Date().toISOString()
   console.log(`[${AGENT_ID.toUpperCase()}] Starting run`)
   const supabase   = getSupabase()
-  const clientList = clients || await getActiveClients(supabase)
   const now        = Date.now()
+
+  try {
+  const clientList = clients || await getActiveClients(supabase)
 
   // ── Load shared memory context ────────────────────────────────────────────
   const clientId     = clientList[0]?.id
@@ -218,6 +236,12 @@ confidence: integer 0-100 (set escalate: true if below 60)</output>`,
 
   console.log(`[${AGENT_ID.toUpperCase()}] Complete — health: ${summary.system_health}, ${actionsCount} actions flagged`)
 
+  await logRun(supabase, startedAt, actionsCount, 'ok', {
+    system_health:  summary.system_health,
+    critical_alerts: summary.critical_alerts?.length || 0,
+    client_risks:   summary.client_risks?.length || 0,
+  })
+
   return report([{
     agentId:  AGENT_ID,
     clientId: 'system',
@@ -227,6 +251,18 @@ confidence: integer 0-100 (set escalate: true if below 60)</output>`,
     data:     summary,
     requiresDirectorAttention: summary.system_health === 'RED' || (summary.critical_alerts?.length || 0) > 0,
   }])
+
+  } catch (err) {
+    console.error(`[${AGENT_ID}] run() fatal error:`, err.message)
+    await logRun(supabase, startedAt, 0, 'error', { error: err.message })
+    return {
+      agentId:      AGENT_ID,
+      division:     DIVISION,
+      actionsCount: 0,
+      escalations:  [],
+      outcomes:     [{ status: 'error', error: err.message }],
+    }
+  }
 }
 
 async function getSystemSignals(supabase, now) {

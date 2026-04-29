@@ -67,6 +67,12 @@ async function run(clients = null) {
   // Reset per-run token counters — tracks cumulative usage across full hierarchy
   tokenTracker.resetRun(runId)
 
+  // ── MASTER GUARD: guarantees logRun always fires, run() never throws ─────
+  // Any unhandled error inside the run gets caught here, logged to Supabase as
+  // status:'error', and a safe stub is returned. The run itself never propagates
+  // — server.js .catch() is a last resort, not the primary error path.
+  try {
+
   // ── MEMORY: Pull recent agent history before doing anything else ──────────
   let memoryBriefing = ''
   try {
@@ -373,8 +379,19 @@ mj_alert_reason: null unless something requires MJ's immediate attention</output
     runId,
   }).catch(() => {})
 
-  console.log(`[${AGENT_ID.toUpperCase()}] Run ${runId} complete — ${totalActions} total actions, severity: ${severity}`)
-  return { runId, totalActions, severity, escalations: allEscalations.length, tokens: tokenSummary.tokens, data: { reflection } }
+    console.log(`[${AGENT_ID.toUpperCase()}] Run ${runId} complete — ${totalActions} total actions, severity: ${severity}`)
+    return { runId, totalActions, severity, escalations: allEscalations.length, tokens: tokenSummary.tokens, data: { reflection } }
+  } catch (fatalErr) {
+    // This catch only fires if something throws OUTSIDE the per-step try/catches above.
+    // Log it to Supabase so the run is visible in the dashboard, then return a safe stub.
+    console.error(`[${AGENT_ID.toUpperCase()}] FATAL — run ${runId} crashed: ${fatalErr.message}`)
+    const supabaseFallback = getSupabase()
+    await logRun(supabaseFallback, runId, startedAt, 'error', {
+      fatalError: fatalErr.message,
+      stack: (fatalErr.stack || '').slice(0, 500),
+    }, 0)
+    return { runId, totalActions: 0, severity: 'error', escalations: 0, tokens: {}, data: { fatalError: fatalErr.message } }
+  }
 }
 
 // ── Self-correction: reflect on what specialists did vs what was needed ────────
@@ -608,7 +625,7 @@ async function logRun(supabase, runId, startedAt, severity, data, actionsCount) 
   try {
     // agent_runs schema: id, agent_id, status, summary, payload, ran_at
     // status must be 'ok' or 'error' to match all other agents — severity lives in payload
-    const normalizedStatus = (severity === 'CRITICAL' || severity === 'error') ? 'error' : 'ok'
+    const normalizedStatus = severity === 'error' ? 'error' : 'ok'
     await supabase.from('agent_runs').insert({
       agent_id: AGENT_ID,
       status: normalizedStatus,

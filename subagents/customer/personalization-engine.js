@@ -26,7 +26,7 @@ function buildContext(profile, conversationSummary) {
 }
 
 async function personalize(baseMessage, clientSlug, customerNumber, businessInfo, conversationSummary = null) {
-    const profile = customerProfiler.getProfile(clientSlug, customerNumber);
+    const profile = await customerProfiler.getProfile(clientSlug, customerNumber);
     const context = buildContext(profile, conversationSummary);
 
     // If no profile context available, return base message as-is
@@ -77,7 +77,7 @@ async function detectCommunicationStyle(conversationHistory, clientSlug, custome
             maxTokens: 50,
         }))?.trim().toLowerCase();
         if (['casual', 'formal', 'brief', 'detailed'].includes(style)) {
-            customerProfiler.updateProfile(clientSlug, customerNumber, { communicationStyle: style });
+            await customerProfiler.updateProfile(clientSlug, customerNumber, { communicationStyle: style });
             return style;
         }
     } catch (e) {

@@ -1,6 +1,7 @@
 const base       = require('./base');
 const sender     = require('./twilio-sender');
 const makeClient = require('../lib/make-client');
+const profileContext = require('./profile-context');
 
 // Outbound: follow up with a new lead
 async function send({ client, customerNumber, customerName, inquiryAbout, followUpNumber = 1 }) {
@@ -38,6 +39,7 @@ async function send({ client, customerNumber, customerName, inquiryAbout, follow
 async function run({ client, message, customerNumber }) {
     const biz = client.business;
     const tone = base.getTone(client);
+    const customerBlock = await profileContext.buildPromptBlock(client.slug, customerNumber);
 
     const systemPrompt = `You are a lead follow-up assistant for ${biz.name}, a ${biz.industry} business. This person showed interest in ${biz.name} and you're following up. ${tone}
 
@@ -58,7 +60,7 @@ ${biz.faqs?.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n') || 'N/A'}
 - To book or get a quote: call ${biz.phone} or visit ${biz.website || 'our website'}.
 - Never be pushy — be helpful and let them lead.
 - Sign off as ${biz.name}.
-</rules>`;
+</rules>${customerBlock}`;
 
     return base.run({ client, message, customerNumber, workerName: 'LeadFollowup', systemPrompt, maxTokens: 200 });
 }

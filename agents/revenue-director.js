@@ -116,78 +116,108 @@ async function logReasoning(supabase, reasoning, situation) {
   }
 }
 
+// ── Log run to agent_runs ─────────────────────────────────────────────────────
+async function logRun(supabase, startedAt, actionsCount, status, data) {
+  try {
+    await supabase.from('agent_runs').insert({
+      agent_id: AGENT_ID,
+      status,
+      summary:  `${AGENT_ID} run: ${actionsCount} actions`,
+      payload:  { startedAt, completedAt: new Date().toISOString(), actionsCount, ...data },
+      ran_at:   new Date().toISOString(),
+    })
+  } catch (err) {
+    console.warn(`[${AGENT_ID}] Failed to log run:`, err.message)
+  }
+}
+
 async function run(clients = null, situation = null, commanderBrief = null) {
+  const startedAt = new Date().toISOString()
   console.log(`[${AGENT_ID.toUpperCase()}] Starting run — situation: ${situation || 'scheduled'}`)
 
   const supabase   = getSupabase()
-  const clientList = clients || await getActiveClients(supabase)
-  if (!clientList.length) return report([])
+  try {
+    const clientList = clients || await getActiveClients(supabase)
+    if (!clientList.length) return report([])
 
-  // ── Load shared memory context ────────────────────────────────────────────
-  const clientId     = clientList[0]?.id
-  const vaultContext = clientId ? await vault.getContext(clientId).catch(() => '') : ''
+    // ── Load shared memory context ────────────────────────────────────────────
+    const clientId     = clientList[0]?.id
+    const vaultContext = clientId ? await vault.getContext(clientId).catch(() => '') : ''
 
-  // ── Groq reasoning: determine specialist priority ─────────────────────────
-  const reasoning = await reasonAboutSpecialists(clientList, situation, commanderBrief, vaultContext)
-  await logReasoning(supabase, reasoning, situation)
+    // ── Groq reasoning: determine specialist priority ─────────────────────────
+    const reasoning = await reasonAboutSpecialists(clientList, situation, commanderBrief, vaultContext)
+    await logReasoning(supabase, reasoning, situation)
 
-  // Build ordered specialist list — AI-ranked if available, default otherwise
-  const priorityOrder = (reasoning?.specialists_priority?.length)
-    ? reasoning.specialists_priority.filter(s => SPECIALIST_MAP[s])
-    : ALL_SPECIALISTS
+    // Build ordered specialist list — AI-ranked if available, default otherwise
+    const priorityOrder = (reasoning?.specialists_priority?.length)
+      ? reasoning.specialists_priority.filter(s => SPECIALIST_MAP[s])
+      : ALL_SPECIALISTS
 
-  const remainingSpecialists = ALL_SPECIALISTS.filter(s => !priorityOrder.includes(s))
-  const orderedSpecialists   = [...priorityOrder, ...remainingSpecialists]
+    const remainingSpecialists = ALL_SPECIALISTS.filter(s => !priorityOrder.includes(s))
+    const orderedSpecialists   = [...priorityOrder, ...remainingSpecialists]
 
-  console.log(`[${AGENT_ID.toUpperCase()}] Specialist order (${reasoning?.vertical || 'default'}): ${orderedSpecialists.join(' → ')}`)
-  if (reasoning?.rationale) {
-    console.log(`[${AGENT_ID.toUpperCase()}] Reasoning: ${reasoning.rationale}`)
+    console.log(`[${AGENT_ID.toUpperCase()}] Specialist order (${reasoning?.vertical || 'default'}): ${orderedSpecialists.join(' → ')}`)
+    if (reasoning?.rationale) {
+      console.log(`[${AGENT_ID.toUpperCase()}] Reasoning: ${reasoning.rationale}`)
+    }
+
+    // Run all specialists in parallel
+    const specialistPromises = orderedSpecialists.map(name => SPECIALIST_MAP[name].run(clientList))
+    const results = await Promise.allSettled(specialistPromises)
+
+    const childReports = results
+      .filter(r => r.status === 'fulfilled' && r.value)
+      .map(r => r.value)
+
+    for (const r of childReports) {
+      await receive(r, supabase)
+    }
+
+    // Check total revenue at risk
+    const totalAtRisk = childReports.reduce((sum, r) => {
+      return sum + ((r.outcomes || []).reduce((s, o) => s + (o.data?.totalAtRisk || 0), 0))
+    }, 0)
+
+    const totalActions = childReports.reduce((sum, r) => sum + (r.actionsCount || 0), 0)
+    const escalations  = childReports.flatMap(r => r.escalations || [])
+
+    const needsCommanderAlert = totalAtRisk > ESCALATION_REVENUE_THRESHOLD || escalations.length > 0
+
+    // Fire proactive owner notifications for each per-client revenue escalation — fire-and-forget
+    for (const esc of escalations) {
+      if (!esc?.clientId || esc.clientId === 'all') continue
+      const atRisk = esc.data?.totalAtRisk
+      const msg = esc.summary
+        || (atRisk ? `Revenue at risk: $${atRisk} — needs your attention` : `Revenue escalation — needs your attention`)
+      notifyOwner({
+        businessId: esc.clientId,
+        eventType:  'revenue_at_risk',
+        message:    msg,
+      }).catch(() => {}) // never block director on notification failure
+    }
+
+    await logRun(supabase, startedAt, totalActions, 'ok', { totalAtRisk, escalations: escalations.length, clients: clientList.length })
+
+    return report([{
+      agentId:   AGENT_ID,
+      clientId:  'all',
+      timestamp: Date.now(),
+      status:    totalActions > 0 ? 'action_taken' : 'no_action',
+      summary:   `Revenue: ${totalActions} total actions. $${totalAtRisk} at risk. ${escalations.length} escalation(s).`,
+      data:      { totalActions, totalAtRisk, escalations, childReports, reasoning },
+      requiresDirectorAttention: needsCommanderAlert,
+    }])
+  } catch (err) {
+    console.error(`[${AGENT_ID}] run() fatal error:`, err.message)
+    await logRun(supabase, startedAt, 0, 'error', { error: err.message })
+    return {
+      agentId:      AGENT_ID,
+      division:     DIVISION,
+      actionsCount: 0,
+      escalations:  [],
+      outcomes:     [{ status: 'error', error: err.message }],
+    }
   }
-
-  // Run all specialists in parallel
-  const specialistPromises = orderedSpecialists.map(name => SPECIALIST_MAP[name].run(clientList))
-  const results = await Promise.allSettled(specialistPromises)
-
-  const childReports = results
-    .filter(r => r.status === 'fulfilled' && r.value)
-    .map(r => r.value)
-
-  for (const r of childReports) {
-    await receive(r, supabase)
-  }
-
-  // Check total revenue at risk
-  const totalAtRisk = childReports.reduce((sum, r) => {
-    return sum + ((r.outcomes || []).reduce((s, o) => s + (o.data?.totalAtRisk || 0), 0))
-  }, 0)
-
-  const totalActions = childReports.reduce((sum, r) => sum + (r.actionsCount || 0), 0)
-  const escalations  = childReports.flatMap(r => r.escalations || [])
-
-  const needsCommanderAlert = totalAtRisk > ESCALATION_REVENUE_THRESHOLD || escalations.length > 0
-
-  // Fire proactive owner notifications for each per-client revenue escalation — fire-and-forget
-  for (const esc of escalations) {
-    if (!esc?.clientId || esc.clientId === 'all') continue
-    const atRisk = esc.data?.totalAtRisk
-    const msg = esc.summary
-      || (atRisk ? `Revenue at risk: $${atRisk} — needs your attention` : `Revenue escalation — needs your attention`)
-    notifyOwner({
-      businessId: esc.clientId,
-      eventType:  'revenue_at_risk',
-      message:    msg,
-    }).catch(() => {}) // never block director on notification failure
-  }
-
-  return report([{
-    agentId:   AGENT_ID,
-    clientId:  'all',
-    timestamp: Date.now(),
-    status:    totalActions > 0 ? 'action_taken' : 'no_action',
-    summary:   `Revenue: ${totalActions} total actions. $${totalAtRisk} at risk. ${escalations.length} escalation(s).`,
-    data:      { totalActions, totalAtRisk, escalations, childReports, reasoning },
-    requiresDirectorAttention: needsCommanderAlert,
-  }])
 }
 
 async function report(outcomes) {

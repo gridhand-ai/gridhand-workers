@@ -35,14 +35,14 @@ function checkVIPStatus(profile, thresholds = {}) {
     return { isVIP, reasons };
 }
 
-function evaluate(clientSlug, customerNumber, clientSettings = {}) {
-    const profile = customerProfiler.getProfile(clientSlug, customerNumber);
+async function evaluate(clientSlug, customerNumber, clientSettings = {}) {
+    const profile = await customerProfiler.getProfile(clientSlug, customerNumber);
     const thresholds = clientSettings?.vip?.thresholds || {};
     const { isVIP, reasons } = checkVIPStatus(profile, thresholds);
 
     if (isVIP !== profile.isVIP) {
         const vipReason = isVIP ? reasons.join(', ') : null;
-        customerProfiler.updateProfile(clientSlug, customerNumber, { isVIP, vipReason });
+        await customerProfiler.updateProfile(clientSlug, customerNumber, { isVIP, vipReason });
 
         if (isVIP) {
             console.log(`[VIPDetector] ${customerNumber} is now VIP: ${reasons.join(', ')}`);
@@ -53,8 +53,8 @@ function evaluate(clientSlug, customerNumber, clientSettings = {}) {
 }
 
 // Scan all customers and return VIP list
-function getVIPList(clientSlug, clientSettings = {}) {
-    const allCustomers = customerProfiler.getAllCustomers(clientSlug);
+async function getVIPList(clientSlug, clientSettings = {}) {
+    const allCustomers = await customerProfiler.getAllCustomers(clientSlug);
     const vips = [];
 
     for (const [customerNumber, summary] of Object.entries(allCustomers)) {
@@ -68,8 +68,8 @@ function getVIPList(clientSlug, clientSettings = {}) {
 }
 
 // Get a VIP-appropriate greeting addition for workers to use
-function getVIPContext(clientSlug, customerNumber) {
-    const profile = customerProfiler.getProfile(clientSlug, customerNumber);
+async function getVIPContext(clientSlug, customerNumber) {
+    const profile = await customerProfiler.getProfile(clientSlug, customerNumber);
     if (!profile.isVIP) return null;
 
     return {

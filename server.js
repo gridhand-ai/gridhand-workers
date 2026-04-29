@@ -394,7 +394,7 @@ app.post('/sms', async (req, res) => {
     }
 
     // ── Step 1: Opt-out check (MUST run first, always) ─────────────────────
-    const optout = optoutManager.process(client.slug, customerNumber, message);
+    const optout = await optoutManager.process(client.slug, customerNumber, message);
     if (optout.action === 'opted-out' || optout.blocked) {
         campaignTracker.trackOptOut(client.slug, 'inbound');
         const reply = optout.reply || '';
@@ -491,7 +491,7 @@ app.post('/sms', async (req, res) => {
     // ── Step 6: Update customer profile (async) ────────────────────────────
     setImmediate(async () => {
         try {
-            customerProfiler.recordInteraction(client.slug, customerNumber, {
+            await customerProfiler.recordInteraction(client.slug, customerNumber, {
                 workerName: intent?.suggestedWorker || 'unknown',
             });
             // Extract FAQs from conversation (background)
@@ -1160,10 +1160,10 @@ app.get('/reports/:twilioNumber', requireApiKey, (req, res) => {
     res.json(report);
 });
 
-app.get('/customers/:twilioNumber', requireApiKey, (req, res) => {
+app.get('/customers/:twilioNumber', requireApiKey, async (req, res) => {
     const client = loadClient(req.params.twilioNumber);
     if (!client) return res.status(404).json({ error: 'Client not found' });
-    const customers = customerProfiler.getAllCustomers(client.slug);
+    const customers = await customerProfiler.getAllCustomers(client.slug);
     res.json({ total: Object.keys(customers).length, customers });
 });
 

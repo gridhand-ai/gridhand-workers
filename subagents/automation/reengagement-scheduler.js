@@ -14,8 +14,8 @@ function saveQueue(clientSlug, queue) {
 }
 
 // Scan all customers for a client and add dormant ones to the queue
-function scan(clientSlug, clientSettings) {
-    const allCustomers = customerProfiler.getAllCustomers(clientSlug);
+async function scan(clientSlug, clientSettings) {
+    const allCustomers = await customerProfiler.getAllCustomers(clientSlug);
     const dormantDays = clientSettings?.reactivation?.dormantDays || 90;
     const queue = getQueue(clientSlug);
     const queuedNumbers = new Set(queue.map(q => q.customerNumber));

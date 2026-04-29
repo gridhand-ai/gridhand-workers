@@ -27,7 +27,7 @@ function getRuleBasedUpsell(services, availableServices) {
 }
 
 async function recommend(clientSlug, customerNumber, availableServices, completedServiceName = null, clientUpsellLogic = null) {
-    const profile = customerProfiler.getProfile(clientSlug, customerNumber);
+    const profile = await customerProfiler.getProfile(clientSlug, customerNumber);
     const existingServices = profile.services || [];
 
     // Try rule-based first

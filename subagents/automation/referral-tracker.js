@@ -18,7 +18,7 @@ function saveReferralData(clientSlug, data) {
 }
 
 // Record a new referral
-function recordReferral(clientSlug, referrerNumber, referredNumber, referredName = null) {
+async function recordReferral(clientSlug, referrerNumber, referredNumber, referredName = null) {
     const data = getReferralData(clientSlug);
 
     // Check for duplicate
@@ -41,8 +41,8 @@ function recordReferral(clientSlug, referrerNumber, referredNumber, referredName
     data.leaderboard = computeLeaderboard(data.referrals);
 
     // Update referrer's profile
-    const profile = customerProfiler.getProfile(clientSlug, referrerNumber);
-    customerProfiler.updateProfile(clientSlug, referrerNumber, {
+    const profile = await customerProfiler.getProfile(clientSlug, referrerNumber);
+    await customerProfiler.updateProfile(clientSlug, referrerNumber, {
         referralCount: (profile.referralCount || 0) + 1
     });
 

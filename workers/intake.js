@@ -1,5 +1,6 @@
 const base = require('./base');
 const memoryModule = require('./memory');
+const profileContext = require('./profile-context');
 
 // Inbound: guides new customers through info collection step by step
 async function run({ client, message, customerNumber }) {
@@ -8,8 +9,11 @@ async function run({ client, message, customerNumber }) {
     const settings = client.settings?.intake || {};
     const fields = settings.collectFields || ['name', 'service', 'preferredTime', 'contactInfo'];
 
-    // Load history to understand what step we're on
-    const history = await memoryModule.loadHistory(client.slug, customerNumber);
+    // Load history + profile in parallel
+    const [history, customerBlock] = await Promise.all([
+        memoryModule.loadHistory(client.slug, customerNumber),
+        profileContext.buildPromptBlock(client.slug, customerNumber),
+    ]);
 
     const systemPrompt = `You are an intake assistant for ${biz.name}, a ${biz.industry} business. Your job is to collect information from a new customer through a friendly SMS conversation. ${tone}
 
@@ -34,7 +38,7 @@ Phone: ${biz.phone}
 
 <history>
 ${history.map(h => `${h.role === 'user' ? 'Customer' : 'You'}: ${h.content}`).join('\n') || 'No history yet — this is the first message.'}
-</history>`;
+</history>${customerBlock}`;
 
     return base.run({
         client,

@@ -1,5 +1,6 @@
 const base = require('./base');
 const memoryModule = require('./memory');
+const profileContext = require('./profile-context');
 
 // Inbound: help a customer book an appointment
 async function run({ client, message, customerNumber }) {
@@ -9,7 +10,10 @@ async function run({ client, message, customerNumber }) {
     const bookingMethod = settings.bookingMethod || 'phone'; // 'phone', 'website', 'both'
     const bookingLink = settings.bookingLink || biz.website || '';
 
-    const history = await memoryModule.loadHistory(client.slug, customerNumber);
+    const [history, customerBlock] = await Promise.all([
+        memoryModule.loadHistory(client.slug, customerNumber),
+        profileContext.buildPromptBlock(client.slug, customerNumber),
+    ]);
 
     let bookingInstruction;
     if (bookingMethod === 'website' && bookingLink) {
@@ -43,7 +47,7 @@ Hours: ${biz.hours}
 
 <history>
 ${history.map(h => `${h.role === 'user' ? 'Customer' : 'You'}: ${h.content}`).join('\n') || 'New conversation.'}
-</history>`;
+</history>${customerBlock}`;
 
     return base.run({
         client,

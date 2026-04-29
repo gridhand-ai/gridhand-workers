@@ -1,10 +1,12 @@
 const base = require('./base');
+const profileContext = require('./profile-context');
 
 // Inbound: smart routing receptionist — understands intent and routes to right worker
 async function run({ client, message, customerNumber }) {
     const biz = client.business;
     const tone = base.getTone(client);
     const activeWorkers = client.workers || [];
+    const customerBlock = await profileContext.buildPromptBlock(client.slug, customerNumber);
 
     // Build a description of available capabilities based on active workers
     const capabilities = [];
@@ -47,7 +49,7 @@ ${biz.faqs?.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n') || 'N/A'}
 - If they want to speak to a human: offer to have the team call them back.
 - Never make up information not listed above.
 - Sign off as ${biz.name}.
-</rules>`;
+</rules>${customerBlock}`;
 
     return base.run({ client, message, customerNumber, workerName: 'Receptionist', systemPrompt, maxTokens: 200 });
 }

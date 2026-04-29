@@ -139,7 +139,23 @@ async function logReasoning(supabase, reasoning, situation) {
   }
 }
 
+// ── Log run to agent_runs ─────────────────────────────────────────────────────
+async function logRun(supabase, startedAt, actionsCount, status, data) {
+  try {
+    await supabase.from('agent_runs').insert({
+      agent_id: AGENT_ID,
+      status,
+      summary:  `${AGENT_ID} run: ${actionsCount} actions`,
+      payload:  { startedAt, completedAt: new Date().toISOString(), actionsCount, ...data },
+      ran_at:   new Date().toISOString(),
+    })
+  } catch (err) {
+    console.warn(`[${AGENT_ID}] Failed to log run:`, err.message)
+  }
+}
+
 async function run(clients = null, situation = null, commanderBrief = null) {
+  const startedAt = new Date().toISOString()
   try {
     console.log(`[${AGENT_ID.toUpperCase()}] Starting run — situation: ${situation || 'scheduled'}`)
 
@@ -200,6 +216,8 @@ async function run(clients = null, situation = null, commanderBrief = null) {
       }).catch(() => {}) // never block director on notification failure
     }
 
+    await logRun(supabase, startedAt, totalActions, 'ok', { hotLeads: hotLeads.length, clients: clientList.length })
+
     return report([{
       agentId:   AGENT_ID,
       clientId:  'all',
@@ -211,6 +229,10 @@ async function run(clients = null, situation = null, commanderBrief = null) {
     }])
   } catch (err) {
     console.error(`[${AGENT_ID}] run() fatal error:`, err.message)
+    try {
+      const supabase = getSupabase()
+      await logRun(supabase, startedAt, 0, 'error', { error: err.message })
+    } catch (_) {}
     return {
       agentId:      AGENT_ID,
       division:     DIVISION,
