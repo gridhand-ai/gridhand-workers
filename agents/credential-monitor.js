@@ -329,6 +329,14 @@ async function run() {
     const warnCutoff = now + WARN_WINDOW_MS;
 
     for (const row of integrations) {
+        // Skip integrations that are already marked disconnected or have no refresh token.
+        // These are either intentionally disabled or already nulled-out due to past decrypt
+        // failures — alerting on them is pure noise and produces a Telegram spam loop on
+        // every Railway restart (the 24h in-memory throttle resets each boot).
+        if (!row.refresh_token || (row.status || '').toLowerCase() === 'disconnected') {
+            continue;
+        }
+
         results.checked++;
 
         const label = `[CredMonitor] ${row.platform}/${row.id} (client: ${row.client_id})`;
