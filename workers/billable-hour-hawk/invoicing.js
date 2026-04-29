@@ -17,11 +17,11 @@
 
 require('dotenv').config();
 
-const twilio = require('twilio');
 const dayjs  = require('dayjs');
 const { createClient } = require('@supabase/supabase-js');
 const billingApi = require('./billing-api');
 const tracker    = require('./tracker');
+const { sendSMS: twilioSendSMS } = require('../../lib/twilio-client');
 
 // ─── Supabase ─────────────────────────────────────────────────────────────────
 
@@ -30,26 +30,10 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_KEY
 );
 
-// ─── Twilio ───────────────────────────────────────────────────────────────────
-
-let twilioClient = null;
-
-function getTwilio() {
-    if (!twilioClient) {
-        const sid   = process.env.TWILIO_ACCOUNT_SID;
-        const token = process.env.TWILIO_AUTH_TOKEN;
-        if (!sid || !token) throw new Error('TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN required');
-        twilioClient = twilio(sid, token);
-    }
-    return twilioClient;
-}
-
-const FROM_NUMBER = process.env.TWILIO_FROM_NUMBER;
-
 // ─── Internal: SMS sender ─────────────────────────────────────────────────────
 
 /**
- * Send an SMS and log it to billing_alerts.
+ * Send an SMS via lib/twilio-client.js (TCPA + opt-out compliant) and log it to billing_alerts.
  */
 async function sendSMS(clientSlug, toPhone, body, alertType) {
     if (!toPhone) {
@@ -60,14 +44,14 @@ async function sendSMS(clientSlug, toPhone, body, alertType) {
     let messageSid = null;
 
     try {
-        const client  = getTwilio();
-        const message = await client.messages.create({
-            from: FROM_NUMBER,
-            to:   toPhone,
+        const { sid } = await twilioSendSMS({
+            to:             toPhone,
             body,
+            clientSlug,
+            clientTimezone: undefined,
         });
-        messageSid = message.sid;
-        console.log(`[Invoicing] SMS sent to ${toPhone} (${alertType}) — SID: ${message.sid}`);
+        messageSid = sid;
+        console.log(`[Invoicing] SMS sent to ${toPhone} (${alertType}) — SID: ${sid}`);
     } catch (err) {
         console.error(`[Invoicing] SMS failed to ${toPhone}: ${err.message}`);
     }

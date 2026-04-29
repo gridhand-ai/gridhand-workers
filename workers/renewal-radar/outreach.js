@@ -9,21 +9,8 @@
 
 'use strict';
 
-const twilio     = require('twilio');
 const nodemailer = require('nodemailer');
-
-// ─── Twilio Setup ─────────────────────────────────────────────
-
-function getTwilioClient(config = {}) {
-    const sid   = config.twilio?.accountSid || process.env.TWILIO_ACCOUNT_SID;
-    const token = config.twilio?.authToken  || process.env.TWILIO_AUTH_TOKEN;
-    if (!sid || !token) throw new Error('[Outreach] Twilio credentials missing');
-    return twilio(sid, token);
-}
-
-function getTwilioFrom(config = {}) {
-    return config.twilio?.fromNumber || process.env.TWILIO_FROM_NUMBER;
-}
+const { sendSMS: twilioSendSMS } = require('../../lib/twilio-client');
 
 // ─── SMTP Setup ──────────────────────────────────────────────
 
@@ -267,18 +254,30 @@ function buildWeeklyAgentReportEmail(data) {
 
 /**
  * Send an SMS using a named template.
+ * Routes through lib/twilio-client.js for TCPA + opt-out compliance.
  */
 async function sendSMS({ config = {}, to, template, data, body = null }) {
-    const client = getTwilioClient(config);
-    const from   = getTwilioFrom(config);
-    const text   = body || (SMS_TEMPLATES[template] ? SMS_TEMPLATES[template](data) : null);
+    const text = body || (SMS_TEMPLATES[template] ? SMS_TEMPLATES[template](data) : null);
 
     if (!text) throw new Error(`[Outreach] Unknown SMS template: ${template}`);
     if (!to)   throw new Error('[Outreach] Missing recipient phone number');
 
-    const msg = await client.messages.create({ from, to, body: text });
-    console.log(`[Outreach] SMS sent to ${to} (template: ${template || 'custom'}) — SID: ${msg.sid}`);
-    return { sid: msg.sid, to, body: text, channel: 'sms' };
+    const clientApiKeys = config.twilio
+        ? { twilio: { accountSid: config.twilio.accountSid, authToken: config.twilio.authToken } }
+        : undefined;
+    const from = config.twilio?.fromNumber || undefined;
+
+    const { sid } = await twilioSendSMS({
+        from,
+        to,
+        body:           text,
+        clientApiKeys,
+        clientSlug:     config.clientSlug,
+        clientTimezone: config.clientTimezone,
+    });
+
+    console.log(`[Outreach] SMS sent to ${to} (template: ${template || 'custom'}) — SID: ${sid}`);
+    return { sid, to, body: text, channel: 'sms' };
 }
 
 /**

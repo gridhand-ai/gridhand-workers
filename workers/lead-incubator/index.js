@@ -32,7 +32,7 @@ require('dotenv').config();
 const express = require('express');
 const crypto  = require('crypto');
 const cron    = require('node-cron');
-const twilio  = require('twilio');
+const { validateRequest } = require('twilio/lib/webhooks/webhooks');
 const fub     = require('./followupboss');
 const nurture = require('./nurture');
 const jobs    = require('./jobs');
@@ -182,7 +182,7 @@ app.post('/webhooks/twilio', async (req, res) => {
         const webhookUrl      = process.env.TWILIO_WEBHOOK_URL; // full public URL of this endpoint
 
         if (authToken && webhookUrl) {
-            const isValid = twilio.validateRequest(authToken, twilioSignature, webhookUrl, req.body);
+            const isValid = validateRequest(authToken, twilioSignature, webhookUrl, req.body);
             if (!isValid) {
                 console.warn('[TwilioWebhook] Invalid Twilio signature — rejected');
                 res.set('Content-Type', 'text/xml');

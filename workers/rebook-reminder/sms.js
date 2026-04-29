@@ -1,21 +1,15 @@
 /**
  * GRIDHAND Rebook Reminder — SMS Sender
  *
- * Twilio wrapper for all outbound client messages.
+ * All outbound SMS goes through lib/twilio-client.js sendSMS() to enforce
+ * TCPA quiet-hours and opt-out compliance.
  * Message tone varies by how overdue the client is.
  */
 
 'use strict';
 
-const twilio = require('twilio');
-const db     = require('./db');
-
-function getTwilioClient(accountSid, authToken) {
-    if (!accountSid || !authToken) {
-        throw new Error('TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN must be set');
-    }
-    return twilio(accountSid, authToken);
-}
+const { sendSMS: twilioSendSMS } = require('../../lib/twilio-client');
+const db                          = require('./db');
 
 /**
  * Send a rebook reminder — tone adjusts based on how overdue the client is.
@@ -49,8 +43,7 @@ async function sendRebookReminder(conn, {
         body = `Hi ${firstName}, it's been a while! We'd love to welcome you back to ${salon}. Book your ${service} appointment anytime —${url} Reply YES and we'll set it up. Reply STOP to opt out.`;
     }
 
-    await sendSMS(clientPhone, process.env.TWILIO_FROM_NUMBER, body,
-        process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    await sendSMS(clientPhone, body, conn.client_slug);
 
     await db.logAlert(conn.client_slug, {
         alertType:   'rebook_reminder',
@@ -69,8 +62,7 @@ async function sendConfirmation(conn, { clientPhone, clientName, salonName }) {
 
     const body = `Great to hear from you, ${firstName}! Someone from ${salon} will reach out shortly to confirm your appointment.${url ? ` Or book directly:${url}` : ''} See you soon!`;
 
-    await sendSMS(clientPhone, process.env.TWILIO_FROM_NUMBER, body,
-        process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    await sendSMS(clientPhone, body, conn.client_slug);
 
     await db.logAlert(conn.client_slug, {
         alertType:   'confirmation',
@@ -80,15 +72,17 @@ async function sendConfirmation(conn, { clientPhone, clientName, salonName }) {
 }
 
 /**
- * Core SMS send via Twilio.
+ * Core SMS send via lib/twilio-client.js.
  */
-async function sendSMS(to, from, body, accountSid, authToken) {
-    if (!from) throw new Error('TWILIO_FROM_NUMBER must be set');
-
+async function sendSMS(to, body, clientSlug) {
     console.log(`[SMS] → ${to}: ${body.slice(0, 60)}...`);
 
-    const client = getTwilioClient(accountSid, authToken);
-    await client.messages.create({ from, to, body });
+    await twilioSendSMS({
+        to,
+        body,
+        clientSlug,
+        clientTimezone: undefined,
+    });
 }
 
 module.exports = {

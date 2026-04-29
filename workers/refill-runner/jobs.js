@@ -16,6 +16,7 @@ const dayjs = require('dayjs');
 const pms   = require('./pms');
 const vetsource = require('./vetsource');
 const db    = require('./db');
+const { sendSMS } = require('../../lib/twilio-client');
 
 // ─── Queue Setup ──────────────────────────────────────────────────────────────
 
@@ -93,12 +94,13 @@ refillCheckQueue.process(async (job) => {
             practicePhone: conn.owner_phone,
         });
 
-        // Send SMS
-        const twilioClient = getTwilioClient();
-        const from = process.env.TWILIO_FROM_NUMBER;
-        if (!from) throw new Error('TWILIO_FROM_NUMBER must be set');
-
-        await twilioClient.messages.create({ from, to: ownerPhone, body: message });
+        // Send SMS via lib/twilio-client.js (TCPA + opt-out compliant)
+        await sendSMS({
+            to:             ownerPhone,
+            body:           message,
+            clientSlug,
+            clientTimezone: undefined,
+        });
 
         await db.logAlert(clientSlug, {
             alertType:      'refill_reminder',
@@ -142,10 +144,6 @@ processRefillsQueue.process(async (job) => {
     const approved = await db.getApprovedRefills(clientSlug);
     console.log(`[ProcessRefills] ${approved.length} approved refills to process for ${clientSlug}`);
 
-    const from = process.env.TWILIO_FROM_NUMBER;
-    if (!from) throw new Error('TWILIO_FROM_NUMBER must be set');
-    const twilioClient = getTwilioClient();
-
     let processed = 0;
     let failed    = 0;
 
@@ -169,7 +167,12 @@ processRefillsQueue.process(async (job) => {
                 ? `Great news! ${rx.patient_name}'s ${rx.medication_name} refill has been submitted. Track your order: ${order.trackingUrl}`
                 : `Great news! ${rx.patient_name}'s ${rx.medication_name} refill has been submitted to our online pharmacy. Estimated delivery: ${order.estimatedDelivery || '3-5 business days'}.`;
 
-            await twilioClient.messages.create({ from, to: rx.owner_phone, body: confirmMsg });
+            await sendSMS({
+                to:             rx.owner_phone,
+                body:           confirmMsg,
+                clientSlug,
+                clientTimezone: undefined,
+            });
 
             await db.logAlert(clientSlug, {
                 alertType:      'refill_submitted',
@@ -187,7 +190,12 @@ processRefillsQueue.process(async (job) => {
             // SMS owner about failure
             const failMsg = `We had trouble processing ${rx.patient_name}'s ${rx.medication_name} refill. Please call us at ${conn.owner_phone} and we'll get it sorted out.`;
             try {
-                await twilioClient.messages.create({ from, to: rx.owner_phone, body: failMsg });
+                await sendSMS({
+                    to:             rx.owner_phone,
+                    body:           failMsg,
+                    clientSlug,
+                    clientTimezone: undefined,
+                });
                 await db.logAlert(clientSlug, {
                     alertType:      'refill_failed',
                     recipient:      rx.owner_phone,
@@ -250,16 +258,6 @@ async function runForAllClients(jobFn) {
 }
 
 // ─── Internal Helpers ─────────────────────────────────────────────────────────
-
-function getTwilioClient() {
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken  = process.env.TWILIO_AUTH_TOKEN;
-    if (!accountSid || !authToken) {
-        throw new Error('TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN must be set');
-    }
-    const twilio = require('twilio');
-    return twilio(accountSid, authToken);
-}
 
 function buildRefillReminderMessage({ ownerName, petName, medication, daysDisplay, practiceName, practicePhone }) {
     const name     = ownerName ? `Hi ${ownerName.split(' ')[0]}!` : 'Hi!';

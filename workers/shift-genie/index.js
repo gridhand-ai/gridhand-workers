@@ -35,7 +35,8 @@ require('dotenv').config();
 
 const express  = require('express');
 const cron     = require('node-cron');
-const twilio   = require('twilio');
+const { validateRequest } = require('twilio/lib/webhooks/webhooks');
+const MessagingResponse   = require('twilio/lib/twiml/MessagingResponse');
 const dayjs    = require('dayjs');
 const { createClient } = require('@supabase/supabase-js');
 
@@ -76,7 +77,7 @@ function validateTwilioSignature(req, res, next) {
     const url             = `${req.protocol}://${req.get('host')}${req.originalUrl}`;
     const params          = req.body || {};
 
-    const isValid = twilio.validateRequest(authToken, twilioSignature, url, params);
+    const isValid = validateRequest(authToken, twilioSignature, url, params);
     if (!isValid) {
         console.warn('[Webhook/SMS] Invalid Twilio signature — rejected');
         return res.status(403).send('Forbidden');
@@ -209,7 +210,6 @@ async function getUpcomingShifts(clientSlug, employeeId) {
 // ─── Twilio Reply Helper ──────────────────────────────────────────────────────
 
 function twilioReply(res, message) {
-    const MessagingResponse = twilio.twiml.MessagingResponse;
     const twiml = new MessagingResponse();
     twiml.message(message);
     res.type('text/xml');

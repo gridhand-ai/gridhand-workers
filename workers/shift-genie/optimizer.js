@@ -14,23 +14,16 @@
 require('dotenv').config();
 
 const dayjs   = require('dayjs');
-const twilio  = require('twilio');
 const { createClient } = require('@supabase/supabase-js');
 
 const scheduling = require('./scheduling');
 const pos        = require('./pos');
+const { sendSMS } = require('../../lib/twilio-client');
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY
 );
-
-const twilioClient = twilio(
-    process.env.TWILIO_ACCOUNT_SID,
-    process.env.TWILIO_AUTH_TOKEN
-);
-
-const FROM_NUMBER = process.env.TWILIO_FROM_NUMBER;
 
 // ─── SMS Helper ───────────────────────────────────────────────────────────────
 
@@ -40,7 +33,12 @@ async function sendSms(to, body, clientSlug, alertType) {
         return;
     }
 
-    await twilioClient.messages.create({ from: FROM_NUMBER, to, body });
+    await sendSMS({
+        to,
+        body,
+        clientSlug,
+        clientTimezone: undefined,
+    });
 
     // Log to schedule_alerts
     await supabase.from('schedule_alerts').insert({

@@ -17,20 +17,14 @@
 require('dotenv').config();
 
 const dayjs   = require('dayjs');
-const twilio  = require('twilio');
 const { createClient } = require('@supabase/supabase-js');
 const { calculateUsageRate, getSalesHistory } = require('./pos');
+const { sendSMS } = require('../../lib/twilio-client');
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY
 );
-
-const twilioClient = twilio(
-    process.env.TWILIO_ACCOUNT_SID,
-    process.env.TWILIO_AUTH_TOKEN
-);
-const FROM_NUMBER = process.env.TWILIO_FROM_NUMBER;
 
 // ─── Connection Loader ────────────────────────────────────────────────────────
 
@@ -364,11 +358,12 @@ async function _logAlert(clientSlug, alertType, recipient, messageBody) {
     });
 }
 
-async function _sendSMS(to, body) {
-    return twilioClient.messages.create({
-        from: FROM_NUMBER,
+async function _sendSMS(to, body, clientSlug) {
+    return sendSMS({
         to,
         body,
+        clientSlug,
+        clientTimezone: undefined,
     });
 }
 
@@ -399,7 +394,7 @@ async function sendWasteAlert(clientSlug, item, prediction) {
     ].join('\n');
 
     try {
-        await _sendSMS(recipient, body);
+        await _sendSMS(recipient, body, clientSlug);
         await _logAlert(clientSlug, 'expiry_alert', recipient, body);
         await markAlerted(clientSlug, prediction.itemName);
         console.log(`[Predictions] Waste alert sent for ${prediction.itemName} to ${recipient}`);
@@ -456,7 +451,7 @@ async function sendDailyReport(clientSlug, opts = {}) {
     ].join('\n');
 
     try {
-        await _sendSMS(recipient, body);
+        await _sendSMS(recipient, body, clientSlug);
         await _logAlert(clientSlug, 'prep_briefing', recipient, body);
         console.log(`[Predictions] Daily prep briefing sent to ${recipient} for ${clientSlug}`);
     } catch (err) {
@@ -495,7 +490,7 @@ async function sendExpiryAlert(clientSlug, expiringItems) {
     ].join('\n');
 
     try {
-        await _sendSMS(recipient, body);
+        await _sendSMS(recipient, body, clientSlug);
         await _logAlert(clientSlug, 'expiry_alert', recipient, body);
         console.log(`[Predictions] Expiry alert sent for ${expiringItems.length} items to ${recipient}`);
     } catch (err) {
@@ -529,7 +524,7 @@ async function sendWeeklyWasteReport(clientSlug, report) {
     ].join('\n');
 
     try {
-        await _sendSMS(recipient, body);
+        await _sendSMS(recipient, body, clientSlug);
         await _logAlert(clientSlug, 'weekly_report', recipient, body);
         console.log(`[Predictions] Weekly waste report sent for ${clientSlug} to ${recipient}`);
     } catch (err) {

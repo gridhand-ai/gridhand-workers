@@ -1,21 +1,15 @@
 /**
  * GRIDHAND Chair Filler — SMS Sender
  *
- * Twilio wrapper for last-minute slot notifications.
+ * All outbound SMS goes through lib/twilio-client.js sendSMS() to enforce
+ * TCPA quiet-hours and opt-out compliance.
  * Tone is conversational and urgent without being pushy.
  */
 
 'use strict';
 
-const twilio = require('twilio');
-const db     = require('./db');
-
-function getTwilioClient(accountSid, authToken) {
-    if (!accountSid || !authToken) {
-        throw new Error('TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN must be set');
-    }
-    return twilio(accountSid, authToken);
-}
+const { sendSMS: twilioSendSMS } = require('../../lib/twilio-client');
+const db                          = require('./db');
 
 /**
  * Send a last-minute slot text to a matched client.
@@ -37,13 +31,7 @@ async function sendLastMinuteText(conn, {
 
     const body = `Hi ${firstName}! We just had a ${service} opening ${slotDate} at ${slotTime} at ${salon}. Interested?${url} Reply YES to grab it or STOP to opt out.`;
 
-    await sendSMS(
-        clientPhone,
-        process.env.TWILIO_FROM_NUMBER,
-        body,
-        process.env.TWILIO_ACCOUNT_SID,
-        process.env.TWILIO_AUTH_TOKEN
-    );
+    await sendSMS(clientPhone, body, conn.client_slug);
 
     await db.logAlert(conn.client_slug, {
         alertType:   'last_minute_text',
@@ -53,15 +41,17 @@ async function sendLastMinuteText(conn, {
 }
 
 /**
- * Core SMS send via Twilio.
+ * Core SMS send via lib/twilio-client.js.
  */
-async function sendSMS(to, from, body, accountSid, authToken) {
-    if (!from) throw new Error('TWILIO_FROM_NUMBER must be set');
-
+async function sendSMS(to, body, clientSlug) {
     console.log(`[SMS] → ${to}: ${body.slice(0, 60)}...`);
 
-    const client = getTwilioClient(accountSid, authToken);
-    await client.messages.create({ from, to, body });
+    await twilioSendSMS({
+        to,
+        body,
+        clientSlug,
+        clientTimezone: undefined,
+    });
 }
 
 module.exports = {

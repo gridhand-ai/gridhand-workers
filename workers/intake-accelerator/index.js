@@ -31,7 +31,7 @@ require('dotenv').config();
 
 const express  = require('express');
 const cron     = require('node-cron');
-const twilio   = require('twilio');
+const { validateRequest } = require('twilio/lib/webhooks/webhooks');
 const clio     = require('./clio');
 const intake   = require('./intake');
 const jobs     = require('./jobs');
@@ -80,7 +80,7 @@ function validateTwilioWebhook(req, res, next) {
         return next();
     }
 
-    const isValid = twilio.validateRequest(authToken, twilioSig, webhookUrl, req.body);
+    const isValid = validateRequest(authToken, twilioSig, webhookUrl, req.body);
 
     if (!isValid) {
         console.warn('[Twilio] Invalid webhook signature — rejected');

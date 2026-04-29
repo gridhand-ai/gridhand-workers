@@ -14,10 +14,10 @@
 
 require('dotenv').config();
 
-const twilio = require('twilio');
 const dayjs  = require('dayjs');
 const { createClient } = require('@supabase/supabase-js');
 const clio   = require('./clio');
+const { sendSMS } = require('../../lib/twilio-client');
 
 // ─── Supabase ─────────────────────────────────────────────────────────────────
 
@@ -26,19 +26,14 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_KEY
 );
 
-// ─── Twilio ───────────────────────────────────────────────────────────────────
-
-function getTwilioClient() {
-    return twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-}
+// ─── SMS Sender ───────────────────────────────────────────────────────────────
 
 async function sendSms(to, body, clientSlug, alertType) {
-    const client = getTwilioClient();
-
-    await client.messages.create({
+    await sendSMS({
         to,
-        from: process.env.TWILIO_FROM_NUMBER,
         body,
+        clientSlug,
+        clientTimezone: undefined,
     });
 
     // Log every outbound message

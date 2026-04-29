@@ -1,18 +1,14 @@
 /**
- * GRIDHAND Compliance Watchdog — Twilio SMS Wrapper
+ * GRIDHAND Compliance Watchdog — SMS Wrapper
+ *
+ * All outbound SMS goes through lib/twilio-client.js sendSMS() to enforce
+ * TCPA quiet-hours and opt-out compliance.
  */
 
 'use strict';
 
-const twilio = require('twilio');
-const db     = require('./db');
-
-const client = twilio(
-    process.env.TWILIO_ACCOUNT_SID,
-    process.env.TWILIO_AUTH_TOKEN
-);
-
-const FROM = process.env.TWILIO_FROM_NUMBER;
+const { sendSMS } = require('../../lib/twilio-client');
+const db          = require('./db');
 
 async function sendToOwner(conn, messageBody, alertType, alertMeta = {}) {
     const to = conn.owner_phone;
@@ -21,7 +17,12 @@ async function sendToOwner(conn, messageBody, alertType, alertMeta = {}) {
         return;
     }
 
-    await client.messages.create({ body: messageBody, from: FROM, to });
+    await sendSMS({
+        to,
+        body:           messageBody,
+        clientSlug:     conn.client_slug,
+        clientTimezone: undefined,
+    });
 
     await db.logAlert(conn.client_slug, {
         alertType,

@@ -17,7 +17,6 @@ const { syncBookOfBusiness, syncDelta } = require('./ams');
 const { analyzeBook, getTopOpportunities } = require('./analyzer');
 const { sendBulkAlerts, processOpportunity, generateAgentAlert, sendAgentAlert } = require('./outreach');
 const aiClient    = require('../../lib/ai-client');
-const twilio      = require('twilio');
 
 // ---------------------------------------------------------------------------
 // Redis connection

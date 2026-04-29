@@ -18,19 +18,10 @@
 'use strict';
 
 const Bull    = require('bull');
-const twilio  = require('twilio');
 const dayjs   = require('dayjs');
 const db      = require('./db');
 const tracker = require('./tracker');
-
-// ─── Twilio Client ────────────────────────────────────────────────────────────
-
-const twilioClient = twilio(
-    process.env.TWILIO_ACCOUNT_SID,
-    process.env.TWILIO_AUTH_TOKEN
-);
-
-const FROM_NUMBER = process.env.TWILIO_FROM_NUMBER;
+const { sendSMS } = require('../../lib/twilio-client');
 
 // ─── Queue Setup ──────────────────────────────────────────────────────────────
 
@@ -48,10 +39,11 @@ const closingChecklistQueue = new Bull('tt:closing-checklist',   REDIS_URL);
 async function sendSms(to, body, clientSlug, transactionId, messageType) {
     if (!to) throw new Error('No phone number provided for SMS');
 
-    const msg = await twilioClient.messages.create({
-        from: FROM_NUMBER,
+    const { sid } = await sendSMS({
         to,
         body,
+        clientSlug,
+        clientTimezone: undefined,
     });
 
     await db.logSms(clientSlug, {
@@ -59,10 +51,10 @@ async function sendSms(to, body, clientSlug, transactionId, messageType) {
         recipient:   to,
         messageBody: body,
         messageType,
-        twilioSid:   msg.sid,
+        twilioSid:   sid,
     });
 
-    return msg.sid;
+    return sid;
 }
 
 // ─── Job: Milestone Alert ─────────────────────────────────────────────────────

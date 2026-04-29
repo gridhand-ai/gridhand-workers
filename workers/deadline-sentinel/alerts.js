@@ -22,22 +22,15 @@
 
 require('dotenv').config();
 
-const twilio = require('twilio');
 const dayjs  = require('dayjs');
 const { createClient } = require('@supabase/supabase-js');
 const caseMgmt = require('./case-mgmt');
-
-const twilioClient = twilio(
-    process.env.TWILIO_ACCOUNT_SID,
-    process.env.TWILIO_AUTH_TOKEN
-);
+const { sendSMS } = require('../../lib/twilio-client');
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY
 );
-
-const FROM = process.env.TWILIO_FROM_NUMBER;
 
 // ─── Message Formatters ───────────────────────────────────────────────────────
 
@@ -164,11 +157,16 @@ async function sendSms(to, body, clientSlug, deadlineId, alertType, urgencyLevel
     let twilioSid = null;
 
     try {
-        const msg = await twilioClient.messages.create({ from: FROM, to, body });
-        twilioSid = msg.sid;
-        console.log(`[Alerts] SMS sent to ${to} [${alertType}] SID: ${msg.sid}`);
+        const { sid } = await sendSMS({
+            to,
+            body,
+            clientSlug,
+            clientTimezone: undefined,
+        });
+        twilioSid = sid;
+        console.log(`[Alerts] SMS sent to ${to} [${alertType}] SID: ${sid}`);
     } catch (err) {
-        console.error(`[Alerts] Twilio error sending to ${to}: ${err.message}`);
+        console.error(`[Alerts] SMS error sending to ${to}: ${err.message}`);
         // Still log the attempt
     }
 

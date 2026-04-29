@@ -1,21 +1,16 @@
 /**
- * GRIDHAND Vaccine Reminder — Twilio SMS Functions
+ * GRIDHAND Vaccine Reminder — SMS Functions
  *
  * Sends tiered vaccine reminder SMS messages and booking confirmations.
+ * All outbound SMS goes through lib/twilio-client.js sendSMS() to enforce
+ * TCPA quiet-hours and opt-out compliance.
  * Logs every outbound message to vaccine_alerts via db.logAlert.
  */
 
 'use strict';
 
-const twilio = require('twilio');
-const db     = require('./db');
-
-function getClient(accountSid, authToken) {
-    if (!accountSid || !authToken) {
-        throw new Error('TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN must be set');
-    }
-    return twilio(accountSid, authToken);
-}
+const { sendSMS: twilioSendSMS } = require('../../lib/twilio-client');
+const db                          = require('./db');
 
 /**
  * Send a tiered vaccine reminder SMS.
@@ -26,11 +21,6 @@ async function sendReminderSMS(conn, {
     ownerPhone, petName, vaccineName, dueDate,
     reminderType, daysOverdue, practiceName, practicePhone,
 }) {
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken  = process.env.TWILIO_AUTH_TOKEN;
-    const from       = process.env.TWILIO_FROM_NUMBER;
-    if (!from) throw new Error('TWILIO_FROM_NUMBER must be set');
-
     const body = buildReminderMessage({
         reminderType, petName, vaccineName, dueDate,
         daysOverdue, practiceName, practicePhone,
@@ -38,7 +28,7 @@ async function sendReminderSMS(conn, {
 
     console.log(`[SMS] → ${ownerPhone} [${reminderType}]: ${body.slice(0, 80)}...`);
 
-    await sendSMS(ownerPhone, from, body, accountSid, authToken);
+    await sendSMS(ownerPhone, body, conn.client_slug);
 
     await db.logAlert(conn.client_slug, {
         alertType:   `vaccine_reminder_${reminderType}`,
@@ -54,11 +44,6 @@ async function sendReminderSMS(conn, {
  * the message tells them someone will follow up.
  */
 async function sendConfirmationSMS(conn, { ownerPhone, petName, vaccineName, appointmentDate }) {
-    const accountSid = process.env.TWILIO_ACCOUNT_SID;
-    const authToken  = process.env.TWILIO_AUTH_TOKEN;
-    const from       = process.env.TWILIO_FROM_NUMBER;
-    if (!from) throw new Error('TWILIO_FROM_NUMBER must be set');
-
     let body;
     if (appointmentDate) {
         body = `Hi! Your appointment for ${petName}'s ${vaccineName || 'vaccine'} has been scheduled for ${appointmentDate} at ${conn.practice_name}. See you then!`;
@@ -68,7 +53,7 @@ async function sendConfirmationSMS(conn, { ownerPhone, petName, vaccineName, app
 
     console.log(`[SMS] → ${ownerPhone} [booking_confirmation]: ${body.slice(0, 80)}...`);
 
-    await sendSMS(ownerPhone, from, body, accountSid, authToken);
+    await sendSMS(ownerPhone, body, conn.client_slug);
 
     await db.logAlert(conn.client_slug, {
         alertType:   'booking_confirmation',
@@ -78,11 +63,15 @@ async function sendConfirmationSMS(conn, { ownerPhone, petName, vaccineName, app
 }
 
 /**
- * Raw Twilio send — used internally.
+ * Raw SMS send — used internally. Routes through lib/twilio-client.js.
  */
-async function sendSMS(to, from, body, accountSid, authToken) {
-    const client = getClient(accountSid, authToken);
-    await client.messages.create({ from, to, body });
+async function sendSMS(to, body, clientSlug) {
+    await twilioSendSMS({
+        to,
+        body,
+        clientSlug,
+        clientTimezone: undefined,
+    });
 }
 
 // ─── Message Builder ──────────────────────────────────────────────────────────

@@ -32,7 +32,7 @@ require('dotenv').config();
 
 const express   = require('express');
 const cron      = require('node-cron');
-const twilio    = require('twilio');
+const MessagingResponse = require('twilio/lib/twiml/MessagingResponse');
 const calendar  = require('./calendar');
 const db        = require('./db');
 const jobs      = require('./jobs');
@@ -79,7 +79,7 @@ app.get('/', (req, res) => {
 // POST /webhooks/twilio — visitors replying to follow-up messages
 app.post('/webhooks/twilio', async (req, res) => {
     // Fast TwiML ACK first — Twilio requires a response within 15 seconds
-    const twiml = new twilio.twiml.MessagingResponse();
+    const twiml = new MessagingResponse();
 
     const { Body: replyText, From: fromPhone } = req.body;
 
